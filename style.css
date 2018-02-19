@@ -6,6 +6,29 @@ html, body {
 	padding: 0;
 }
 
+/*========= EFFECTS / ANIMATIONS =========*/
+
+@keyframes movingTextShadow {
+	0% {
+		text-shadow: -1px -1px 2px black;
+	}
+	20% {
+		text-shadow: 0.63px -2.23px 2px black;
+	}
+	40% {
+		text-shadow: 2.38px -1.14px 2px black;
+	}
+	60% {
+		text-shadow: 1.26px 2.11px 2px black;
+	}
+	80% {
+		text-shadow: -1.55px 2.17px 2px black;
+	}
+	100% {
+		text-shadow: -1px -1px 2px black;
+	}
+}
+
 
 
 /*========= DESKTOP =========*/
@@ -44,6 +67,8 @@ html, body {
 	font-weight: bold;
 	font-size: 100%;
 	color: white;
+	text-shadow: 2px 2px 2px black;
+	animation: movingTextShadow 1s linear infinite;
 
 	-webkit-mask-image: url(assets/start-button-mask.png);
 	-webkit-mask-mode: alpha;
