@@ -110,6 +110,18 @@ body {
 	pointer-events: none;
 }
 
+.tv-scanlines {
+	position: absolute;
+	z-index: 9998;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	opacity: 0.4;
+	background-image: linear-gradient(#ccc 1px, transparent 1px);
+	background-size: 20px 4px;
+}
+
 .tv-static-overlay {
 	position: absolute;
 	z-index: 9999;
@@ -159,7 +171,7 @@ body {
 	bottom: 0;
 	background-position: center;
 	background-size: cover;
-	background-color: black;
+	background-color: red;
 }
 
 
