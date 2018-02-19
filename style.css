@@ -1,0 +1,40 @@
+
+html, body {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+
+
+/*========= DESKTOP =========*/
+
+.desktop {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+.icon-grid {
+	flex-grow: 1;
+}
+
+
+
+/*========= TASKBAR =========*/
+
+.taskbar {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	height: 34px;
+	background: linear-gradient(to bottom, #af43b1, #c42de2, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2, #9f43b1);
+}
+
+.start-button {
+	margin-left: 4px;
+}
