@@ -38,13 +38,31 @@ html, body {
 .start-button {
 	height: 100%;
 	width: 6em;
+	padding: 0;
+	margin: 0;
+
 	font-weight: bold;
 	font-size: 100%;
 	color: white;
+
+	-webkit-mask-image: url(assets/start-button-mask.png);
+	-webkit-mask-mode: alpha;
+	-webkit-mask-repeat: no-repeat;
+	-webkit-mask-size: 100% 100%;
+
+	mask-image: url(assets/start-button-mask.png);
+	mask-mode: alpha;
+	mask-repeat: no-repeat;
+	mask-size: 100% 100%;
+
 	background: linear-gradient(to bottom, #91ee7e, #4ed62c, #51c539, #3ab334, #42962d, #269720, #3f9b20);
 	border: 0px none transparent;
 }
 
 .start-button:active:hover {
 	background: linear-gradient(to bottom, #4a913b, #428d2f, #3c942a, #349b2f, #42962d, #269720, #3f9b20);
+}
+
+.start-button:visited {
+	outline: 0px none transparent;
 }
