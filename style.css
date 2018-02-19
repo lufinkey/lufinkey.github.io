@@ -81,6 +81,7 @@ html, body {
 	right: -500px;
 	top: -500px;
 	bottom: -500px;
+	opacity: 0.7;
 	background: transparent url(https://www.dropbox.com/s/h7ab1c82ctzy83n/noise.png?raw=1) 0 0;
 	animation: noise 1s steps(8,end) infinite both;
 }
