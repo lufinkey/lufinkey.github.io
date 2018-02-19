@@ -32,9 +32,19 @@ html, body {
 	flex-direction: row;
 	align-items: center;
 	height: 34px;
-	background: linear-gradient(to bottom, #af43b1, #c42de2, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2, #9f43b1);
+	background: linear-gradient(to bottom, #f1a4ff, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2);
 }
 
 .start-button {
-	margin-left: 4px;
+	height: 100%;
+	width: 6em;
+	font-weight: bold;
+	font-size: 100%;
+	color: white;
+	background: linear-gradient(to bottom, #91ee7e, #4ed62c, #51c539, #3ab334, #42962d, #269720, #3f9b20);
+	border: 0px none transparent;
+}
+
+.start-button:active:hover {
+	background: linear-gradient(to bottom, #4a913b, #428d2f, #3c942a, #349b2f, #42962d, #269720, #3f9b20);
 }
