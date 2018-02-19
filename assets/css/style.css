@@ -12,6 +12,7 @@ body {
 }
 
 
+
 /*========= EFFECTS / ANIMATIONS =========*/
 
 @keyframes ghost-text-shadow {
@@ -181,7 +182,7 @@ body {
 	right: -500px;
 	top: -500px;
 	bottom: -500px;
-	opacity: 0.7;
+	opacity: 0.6;
 	background: transparent url(https://www.dropbox.com/s/h7ab1c82ctzy83n/noise.png?raw=1) 0 0;
 	animation: tv-noise 1s steps(8,end) infinite both;
 }
@@ -260,12 +261,12 @@ body {
 	color: white;
 	text-shadow: 2px 2px 4px black;
 
-	-webkit-mask-image: url(assets/start-button-mask.png);
+	-webkit-mask-image: url(/assets/masks/start-button-mask.png);
 	-webkit-mask-mode: alpha;
 	-webkit-mask-repeat: no-repeat;
 	-webkit-mask-size: 100% 100%;
 
-	mask-image: url(assets/start-button-mask.png);
+	mask-image: url(/assets/masks/start-button-mask.png);
 	mask-mode: alpha;
 	mask-repeat: no-repeat;
 	mask-size: 100% 100%;
@@ -281,7 +282,7 @@ body {
 	height: 60%;
 	width: 30px;
 
-	background-image: url(assets/apple-icon.png);
+	background-image: url(/assets/images/apple-icon.png);
 	background-repeat: no-repeat;
 	background-position: center;
 	background-size: contain;
