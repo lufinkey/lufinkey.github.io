@@ -216,16 +216,19 @@ body {
 .taskbar {
 	display: flex;
 	flex-direction: row;
-	align-items: center;
+	align-content: center;
 	height: 34px;
 	background: linear-gradient(to bottom, #f1a4ff, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2);
 }
 
 .start-button {
+	position: relative;
 	height: 100%;
 	width: 6em;
 	padding: 0;
 	margin: 0;
+
+	padding-left: 10px;
 
 	font-weight: bold;
 	font-size: 100%;
@@ -246,8 +249,27 @@ body {
 	border: 0px none transparent;
 }
 
+.start-button > .icon {
+	position: absolute;
+	top: 14%;
+	left: 1px;
+	height: 60%;
+	width: 30px;
+
+	background-image: url(assets/apple-icon.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+
+	filter: drop-shadow(1px 1px 1px black);
+}
+
 .start-button:active:hover {
 	background: linear-gradient(to bottom, #4a913b, #428d2f, #3c942a, #349b2f, #42962d, #269720, #3f9b20);
+}
+
+.start-button:active:hover > .icon {
+	filter: brightness(80%);
 }
 
 .start-button:visited {
