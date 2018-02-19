@@ -10,22 +10,22 @@ html, body {
 
 @keyframes movingTextShadow {
 	0% {
-		text-shadow: -1px -1px 2px black;
+		text-shadow: -1px -1px 4px black;
 	}
 	20% {
-		text-shadow: 0.63px -2.23px 2px black;
+		text-shadow: 0.63px -1.96px 4px black;
 	}
 	40% {
-		text-shadow: 2.38px -1.14px 2px black;
+		text-shadow: 2.18px -0.64px 4px black;
 	}
 	60% {
-		text-shadow: 1.26px 2.11px 2px black;
+		text-shadow: 0.88px 2.11px 4px black;
 	}
 	80% {
-		text-shadow: -1.55px 2.17px 2px black;
+		text-shadow: -1.55px 1.97px 4px black;
 	}
 	100% {
-		text-shadow: -1px -1px 2px black;
+		text-shadow: -1px -1px 4px black;
 	}
 }
 
@@ -63,6 +63,7 @@ html, body {
 		transform: translate(-100px, 100px);
 	}
 }
+
 
 .tv-static-overlay-container {
 	position: absolute;
@@ -103,6 +104,18 @@ html, body {
 	flex-grow: 1;
 }
 
+.wallpaper {
+	z-index: -1;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	background-position: center;
+	background-size: cover;
+	background-color: black;
+}
+
 
 
 /*========= TASKBAR =========*/
@@ -124,7 +137,7 @@ html, body {
 	font-weight: bold;
 	font-size: 100%;
 	color: white;
-	text-shadow: 2px 2px 2px black;
+	text-shadow: 2px 2px 4px black;
 	animation: movingTextShadow 1s linear infinite;
 
 	-webkit-mask-image: url(assets/start-button-mask.png);
@@ -153,9 +166,6 @@ html, body {
 
 /*========= SPECIFICS =========*/
 
-#main-desktop {
+#main-desktop .wallpaper {
 	background-image: url(http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg);
-	background-position: center;
-	background-size: cover;
-	background-color: black;
 }
