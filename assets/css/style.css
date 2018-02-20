@@ -1,5 +1,5 @@
 
-html, body {
+html, body, #root {
 	width: 100%;
 	height: 100%;
 	margin: 0;
@@ -261,13 +261,20 @@ iframe.ghost {
 	flex-grow: 1;
 }
 
-.wallpaper {
-	z-index: -1;
+.wallpaper-container {
 	position: absolute;
 	left: 0;
 	right: 0;
 	top: 0;
 	bottom: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.wallpaper {
+	position: absolute;
+	z-index: -1;
 	width: 100%;
 	height: 100%;
 	background-position: center;
@@ -409,5 +416,5 @@ iframe.wallpaper {
 /*========= SPECIFICS =========*/
 
 #main-desktop .wallpaper {
-	background-image: url(http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg);
+	background-image: url();
 }

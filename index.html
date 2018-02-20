@@ -1,27 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<link href="/assets/css/style.css" rel="stylesheet" type="text/css"/>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.min.js"></script>
+	<link href="assets/css/style.css" rel="stylesheet" type="text/css"/>
+	<script src="assets/js/main.js" type="text/babel"></script>
 </head>
 <body>
-	<div id="main-desktop" class="desktop">
-		<div class="tv-effects">
-			<div class="tv-scanlines"></div>
-			<div class="tv-static-overlay"></div>
-		</div>
-		<div class="icon-grid">
-			<div class="file file-txt">
-				<span class="filename">Pornography</span>
-			</div>
-		</div>
-		
-		<iframe class="wallpaper" src="//www.youtube.com/embed/WmAoE-ZkoQs?rel=0&autoplay=1&loop=1&showinfo=0&controls=0&modestbranding=1" frameborder="0" allowfullscreen></iframe>
-		<iframe class="wallpaper ghost" src="//www.youtube.com/embed/WmAoE-ZkoQs?rel=0&autoplay=1&loop=1&mute=1&showinfo=0&controls=0&modestbranding=1" frameborder="0" allowfullscreen></iframe>
-		<div class="taskbar">
-			<button type="button" class="start-button">
-				<span class="icon"></span> Start
-			</button>
-		</div>
-	</div>
+	<div id="root"></div>
+	<script type="text/babel">
+		ReactDOM.render(
+			<Desktop/>,
+			document.getElementById('root')
+		);
+	</script>
 </body>
 </html>
