@@ -332,7 +332,7 @@ iframe.ghost {
 }
 
 .file-txt {
-	background-image: url(/assets/images/windows95/icon-txt.png);
+	background-image: url(../images/windows95/icon-txt.png);
 }
 
 
@@ -362,12 +362,12 @@ iframe.ghost {
 	color: white;
 	text-shadow: 2px 2px 4px black;
 
-	-webkit-mask-image: url(/assets/masks/start-button-mask.png);
+	-webkit-mask-image: url(../masks/start-button-mask.png);
 	-webkit-mask-mode: alpha;
 	-webkit-mask-repeat: no-repeat;
 	-webkit-mask-size: 100% 100%;
 
-	mask-image: url(/assets/masks/start-button-mask.png);
+	mask-image: url(../masks/start-button-mask.png);
 	mask-mode: alpha;
 	mask-repeat: no-repeat;
 	mask-size: 100% 100%;
@@ -383,7 +383,7 @@ iframe.ghost {
 	height: 60%;
 	width: 30px;
 
-	background-image: url(/assets/images/apple-icon.png);
+	background-image: url(../images/apple-icon.png);
 	background-repeat: no-repeat;
 	background-position: center;
 	background-size: contain;
@@ -396,17 +396,10 @@ iframe.ghost {
 }
 
 .start-button:active:hover > .icon {
-	filter: brightness(80%);
+	opacity: 0.7;
 }
 
 .start-button:visited {
 	outline: 0px none transparent;
 }
 
-
-
-/*========= SPECIFICS =========*/
-
-#main-desktop .wallpaper {
-	background-image: url();
-}
