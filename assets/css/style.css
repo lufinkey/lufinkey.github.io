@@ -346,6 +346,7 @@ iframe.wallpaper {
 	align-content: center;
 	height: 34px;
 	background: linear-gradient(to bottom, #f1a4ff, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2);
+	filter: brightness(80%);
 }
 
 .start-button {
