@@ -245,6 +245,7 @@ body {
 
 .file {
 	display: inline-block;
+	position: absolute;
 
 	background-repeat: no-repeat;
 	background-position: top;
