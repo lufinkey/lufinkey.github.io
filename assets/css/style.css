@@ -246,21 +246,27 @@ body {
 	background-position: top;
 	background-size: 32px 32px;
 	
-	width: 48px;
-	max-height: 48px;
+	width: 64px;
+	max-height: 64px;
 	padding-top: 34px;
-
-	overflow: hidden;
-	text-align: center;
-	text-overflow: ellipsis;
 
 	font-family: sans-serif;
 	font-size: 12px;
 
 	color: white;
+	text-align: center;
 
 	cursor: pointer;
 	user-select: none;
+}
+
+.file .filename {
+	display: inline-block;
+
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	overflow-wrap: normal;
 }
 
 .file:active {
@@ -272,9 +278,13 @@ body {
 	background: #0080cb;
 
 	outline-color: rgba(0,0,0,.8);
-    outline-style: dotted;
-    outline-width: 1px;
-    outline-offset: -1px;
+	outline-style: dotted;
+	outline-width: 1px;
+	outline-offset: -1px;
+	
+	max-width: none;
+	overflow: initial;
+	text-overflow: initial;
 }
 
 .file-txt {
