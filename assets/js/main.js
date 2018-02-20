@@ -15,9 +15,7 @@ class Desktop extends React.Component
 					<div className="tv-static-overlay"></div>
 				</div>
 				<div className="icon-grid">
-					<div className="file file-txt">
-						<span className="filename">Pornography</span>
-					</div>
+					<DesktopIcon fileExtension="txt" fileName="Pornography"/>
 				</div>
 				
 				{this.renderRandomWallpaper()}
@@ -33,7 +31,7 @@ class Desktop extends React.Component
 	renderRandomWallpaper()
 	{
 		var index = Math.floor(Math.random()*wallpapers.length);
-		return this.renderWallpaper(wallpapers[index]);
+		return this.renderWallpaper(wallpapers[1]);
 	}
 
 	renderWallpaper(wallpaper)
@@ -70,6 +68,41 @@ class Desktop extends React.Component
 			<div className="wallpaper-container">
 				<div className="wallpaper" style={{backgroundImage:"url("+wallpaper.url+")"}}></div>
 				<div className="wallpaper ghost" style={{backgroundImage:"url("+wallpaper.url+")"}}></div>
+			</div>
+		);
+	}
+}
+
+
+
+class DesktopIcon extends React.Component
+{
+	constructor(props)
+	{
+		super(props);
+
+		var initialPosition = Object.assign({x:0,y:0}, props.initialPosition);
+
+		this.state = {
+			position: initialPosition
+		};
+	}
+
+	render()
+	{
+		var classNames = ["file"];
+		if(this.props.fileExtension)
+		{
+			classNames.push("file-"+this.props.fileExtension);
+		}
+		var styles = {
+			left: this.state.x,
+			top: this.state.y
+		};
+
+		return (
+			<div className={classNames.join(' ')} style={styles}>
+				<div className="filename">{this.props.fileName}</div>
 			</div>
 		);
 	}
