@@ -216,6 +216,69 @@ iframe.ghost {
 
 
 
+/*========= ICONS =========*/
+
+.file {
+	display: inline-block;
+	position: absolute;
+	
+	width: 64px;
+
+	font-family: sans-serif;
+	font-size: 12px;
+
+	color: white;
+	text-align: center;
+
+	cursor: pointer;
+	user-select: none;
+}
+
+.file > .icon {
+	display: inline-block;
+	margin-left: auto;
+	margin-right: auto;
+	width: 50%;
+	padding-top: 50%;
+
+	background-repeat: no-repeat;
+	background-position: top;
+	background-size: contain;
+}
+
+.file > .filename {
+	display: inline-block;
+
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	overflow-wrap: normal;
+}
+
+.file:active {
+	filter: brightness(.5) sepia(100%) hue-rotate(180deg) saturate(8);
+}
+
+.file:active > .filename {
+	color: #b2fcff;
+	background: #0080cb;
+
+	outline-color: rgba(0,0,0,.8);
+	outline-style: dotted;
+	outline-width: 1px;
+	outline-offset: -1px;
+	
+	max-width: none;
+	overflow: initial;
+	text-overflow: initial;
+}
+
+.file-txt > .icon {
+	background-image: url(../images/windows95/icon-txt.png);
+}
+
+
+
 /*========= DESKTOP =========*/
 
 .desktop {
@@ -276,63 +339,6 @@ iframe.ghost {
 		height: 100%;
 		width: 800%;
 	}
-}
-
-
-
-/*========= DESKTOP ICONS =========*/
-
-.file {
-	display: inline-block;
-	position: absolute;
-
-	background-repeat: no-repeat;
-	background-position: top;
-	background-size: 32px 32px;
-	
-	width: 64px;
-	max-height: 64px;
-	padding-top: 34px;
-
-	font-family: sans-serif;
-	font-size: 12px;
-
-	color: white;
-	text-align: center;
-
-	cursor: pointer;
-	user-select: none;
-}
-
-.file .filename {
-	display: inline-block;
-
-	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	overflow-wrap: normal;
-}
-
-.file:active {
-	filter: brightness(.5) sepia(100%) hue-rotate(180deg) saturate(8);
-}
-
-.file:active .filename {
-	color: #b2fcff;
-	background: #0080cb;
-
-	outline-color: rgba(0,0,0,.8);
-	outline-style: dotted;
-	outline-width: 1px;
-	outline-offset: -1px;
-	
-	max-width: none;
-	overflow: initial;
-	text-overflow: initial;
-}
-
-.file-txt {
-	background-image: url(../images/windows95/icon-txt.png);
 }
 
 

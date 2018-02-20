@@ -89,14 +89,10 @@ class FileLayout extends React.Component
 		super(props);
 
 		this.state = {
-			selectedFile: null,
-			fileStates: {}
+			fileStates: {},
+			dragging: false,
+			selectedFile: null
 		};
-	}
-
-	onSelectFile(fileName)
-	{
-		//
 	}
 
 	render()
@@ -128,20 +124,6 @@ class DesktopIcon extends React.Component
 	constructor(props)
 	{
 		super(props);
-
-		var position = Object.assign({x:0,y:0}, props.position);
-
-		this.state = {
-			position: position
-		};
-	}
-
-	onMouseDown(event)
-	{
-		if(this.props.onSelect)
-		{
-			this.props.onSelect(this.props.fileName);
-		}
 	}
 
 	render()
@@ -151,16 +133,14 @@ class DesktopIcon extends React.Component
 		{
 			classNames.push("file-"+this.props.fileType);
 		}
+		var position = Object.assign({x:0,y:0}, this.props.position);
 		var styles = {
-			left: this.state.position.x,
-			top: this.state.position.y
+			left: position.x,
+			top: position.y
 		};
-
 		return (
-			<div
-				className={classNames.join(' ')}
-				style={styles}
-				onMouseDown={(event) => {this.onMouseDown(event)}}>
+			<div className={classNames.join(' ')} style={styles}>
+				<div className="icon"></div>
 				<div className="filename">{this.props.fileName}</div>
 			</div>
 		);
