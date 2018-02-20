@@ -87,36 +87,6 @@ body {
 	}
 }
 
-@keyframes ghost-iframe {
-	0% {
-		transform: translate(-4px, 3px) scale(1.2, 1.2);
-	}
-	10% {
-		transform: translate(8px, 1px) scale(1.2, 1.2);
-	}
-	30% {
-		transform: translate(-4px, -4px) scale(1.2, 1.2);
-	}
-	50% {
-		transform: translate(4px, 8px) scale(1.2, 1.2);
-	}
-	60% {
-		transform: translate(-2px, 8px) scale(1.2, 1.2);
-	}
-	70% {
-		transform: translate(2px, 6px) scale(1.2, 1.2);
-	}
-	80% {
-		transform: translate(-4px, -4px) scale(1.2, 1.2);
-	}
-	90% {
-		transform: translate(-2px, 4px) scale(1.2, 1.2);
-	}
-	100% {
-		transform: translate(-4px, 3px) scale(1.2, 1.2);
-	}
-}
-
 @keyframes tv-noise {
 	0% {
 		transform: translateX(0px,0px);
@@ -241,7 +211,7 @@ body {
 }
 
 iframe.ghost {
-	animation: ghost-iframe 12s linear infinite;
+	animation: ghost 12s linear infinite;
 }
 
 
@@ -263,6 +233,7 @@ iframe.ghost {
 
 .wallpaper-container {
 	position: absolute;
+	overflow: hidden;
 	left: 0;
 	right: 0;
 	top: 0;
@@ -280,10 +251,31 @@ iframe.ghost {
 	background-position: center;
 	background-size: cover;
 	background-color: red;
+	text-align: center;
 }
 
-iframe.wallpaper {
-	transform: scale(1.2, 1.2);
+@media (min-aspect-ratio: 640/360), (aspect-ratio: 640/360) {
+	.wallpaper-container {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+	iframe.wallpaper {
+		width: 100%;
+		height: 800%;
+	}
+}
+
+@media (max-aspect-ratio: 640/360) {
+	.wallpaper-container {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+	}
+	iframe.wallpaper {
+		height: 100%;
+		width: 800%;
+	}
 }
 
 

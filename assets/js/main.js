@@ -58,8 +58,8 @@ class Desktop extends React.Component
 		}
 		return (
 			<div className="wallpaper-container">
-				<iframe className="wallpaper" src={videoSrc} frameBorder={0} allowFullscreen></iframe>
-				<iframe className="wallpaper ghost" src={ghostVideoSrc} frameBorder={0} allowFullscreen></iframe>
+				<iframe className="wallpaper" src={videoSrc} frameBorder={0} allowFullScreen={true}></iframe>
+				<iframe className="wallpaper ghost" src={ghostVideoSrc} frameBorder={0} allowFullScreen={true}></iframe>
 			</div>
 		);
 	}
