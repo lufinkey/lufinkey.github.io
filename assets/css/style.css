@@ -193,12 +193,16 @@ body {
 	animation-delay: 0.6s;
 }
 
+.file .filename {
+	animation: ghost-text-shadow 1.8s linear infinite;
+}
+
 .start-button {
-	animation: ghost-text-shadow 2s linear infinite;
+	animation: ghost-text-shadow 1.8s linear infinite;
 }
 
 .start-button > .icon {
-	animation: ghost-drop-shadow 2s linear infinite;
+	animation: ghost-drop-shadow 1.8s linear infinite;
 }
 
 .ghost {
