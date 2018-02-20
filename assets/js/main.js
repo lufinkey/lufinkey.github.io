@@ -4,6 +4,12 @@ const wallpapers = [
 	{type: 'image', url: 'http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg' }
 ];
 
+const files = [
+	{type: 'txt', name: 'Pornography'}
+];
+
+
+
 class Desktop extends React.Component
 {
 	render()
@@ -14,10 +20,7 @@ class Desktop extends React.Component
 					<div className="tv-scanlines"></div>
 					<div className="tv-static-overlay"></div>
 				</div>
-				<div className="icon-grid">
-					<DesktopIcon fileExtension="txt" fileName="Pornography"/>
-				</div>
-				
+				<FileLayout files={files}/>
 				{this.renderRandomWallpaper()}
 				<div className="taskbar">
 					<button type="button" className="start-button">
@@ -75,33 +78,89 @@ class Desktop extends React.Component
 
 
 
+class FileLayout extends React.Component
+{
+	constructor(props)
+	{
+		if(!props.files)
+		{
+			props.files = [];
+		}
+		super(props);
+
+		this.state = {
+			selectedFile: null,
+			fileStates: {}
+		};
+	}
+
+	onSelectFile(fileName)
+	{
+		//
+	}
+
+	render()
+	{
+		return (
+			<div className="icon-grid">
+				{this.props.files.map((file) => this.renderIcon(file))}
+			</div>
+		);
+	}
+
+	renderIcon(file)
+	{
+		var fileState = this.state.fileStates[file.name];
+		if(!fileState)
+		{
+			fileState = {position:{x:0,y:0}};
+		}
+		return (
+			<DesktopIcon key={file.name} fileType={file.type} fileName={file.name}/>
+		);
+	}
+}
+
+
+
 class DesktopIcon extends React.Component
 {
 	constructor(props)
 	{
 		super(props);
 
-		var initialPosition = Object.assign({x:0,y:0}, props.initialPosition);
+		var position = Object.assign({x:0,y:0}, props.position);
 
 		this.state = {
-			position: initialPosition
+			position: position
 		};
+	}
+
+	onMouseDown(event)
+	{
+		if(this.props.onSelect)
+		{
+			this.props.onSelect(this.props.fileName);
+		}
 	}
 
 	render()
 	{
 		var classNames = ["file"];
-		if(this.props.fileExtension)
+		if(this.props.fileType)
 		{
-			classNames.push("file-"+this.props.fileExtension);
+			classNames.push("file-"+this.props.fileType);
 		}
 		var styles = {
-			left: this.state.x,
-			top: this.state.y
+			left: this.state.position.x,
+			top: this.state.position.y
 		};
 
 		return (
-			<div className={classNames.join(' ')} style={styles}>
+			<div
+				className={classNames.join(' ')}
+				style={styles}
+				onMouseDown={(event) => {this.onMouseDown(event)}}>
 				<div className="filename">{this.props.fileName}</div>
 			</div>
 		);
