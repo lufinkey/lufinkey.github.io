@@ -237,6 +237,52 @@ body {
 
 
 
+/*========= DESKTOP ICONS =========*/
+
+.file {
+	display: inline-block;
+
+	background-repeat: no-repeat;
+	background-position: top;
+	background-size: 32px 32px;
+	
+	width: 48px;
+	max-height: 48px;
+	padding-top: 34px;
+
+	overflow: hidden;
+	text-align: center;
+	text-overflow: ellipsis;
+
+	font-family: sans-serif;
+	font-size: 12px;
+
+	color: white;
+
+	cursor: pointer;
+	user-select: none;
+}
+
+.file:active {
+	filter: brightness(.5) sepia(100%) hue-rotate(180deg) saturate(8);
+}
+
+.file:active .filename {
+	color: #b2fcff;
+	background: #0080cb;
+
+	outline-color: rgba(0,0,0,.8);
+    outline-style: dotted;
+    outline-width: 1px;
+    outline-offset: -1px;
+}
+
+.file-txt {
+	background-image: url(/assets/images/windows95/icon-txt.png);
+}
+
+
+
 /*========= TASKBAR =========*/
 
 .taskbar {
