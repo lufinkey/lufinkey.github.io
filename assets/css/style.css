@@ -258,9 +258,12 @@ body {
 	animation: small-ghost 12s ease-out infinite;
 }
 
-.file > .icon > .ghost
-{
+.file > .icon > .ghost {
 	width: 100%;
+}
+
+.start-button > .icon > .ghost {
+	height: 100%;
 }
 
 iframe.ghost {
