@@ -257,11 +257,11 @@ iframe.ghost {
 	overflow-wrap: normal;
 }
 
-.file:active {
+.file:active, .file.selected {
 	filter: brightness(.5) sepia(100%) hue-rotate(180deg) saturate(8);
 }
 
-.file:active > .filename {
+.file:active > .filename, .file.selected > .filename {
 	color: #b2fcff;
 	background: #0080cb;
 

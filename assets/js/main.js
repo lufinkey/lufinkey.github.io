@@ -157,7 +157,10 @@ class FileLayout extends React.Component
 
 	onMouseDown(event)
 	{
-		//
+		if(this.state.selectedFile)
+		{
+			this.setState({selectedFile: null});
+		}
 	}
 
 	onFileMouseDown(filename, event)
@@ -197,7 +200,7 @@ class FileLayout extends React.Component
 		switch(this.state.dragging)
 		{
 			case 'file':
-				this.setState({dragging: null, draggingFile: null, selectedFile: null});
+				this.setState({dragging: null, draggingFile: null});
 		}
 	}
 
@@ -213,8 +216,9 @@ class FileLayout extends React.Component
 	renderFile(fileName, file)
 	{
 		let fileState = this.state.files[fileName];
+		var selected = (this.state.selectedFile === fileName);
 		return (
-			<FileIcon key={fileName} fileName={fileName} fileType={file.type} position={fileState.position} onMouseDown={(event) => {this.onFileMouseDown(fileName, event)}}/>
+			<FileIcon key={fileName} fileName={fileName} fileType={file.type} position={fileState.position} selected={selected} onMouseDown={(event) => {this.onFileMouseDown(fileName, event)}}/>
 		);
 	}
 }
@@ -225,10 +229,14 @@ class FileIcon extends React.Component
 {
 	render()
 	{
-		var classNames = ["file"];
+		var classNames = [ "file" ];
 		if(this.props.fileType)
 		{
 			classNames.push("file-"+this.props.fileType);
+		}
+		if(this.props.selected)
+		{
+			classNames.push("selected");
 		}
 		var position = Object.assign({x:0,y:0}, this.props.position);
 		var styles = {
