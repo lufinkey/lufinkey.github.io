@@ -12,3 +12,6 @@ class TaskBar extends React.Component
 		);
 	}
 }
+
+
+module.exports = TaskBar;

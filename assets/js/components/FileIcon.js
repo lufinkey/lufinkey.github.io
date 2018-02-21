@@ -25,3 +25,7 @@ class FileIcon extends React.Component
 		);
 	}
 }
+
+
+
+module.exports = FileIcon;

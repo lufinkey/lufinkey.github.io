@@ -1,4 +1,9 @@
 
+const TaskBar = require('screens/desktop/TaskBar');
+const FileLayout = require('components/FileLayout');
+
+
+
 const wallpapers = [
 	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true},
 	{type: 'image', url: 'http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg' }
@@ -71,3 +76,7 @@ class Desktop extends React.Component
 		);
 	}
 }
+
+
+
+module.exports = Desktop;

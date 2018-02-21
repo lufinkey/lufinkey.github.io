@@ -1,21 +1,17 @@
 
-// evaluate "babel" javascript
 function executeBabelScript(code)
 {
-	const module = { exports: {} };
-	const require = requirejs;
-	eval(Babel.transform(code, {presets:['react']}).code);
+	const module = {exports: {}};
+	eval(result, [Babel.transform(code, {presets:['react']}).code]);
 	return module.exports;
 }
 
-// resolve path to required module
 function resolveRequirePath(path)
 {
 	let baseDir = "assets/js";
-	return baseDir+'/'+path+'.js';
+	return baseDir+'/'+scriptPath+'.js';
 }
 
-// create require function
 const require = (function() {
 	let loadedModules = {};
 	let modules = {};
@@ -48,16 +44,3 @@ const require = (function() {
 		}
 	};
 })();
-const requirejs = require;
-
-// wait for page load
-window.addEventListener('load', () => {
-	// import OS
-	const OS = require('OS');
-	console.log("OS: ", OS);
-	// render the OS
-	ReactDOM.render(
-		<OS/>,
-		document.getElementById('root')
-	);
-});

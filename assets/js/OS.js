@@ -1,4 +1,8 @@
 
+const Desktop = require('screens/desktop/Desktop');
+
+
+
 class OS extends React.Component
 {
 	render()
@@ -6,3 +10,7 @@ class OS extends React.Component
 		return (<Desktop/>)
 	}
 }
+
+
+
+module.exports = OS;

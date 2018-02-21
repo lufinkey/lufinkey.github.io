@@ -1,4 +1,8 @@
 
+const FileIcon = require('components/FileIcon');
+
+
+
 class FileLayout extends React.Component
 {
 	constructor(props)
@@ -186,3 +190,7 @@ class FileLayout extends React.Component
 		);
 	}
 }
+
+
+
+module.exports = FileLayout;
