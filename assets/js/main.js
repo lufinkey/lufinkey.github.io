@@ -165,10 +165,13 @@ class FileLayout extends React.Component
 
 	onFileMouseDown(filename, event)
 	{
-		if(!this.state.dragging)
+		if(event.button == 0)
 		{
-			event.stopPropagation();
-			this.setState({dragging: 'file', draggingFile: filename, selectedFile: filename});
+			if(!this.state.dragging)
+			{
+				event.stopPropagation();
+				this.setState({dragging: 'file', draggingFile: filename, selectedFile: filename});
+			}
 		}
 	}
 
@@ -197,10 +200,13 @@ class FileLayout extends React.Component
 
 	onDocumentMouseUp(event)
 	{
-		switch(this.state.dragging)
+		if(event.button == 0)
 		{
-			case 'file':
-				this.setState({dragging: null, draggingFile: null});
+			switch(this.state.dragging)
+			{
+				case 'file':
+					this.setState({dragging: null, draggingFile: null});
+			}
 		}
 	}
 
@@ -245,7 +251,7 @@ class FileIcon extends React.Component
 		};
 		return (
 			<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown}>
-				<div className="icon"></div>
+				<div className="icon"><div className="ghost"></div></div>
 				<div className="filename">{this.props.fileName}</div>
 			</div>
 		);
