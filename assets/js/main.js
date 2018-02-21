@@ -4,9 +4,9 @@ const wallpapers = [
 	{type: 'image', url: 'http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg' }
 ];
 
-const files = [
-	{type: 'txt', name: 'Pornography'}
-];
+const files = {
+	"pornography.txt": {type: 'txt'}
+};
 
 
 
@@ -84,48 +84,145 @@ class FileLayout extends React.Component
 	{
 		if(!props.files)
 		{
-			props.files = [];
+			props.files = {};
 		}
 		super(props);
 
+		// set default state	
 		this.state = {
-			fileStates: {},
-			dragging: false,
+			files: {},
+			dragging: null,
+			draggingFile: null,
 			selectedFile: null
 		};
+
+		this.onDocumentMouseDown = this.onDocumentMouseDown.bind(this);
+		this.onDocumentMouseMove = this.onDocumentMouseMove.bind(this);
+		this.onDocumentMouseUp = this.onDocumentMouseUp.bind(this);
+	}
+
+	findFileDOMNodes()
+	{
+		var icons = [];
+		var node = React.findDOMNode(this);
+		for(const childNode of node.childNodes)
+		{
+			if(childNode.classList && childNode.classList.contains('file'))
+			{
+				icons.push(node);
+			}
+		}
+		return icons;
+	}
+
+	componentWillMount()
+	{
+		const maxCols = 5;
+		var col = 0;
+		var row = 0;
+
+		// set default file states
+		var fileStates = Object.assign({}, this.state.files);
+		for(const fileName in this.props.files)
+		{
+			fileStates[fileName] = {position:{x:(col*72), y:(row*72)}};
+			col++;
+			if(col >= maxCols)
+			{
+				col = 0;
+				row++;
+			}
+		}
+		this.setState({files:fileStates});
+	}
+
+	componentDidMount()
+	{
+		// add mouse event listeners
+		document.addEventListener('mousedown', this.onDocumentMouseDown);
+		document.addEventListener('mousemove', this.onDocumentMouseMove);
+		document.addEventListener('mouseup', this.onDocumentMouseUp);
+	}
+
+	componentWillUnmount()
+	{
+		// reset state
+		this.setState({dragging: null, draggingFile: null, selectedFile: null});
+
+		// remove mouse event listeners	
+		document.removeEventListener('mousedown', this.onDocumentMouseDown);
+		document.removeEventListener('mousemove', this.onDocumentMouseMove);
+		document.removeEventListener('mouseup', this.onDocumentMouseUp);
+	}
+
+	onMouseDown(event)
+	{
+		//
+	}
+
+	onFileMouseDown(filename, event)
+	{
+		if(!this.state.dragging)
+		{
+			event.stopPropagation();
+			this.setState({dragging: 'file', draggingFile: filename, selectedFile: filename});
+		}
+	}
+
+	onDocumentMouseDown(event)
+	{
+		//
+	}
+
+	onDocumentMouseMove(event)
+	{
+		switch(this.state.dragging)
+		{
+			case 'file':
+				var draggingFile = this.state.draggingFile;
+				var fileStates = Object.assign({}, this.state.files);
+				var fileState = fileStates[draggingFile];
+
+				fileState.position.x += event.movementX;
+				fileState.position.y += event.movementY;
+
+				fileStates[draggingFile] = fileState;
+				this.setState({files: fileStates});
+				break;
+		}
+	}
+
+	onDocumentMouseUp(event)
+	{
+		switch(this.state.dragging)
+		{
+			case 'file':
+				this.setState({dragging: null, draggingFile: null, selectedFile: null});
+		}
 	}
 
 	render()
 	{
 		return (
-			<div className="icon-grid">
-				{this.props.files.map((file) => this.renderIcon(file))}
+			<div className="icon-grid" onMouseDown={(event) => {this.onMouseDown(event)}}>
+				{Object.keys(this.props.files).map((fileName) => this.renderFile(fileName, this.props.files[fileName]))}
 			</div>
 		);
 	}
 
-	renderIcon(file)
+	renderFile(fileName, file)
 	{
-		var fileState = this.state.fileStates[file.name];
-		if(!fileState)
-		{
-			fileState = {position:{x:0,y:0}};
-		}
+		let fileState = this.state.files[fileName];
 		return (
-			<DesktopIcon key={file.name} fileType={file.type} fileName={file.name}/>
+			<FileIcon key={fileName} fileName={fileName} fileType={file.type} position={fileState.position} onMouseDown={(event) => {this.onFileMouseDown(fileName, event)}}/>
 		);
 	}
 }
 
 
 
-class DesktopIcon extends React.Component
+class FileIcon extends React.Component
 {
-	constructor(props)
-	{
-		super(props);
-	}
-
 	render()
 	{
 		var classNames = ["file"];
@@ -139,7 +236,7 @@ class DesktopIcon extends React.Component
 			top: position.y
 		};
 		return (
-			<div className={classNames.join(' ')} style={styles}>
+			<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown}>
 				<div className="icon"></div>
 				<div className="filename">{this.props.fileName}</div>
 			</div>
