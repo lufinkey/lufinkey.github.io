@@ -22,11 +22,7 @@ class Desktop extends React.Component
 				</div>
 				<FileLayout files={files}/>
 				{this.renderRandomWallpaper()}
-				<div className="taskbar">
-					<button type="button" className="start-button">
-						<span className="icon"></span> Start
-					</button>
-				</div>
+				<TaskBar/>
 			</div>
 		);
 	}
@@ -71,6 +67,22 @@ class Desktop extends React.Component
 			<div className="wallpaper-container">
 				<div className="wallpaper" style={{backgroundImage:"url("+wallpaper.url+")"}}></div>
 				<div className="wallpaper ghost" style={{backgroundImage:"url("+wallpaper.url+")"}}></div>
+			</div>
+		);
+	}
+}
+
+
+
+class TaskBar extends React.Component
+{
+	render()
+	{
+		return (
+			<div className="taskbar">
+				<button type="button" className="start-button">
+					<span className="icon"></span> Start
+				</button>
 			</div>
 		);
 	}
