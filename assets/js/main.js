@@ -115,13 +115,18 @@ class FileLayout extends React.Component
 
 	findFileDOMNodes()
 	{
-		var icons = [];
-		var node = React.findDOMNode(this);
+		var icons = {};
+		var node = ReactDOM.findDOMNode(this);
 		for(const childNode of node.childNodes)
 		{
 			if(childNode.classList && childNode.classList.contains('file'))
 			{
-				icons.push(node);
+				var filenameNode = childNode.querySelector('.filename');
+				if(filenameNode != null)
+				{
+					var fileName = filenameNode.textContent;
+					icons[fileName] = childNode;
+				}
 			}
 		}
 		return icons;
@@ -217,7 +222,39 @@ class FileLayout extends React.Component
 			switch(this.state.dragging)
 			{
 				case 'file':
-					this.setState({dragging: null, draggingFile: null});
+					var draggingFile = this.state.draggingFile;
+					var fileStates = Object.assign({}, this.state.files);
+					
+					var node = ReactDOM.findDOMNode(this);
+					var fileNode = this.findFileDOMNodes()[draggingFile];
+					if(node != null && fileNode != null)
+					{
+						var fileState = fileStates[draggingFile];
+						var nodeRect = node.getBoundingClientRect();
+						var fileNodeRect = fileNode.getBoundingClientRect();
+
+						if(fileNodeRect.left < nodeRect.left)
+						{
+							fileState.position.x += (nodeRect.left - fileNodeRect.left);
+						}
+						else if(fileNodeRect.right > nodeRect.right)
+						{
+							fileState.position.x -= (fileNodeRect.right - nodeRect.right);
+						}
+						if(fileNodeRect.top < nodeRect.top)
+						{
+							fileState.position.y += (nodeRect.top - fileNodeRect.top);
+						}
+						else if(fileNodeRect.bottom > nodeRect.bottom)
+						{
+							fileState.position.y -= (fileNodeRect.bottom - nodeRect.bottom);
+						}
+
+						fileStates[draggingFile] = fileState;
+					}
+
+					this.setState({dragging: null, draggingFile: null, files: fileStates});
+					break;
 			}
 		}
 	}
