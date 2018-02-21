@@ -54,7 +54,6 @@ const requirejs = require;
 window.addEventListener('load', () => {
 	// import OS
 	const OS = require('OS');
-	console.log("OS: ", OS);
 	// render the OS
 	ReactDOM.render(
 		<OS/>,
