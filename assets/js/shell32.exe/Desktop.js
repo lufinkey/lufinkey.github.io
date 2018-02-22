@@ -1,7 +1,7 @@
 
 const depends = [
-	'screens/desktop/TaskBar',
-	'components/FileIconLayout'
+	'shell32.exe/TaskBar',
+	'shell32.exe/FileIconLayout'
 ];
 
 defineModule(depends, (TaskBar, FileIconLayout) => {

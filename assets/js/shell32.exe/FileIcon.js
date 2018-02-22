@@ -20,6 +20,7 @@ defineModule(depends, () => {
 				left: position.x,
 				top: position.y
 			};
+			
 			return (
 				<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown}>
 					<div className="icon"><div className="ghost"></div></div>

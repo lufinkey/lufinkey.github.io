@@ -4,11 +4,6 @@ const depends = [];
 defineModule(depends, () => {
 	class Window extends React.Component
 	{
-		getMenuItems()
-		{
-			return null;
-		}
-
 		renderTitleBar()
 		{
 			return (
@@ -23,7 +18,7 @@ defineModule(depends, () => {
 
 		renderMenuBar()
 		{
-			var menuItems = this.getMenuItems();
+			var menuItems = this.props.menuItems;
 			if(menuItems == null)
 			{
 				return null;
@@ -43,11 +38,13 @@ defineModule(depends, () => {
 
 		render()
 		{
-			var style = {
-				left: this.state.windowX,
-				top: this.state.windowY,
-				width: this.state.windowWidth,
-				height: this.state.windowHeight
+			var position = Object.assign({x:0,y:0}, this.props.position);
+			var size = Object.assign({x:0,y:0}, this.props.size);
+			var styles = {
+				left: position.x,
+				top: position.y,
+				width: size.x,
+				height: size.y
 			};
 			
 			return (

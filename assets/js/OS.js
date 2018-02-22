@@ -1,6 +1,6 @@
 
 const depends = [
-	'screens/desktop/Desktop'
+	'shell32.exe/Desktop'
 ];
 
 defineModule(depends, (Desktop) => {
