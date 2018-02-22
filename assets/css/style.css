@@ -401,6 +401,14 @@ iframe.ghost {
 
 
 
+/*========= WINDOW MANAGER =========*/
+
+.window {
+	background-color: white;
+}
+
+
+
 /*========= TASKBAR =========*/
 
 .taskbar {

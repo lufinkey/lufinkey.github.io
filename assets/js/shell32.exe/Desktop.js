@@ -1,10 +1,11 @@
 
 const depends = [
 	'shell32.exe/TaskBar',
-	'shell32.exe/FileIconLayout'
+	'shell32.exe/FileIconLayout',
+	'shell32.exe/WindowManager'
 ];
 
-defineModule(depends, (TaskBar, FileIconLayout) => {
+defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 	const wallpapers = [
 		{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true},
 		{type: 'image', url: 'http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg' }
@@ -14,22 +15,41 @@ defineModule(depends, (TaskBar, FileIconLayout) => {
 		"pornography.txt": {type: 'txt'}
 	};
 
-
 	class Desktop extends React.Component
 	{
+		constructor(props)
+		{
+			super(props);
+
+			this.windowManager = null;
+		}
+
 		render()
 		{
 			return (
 				<div id={this.props.id} className="desktop">
+					{this.renderRandomWallpaper()}
+					<FileIconLayout files={files}/>
+					<WindowManager
+						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
+						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}/>
+					<TaskBar/>
 					<div className="tv-effects">
 						<div className="tv-scanlines"></div>
 						<div className="tv-static-overlay"></div>
 					</div>
-					<FileIconLayout files={files}/>
-					{this.renderRandomWallpaper()}
-					<TaskBar/>
 				</div>
 			);
+		}
+
+		onWindowManagerMount(windowManager)
+		{
+			this.windowManager = windowManager;
+		}
+
+		onWindowManagerUnmount(windowManager)
+		{
+			this.windowManager = null;
 		}
 
 		renderRandomWallpaper()

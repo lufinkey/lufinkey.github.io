@@ -4,11 +4,43 @@ const depends = [];
 defineModule(depends, () => {
 	class Window extends React.Component
 	{
+		constructor(props)
+		{
+			super(props);
+
+			this.state = {
+				created: false
+			};
+		}
+
+		create(initialState, callback)
+		{
+			var state = Object.assign({}, initialState);
+			state.created = true;
+			this.setState(state, callback);
+		}
+
+		componentDidMount()
+		{
+			if(this.props.onMount)
+			{
+				this.props.onMount(this);
+			}
+		}
+
+		componentWillUnmount()
+		{
+			if(this.props.onUnmount)
+			{
+				this.props.onUnmount(this);
+			}
+		}
+
 		renderTitleBar()
 		{
 			return (
-				<div className="window-title-bar">
-					<span className="window-title">{this.state.windowTitle}</span>
+				<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
+					<span className="window-title">{this.state.title}</span>
 					<button type="button" className="window-button-minimize"></button>
 					<button type="button" className="window-button-maximize"></button>
 					<button type="button" className="window-button-close"></button>
@@ -38,9 +70,14 @@ defineModule(depends, () => {
 
 		render()
 		{
+			if(!this.state.created)
+			{
+				return null;
+			}
+
 			var position = Object.assign({x:0,y:0}, this.props.position);
-			var size = Object.assign({x:0,y:0}, this.props.size);
-			var styles = {
+			var size = Object.assign({x:640,y:480}, this.props.size);
+			var style = {
 				left: position.x,
 				top: position.y,
 				width: size.x,
@@ -56,4 +93,6 @@ defineModule(depends, () => {
 			);
 		}
 	}
+
+	return Window;
 });
