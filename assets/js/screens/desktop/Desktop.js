@@ -1,10 +1,10 @@
 
 const depends = [
 	'screens/desktop/TaskBar',
-	'components/FileLayout'
+	'components/FileIconLayout'
 ];
 
-defineModule(depends, (TaskBar, FileLayout) => {
+defineModule(depends, (TaskBar, FileIconLayout) => {
 	const wallpapers = [
 		{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true},
 		{type: 'image', url: 'http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg' }
@@ -25,7 +25,7 @@ defineModule(depends, (TaskBar, FileLayout) => {
 						<div className="tv-scanlines"></div>
 						<div className="tv-static-overlay"></div>
 					</div>
-					<FileLayout files={files}/>
+					<FileIconLayout files={files}/>
 					{this.renderRandomWallpaper()}
 					<TaskBar/>
 				</div>

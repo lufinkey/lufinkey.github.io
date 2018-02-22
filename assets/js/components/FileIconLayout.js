@@ -4,7 +4,7 @@ const depends = [
 ];
 
 defineModule(depends, (FileIcon) => {
-	class FileLayout extends React.Component
+	class FileIconLayout extends React.Component
 	{
 		constructor(props)
 		{
@@ -27,7 +27,7 @@ defineModule(depends, (FileIcon) => {
 			this.onDocumentMouseUp = this.onDocumentMouseUp.bind(this);
 		}
 
-		findFileDOMNodes()
+		findFileIconDOMNodes()
 		{
 			var icons = {};
 			var node = ReactDOM.findDOMNode(this);
@@ -140,7 +140,7 @@ defineModule(depends, (FileIcon) => {
 						var fileStates = Object.assign({}, this.state.files);
 						
 						var node = ReactDOM.findDOMNode(this);
-						var fileNode = this.findFileDOMNodes()[draggingFile];
+						var fileNode = this.findFileIconDOMNodes()[draggingFile];
 						if(node != null && fileNode != null)
 						{
 							var fileState = fileStates[draggingFile];
@@ -192,5 +192,5 @@ defineModule(depends, (FileIcon) => {
 		}
 	}
 
-	return FileLayout;
+	return FileIconLayout;
 });
