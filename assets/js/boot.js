@@ -181,5 +181,7 @@ window.addEventListener('load', () => {
 			<OS/>,
 			document.getElementById('root')
 		);
+	}).catch((error) => {
+		console.error("Unable to load OS module: ", error);
 	});
 });
