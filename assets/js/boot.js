@@ -1,62 +1,185 @@
 
-// evaluate "babel" javascript
-function executeBabelScript(code)
-{
-	const module = { exports: {} };
-	const require = requirejs;
-	eval(Babel.transform(code, {presets:['react']}).code);
-	return module.exports;
-}
+// a dictionary of ModuleRetrievers
+let modules = {};
 
-// resolve path to required module
-function resolveRequirePath(path)
+// function to resolve the path to a specified module
+function resolveModulePath(path)
 {
 	let baseDir = "assets/js";
 	return baseDir+'/'+path+'.js';
 }
 
-// create require function
-const require = (function() {
-	let loadedModules = {};
-	let modules = {};
-	return function(scriptName) {
-		// ensure script isn't already loaded
-		var fullScriptPath = resolveRequirePath(scriptName);
-		if(loadedModules[fullScriptPath])
-		{
-			return modules[fullScriptPath];
-		}
+// function to handle loading a module
+const loadModule = function(scriptPath)
+{
+	// resolve the module path
+	var fullScriptPath = resolveModulePath(scriptPath);
+	// check if module retriever hasn't already been added
+	if(!modules[fullScriptPath])
+	{
+		// add the module
+		modules[fullScriptPath] = new ModuleRetriever(fullScriptPath);
+	}
 
-		// retrieve script
+	// return a promise to retrieve the module
+	return modules[fullScriptPath].retrieve();
+}
+
+// class to handle retrieving module for multiple dependents
+class ModuleRetriever
+{
+	constructor(scriptPath)
+	{
+		this.promiseCallbacks = [];
+		this.retrieved = false;
+		this.module = null;
+		this.error = null;
+
+		// send request to retrieve module
 		var xhr = new XMLHttpRequest();
-		xhr.open("GET", fullScriptPath, false);
+		xhr.onreadystatechange = () => {
+			if(xhr.readyState == 4)
+			{
+				if(xhr.status == 200)
+				{
+					// attempt to load the module's script
+					var scriptCode = xhr.responseText;
+					loadModuleScript(scriptPath, scriptCode).then((module) => {
+						// resolve with the module
+						this.resolve(module);
+					}).catch((error) => {
+						this.reject(error);
+					});
+				}
+				else
+				{
+					this.reject(new Error("unable to load script at "+scriptPath));
+				}
+			}
+		};
+		xhr.open("GET", scriptPath);
 		xhr.send();
+	}
 
-		// handle result
-		if(xhr.status == 200)
+	resolve(module)
+	{
+		if(this.retrieved)
 		{
-			console.log("loaded script at "+fullScriptPath);
-			var scriptCode = xhr.responseText;
-			var newModule = executeBabelScript(scriptCode);
-			modules[fullScriptPath] = newModule;
-			loadedModules[fullScriptPath] = true;
-			return newModule;
+			throw new Error("cannot resolve/reject a ModuleRetriever more than once");
 		}
-		else
+		this.retrieved = true;
+		this.module = module;
+		var promises = this.promiseCallbacks.slice(0);
+		this.promiseCallbacks = [];
+		for(const promise of promises)
 		{
-			throw new Error("unable to load script at "+fullScriptPath);
+			promise.resolve(this.module);
 		}
-	};
-})();
-const requirejs = require;
+	}
+
+	reject(error)
+	{
+		if(this.retrieved)
+		{
+			throw new Error("cannot resolve/reject a ModuleRetriever more than once");
+		}
+		this.retrieved = true;
+		this.error = error;
+		var promises = this.promiseCallbacks.slice(0);
+		this.promiseCallbacks = [];
+		for(const promise of promises)
+		{
+			promise.reject(this.error);
+		}
+	}
+
+	retrieve()
+	{
+		return new Promise((resolve, reject) => {
+			if(this.retrieved)
+			{
+				if(this.error)
+				{
+					reject(this.error);
+				}
+				else
+				{
+					resolve(this.module);
+				}
+				return;
+			}
+
+			this.promiseCallbacks.push({resolve: resolve, reject: reject});
+		});
+	}
+}
+
+// function to handle loading a module's script and returning the module
+function loadModuleScript(scriptPath, code)
+{
+	return new Promise((resolve, reject) => {
+		// create defineModule function
+		const define = (dependencies, creator) => {
+			// define the module
+			defineModule(scriptPath, dependencies, creator).then((module) => {
+				resolve(module);
+			}).catch((error) => {
+				reject(error);
+			});
+		}
+		// evaluate the module
+		evalModuleScript(define, code);
+	});
+}
+
+// function to sandbox the eval function while it's loading the module
+function evalModuleScript(defineModule, __code)
+{
+	eval(Babel.transform(__code, {presets:['react']}).code);
+}
+
+// function to handle loading a module's dependencies and then returning it
+function defineModule(scriptPath, dependencies, creator)
+{
+	return new Promise((resolve, reject) => {
+		// load dependencies
+		var promises = [];
+		for(const dependency of dependencies)
+		{
+			promises.push(loadModule(dependency));
+		}
+
+		// wait for dependencies to finish loading and resolve the result
+		Promise.all(promises).then((dependencyModules) => {
+			var module = null;
+			// execute the function to create the module
+			try
+			{
+				module = creator(...dependencyModules);
+			}
+			catch(error)
+			{
+				// an error occurred creating the module
+				reject(error);
+				return;
+			}
+			// the module has been created
+			resolve(module);
+		}).catch((error) => {
+			// an error occurred loading a dependency
+			reject(error);
+		});
+	});
+}
 
 // wait for page load
 window.addEventListener('load', () => {
-	// import OS
-	const OS = require('OS');
-	// render the OS
-	ReactDOM.render(
-		<OS/>,
-		document.getElementById('root')
-	);
+	// load the OS module
+	loadModule('OS').then((OS) => {
+		// render the OS
+		ReactDOM.render(
+			<OS/>,
+			document.getElementById('root')
+		);
+	});
 });

@@ -1,31 +1,33 @@
 
-class FileIcon extends React.Component
-{
-	render()
+const depends = [];
+
+defineModule(depends, () => {
+	class FileIcon extends React.Component
 	{
-		var classNames = [ "file" ];
-		if(this.props.fileType)
+		render()
 		{
-			classNames.push("file-"+this.props.fileType);
+			var classNames = [ "file" ];
+			if(this.props.fileType)
+			{
+				classNames.push("file-"+this.props.fileType);
+			}
+			if(this.props.selected)
+			{
+				classNames.push("selected");
+			}
+			var position = Object.assign({x:0,y:0}, this.props.position);
+			var styles = {
+				left: position.x,
+				top: position.y
+			};
+			return (
+				<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown}>
+					<div className="icon"><div className="ghost"></div></div>
+					<div className="filename">{this.props.fileName}</div>
+				</div>
+			);
 		}
-		if(this.props.selected)
-		{
-			classNames.push("selected");
-		}
-		var position = Object.assign({x:0,y:0}, this.props.position);
-		var styles = {
-			left: position.x,
-			top: position.y
-		};
-		return (
-			<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown}>
-				<div className="icon"><div className="ghost"></div></div>
-				<div className="filename">{this.props.fileName}</div>
-			</div>
-		);
 	}
-}
 
-
-
-module.exports = FileIcon;
+	return FileIcon;
+});

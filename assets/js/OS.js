@@ -1,16 +1,16 @@
 
-const Desktop = require('screens/desktop/Desktop');
+const depends = [
+	'screens/desktop/Desktop'
+];
 
-
-
-class OS extends React.Component
-{
-	render()
+defineModule(depends, (Desktop) => {
+	class OS extends React.Component
 	{
-		return (<Desktop/>)
+		render()
+		{
+			return (<Desktop/>)
+		}
 	}
-}
 
-
-
-module.exports = OS;
+	return OS;
+});
