@@ -19,7 +19,7 @@ defineModule(depends, (FileIcon) => {
 				files: {},
 				dragging: null,
 				draggingFile: null,
-				selectedFile: null
+				selectedFiles: []
 			};
 
 			this.onDocumentMouseMove = this.onDocumentMouseMove.bind(this);
@@ -76,7 +76,7 @@ defineModule(depends, (FileIcon) => {
 		componentWillUnmount()
 		{
 			// reset state
-			this.setState({dragging: null, draggingFile: null, selectedFile: null});
+			this.setState({dragging: null, draggingFile: null, selectedFiles: []});
 
 			// remove mouse event listeners	
 			document.removeEventListener('mousemove', this.onDocumentMouseMove);
@@ -85,9 +85,9 @@ defineModule(depends, (FileIcon) => {
 
 		onMouseDown(event)
 		{
-			if(this.state.selectedFile)
+			if(this.state.selectedFiles.length > 0)
 			{
-				this.setState({selectedFile: null});
+				this.setState({selectedFiles: []});
 			}
 		}
 
@@ -98,7 +98,7 @@ defineModule(depends, (FileIcon) => {
 				if(!this.state.dragging)
 				{
 					event.stopPropagation();
-					this.setState({dragging: 'file', draggingFile: filename, selectedFile: filename});
+					this.setState({dragging: 'file', draggingFile: filename, selectedFiles: [filename]});
 				}
 			}
 		}
@@ -185,7 +185,7 @@ defineModule(depends, (FileIcon) => {
 		renderFile(fileName, file)
 		{
 			let fileState = this.state.files[fileName];
-			var selected = (this.state.selectedFile === fileName);
+			var selected = (this.state.selectedFiles.includes(fileName));
 			return (
 				<FileIcon
 					key={fileName}
