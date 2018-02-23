@@ -27,6 +27,7 @@ body {
 .crt-bg {
 	display: block;
 	pointer-events: none;
+	user-select: none;
 }
 
 @media (min-aspect-ratio: 640/427), (aspect-ratio: 640/427) {
