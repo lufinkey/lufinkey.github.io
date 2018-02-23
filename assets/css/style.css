@@ -235,6 +235,10 @@ body {
 	animation: ghost-drop-shadow 1.8s linear infinite;
 }
 
+.window-title {
+	animation: ghost-drop-shadow 1.8s linear infinite;
+}
+
 .ghost {
 	opacity: 0.4;
 	animation: ghost 12s ease-out infinite;
