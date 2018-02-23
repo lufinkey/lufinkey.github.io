@@ -515,6 +515,13 @@ iframe.ghost {
 	pointer-events: initial;
 }
 
+.window.minimized {
+	display: none;
+	opacity: 0;
+
+	transition: opacity 1s;
+}
+
 .window-title-bar {
 	position: relative;
 	display: flex;
@@ -646,6 +653,10 @@ iframe.ghost {
 	width: 128px;
 
 	user-select: none;
+}
+
+.taskbar-window:hover:active {
+	background-color: #d98cdd;
 }
 
 .taskbar-window.minimized {

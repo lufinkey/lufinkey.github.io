@@ -36,15 +36,33 @@ defineModule(depends, () => {
 			this.setState(state, callback);
 		}
 
+		onMinimizeButtonClick(event)
+		{
+			this.setState({minimized: true});
+		}
+
+		onMaximizeButtonClick(event)
+		{
+			//
+		}
+
+		onCloseButtonClick(event)
+		{
+			if(this.props.windowManager)
+			{
+				this.props.windowManager.destroyWindow(this);
+			}
+		}
+
 		renderTitleBar()
 		{
 			return (
 				<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
 					<div className="title">{this.state.title}</div>
 					<div className="window-buttons">
-						<button type="button" className="window-button-minimize" onClick={this.props.onMinimizeButtonClick}></button>
-						<button type="button" className="window-button-maximize" onClick={this.props.onMaximizeButtonClick}></button>
-						<button type="button" className="window-button-close" onClick={this.props.onCloseButtonClick}></button>
+						<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
+						<button type="button" className="window-button-maximize" onClick={(event) => {this.onMaximizeButtonClick(event)}}></button>
+						<button type="button" className="window-button-close" onClick={(event) => {this.onCloseButtonClick(event)}}></button>
 					</div>
 				</div>
 			);
@@ -85,9 +103,18 @@ defineModule(depends, () => {
 				width: size.x,
 				height: size.y
 			};
+			var className = "window";
+			if(this.state.minimized)
+			{
+				className += " minimized";
+			}
+			else if(this.state.maximized)
+			{
+				className += " maximized";
+			}
 			
 			return (
-				<div className="window" style={style}>
+				<div className={className} style={style}>
 					{this.renderTitleBar()}
 					{this.renderMenuBar()}
 					{this.renderContent()}

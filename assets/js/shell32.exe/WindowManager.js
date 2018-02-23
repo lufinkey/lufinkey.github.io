@@ -153,6 +153,16 @@ defineModule(depends, (Window) => {
 			}
 		}
 
+		minimizeWindow(window)
+		{
+			window.setState({minimized: true});
+		}
+
+		restoreWindow(window)
+		{
+			window.setState({minimized: false});
+		}
+
 		onWindowTitleBarMouseDown(window, event)
 		{
 			if(event.button == 0)
@@ -162,21 +172,6 @@ defineModule(depends, (Window) => {
 					this.setState({dragging: 'titlebar', draggingWindow: window});
 				}
 			}
-		}
-
-		onWindowMinimizeButtonClick(window, event)
-		{
-			//
-		}
-
-		onWindowMaximizeButtonClick(window, event)
-		{
-			//
-		}
-
-		onWindowCloseButtonClick(window, event)
-		{
-			this.destroyWindow(window);
 		}
 
 		onDocumentMouseMove(event)
@@ -223,12 +218,10 @@ defineModule(depends, (Window) => {
 				<Window
 					key={"window"+windowId}
 					windowId={windowId}
+					windowManager={this}
 					onMount={(window) => {this.onWindowMount(window)}}
 					onUnmount={(window) => {this.onWindowUnmount(window)}}
-					onTitleBarMouseDown={(event) => {this.onWindowTitleBarMouseDown(this.windows[windowId], event)}}
-					onMinimizeButtonClick={(event) => {this.onWindowMinimizeButtonClick(this.windows[windowId], event)}}
-					onMaximizeButtonClick={(event) => {this.onWindowMaximizeButtonClick(this.windows[windowId], event)}}
-					onCloseButtonClick={(event) => {this.onWindowCloseButtonClick(this.windows[windowId], event)}}/>
+					onTitleBarMouseDown={(event) => {this.onWindowTitleBarMouseDown(this.windows[windowId], event)}}/>
 			);
 		}
 	}

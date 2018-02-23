@@ -42,7 +42,9 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 						onFileOpen={(filename) => {this.onFileOpen(filename)}}
 						onWindowCreate={(window) => {this.onWindowCreate(window)}}
 						onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
-					<TaskBar windows={windows}/>
+					<TaskBar
+						windows={windows}
+						onWindowButtonClick={(window, event) => {this.onTaskBarWindowButtonClick(window, event)}}/>
 					<div className="tv-effects">
 						<div className="tv-scanlines"></div>
 						<div className="tv-static-overlay"></div>

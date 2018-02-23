@@ -1,9 +1,9 @@
 
 const depends = [
-	'shell32.exe/TaskBarButton'
+	'shell32.exe/TaskBarWindowButton'
 ];
 
-defineModule(depends, (TaskBarButton) => {
+defineModule(depends, (TaskBarWindowButton) => {
 	class TaskBar extends React.Component
 	{
 		render()
@@ -15,7 +15,9 @@ defineModule(depends, (TaskBarButton) => {
 					</button>
 					<div className="taskbar-windows">
 						{Object.keys(this.props.windows).map((windowId) => (
-							<TaskBarButton key={"window"+windowId} window={this.props.windows[windowId]}/>
+							<TaskBarWindowButton
+								key={"window"+windowId}
+								window={this.props.windows[windowId]}/>
 						))}
 					</div>
 				</div>
