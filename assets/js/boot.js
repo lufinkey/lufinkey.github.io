@@ -181,7 +181,7 @@ window.addEventListener('load', () => {
 		// render the OS
 		console.log("done loading OS module");
 		ReactDOM.render(
-			<OS/>,
+			React.createElement(OS),
 			document.getElementById('root')
 		);
 	}).catch((error) => {
