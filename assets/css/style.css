@@ -513,15 +513,11 @@ iframe.ghost {
 	display: inline-block;
 	background-color: white;
 	pointer-events: initial;
-
-	transition: opacity 1s;
 }
 
 .window.minimized {
 	display: none;
 	opacity: 0;
-
-	transition: opacity 1s;
 }
 
 .window-title-bar {
