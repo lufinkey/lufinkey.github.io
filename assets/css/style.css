@@ -83,7 +83,7 @@ body {
 	background-color: black;
 	overflow: hidden;
 	
-	transform: rotateZ(0.1deg) rotateX(6deg);
+	transform: rotateX(6deg) rotateY(0.5deg) rotateZ(0.1deg);
 }
 
 .os-container {
@@ -513,6 +513,8 @@ iframe.ghost {
 	display: inline-block;
 	background-color: white;
 	pointer-events: initial;
+
+	transition: opacity 1s;
 }
 
 .window.minimized {
