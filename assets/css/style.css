@@ -420,6 +420,7 @@ iframe.ghost {
 }
 
 .window {
+	position: absolute;
 	display: inline-block;
 	background-color: white;
 	pointer-events: initial;

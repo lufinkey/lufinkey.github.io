@@ -19,24 +19,50 @@ defineModule(depends, (Window) => {
 			this.state = {
 				windowIds: [],
 				dragging: null,
-				draggingFile: null,
-				selectedFile: null
+				draggingWindow: null
 			};
 
 			// bind methods	
-			/*this.onDocumentMouseDown = this.onDocumentMouseDown.bind(this);
 			this.onDocumentMouseMove = this.onDocumentMouseMove.bind(this);
-			this.onDocumentMouseUp = this.onDocumentMouseUp.bind(this);*/
+			this.onDocumentMouseUp = this.onDocumentMouseUp.bind(this);
+		}
+
+		componentDidMount()
+		{
+			// add mouse event listeners
+			document.addEventListener('mousemove', this.onDocumentMouseMove);
+			document.addEventListener('mouseup', this.onDocumentMouseUp);
+			
+			if(this.props.onMount)
+			{
+				this.props.onMount(this);
+			}
+		}
+
+		componentWillUnmount()
+		{
+			// remove mouse event listeners	
+			document.removeEventListener('mousemove', this.onDocumentMouseMove);
+			document.removeEventListener('mouseup', this.onDocumentMouseUp);
+			
+			if(this.props.onUnmount)
+			{
+				this.props.onUnmount(this);
+			}
 		}
 
 		createDefaultWindowState()
 		{
 			return {
-				x: 20,
-				y: 20,
-				width: 640,
-				height: 480,
-				title: ""
+				title: "",
+				position: {
+					x: 20,
+					y: 20
+				},
+				size: {
+					x: 640,
+					y: 480
+				}
 			};
 		}
 
@@ -119,7 +145,13 @@ defineModule(depends, (Window) => {
 
 		onWindowTitleBarMouseDown(window, event)
 		{
-			//
+			if(event.button == 0)
+			{
+				if(!this.state.dragging)
+				{
+					this.setState({dragging: 'titlebar', draggingWindow: window});
+				}
+			}
 		}
 
 		onWindowMinimizeButtonClick(window, event)
@@ -137,19 +169,32 @@ defineModule(depends, (Window) => {
 			this.destroyWindow(window);
 		}
 
-		componentDidMount()
+		onDocumentMouseMove(event)
 		{
-			if(this.props.onMount)
+			switch(this.state.dragging)
 			{
-				this.props.onMount(this);
+				case 'titlebar':
+					var window = this.state.draggingWindow;
+					var position = Object.assign({}, window.state.position);
+
+					position.x += event.movementX;
+					position.y += event.movementY;
+
+					window.setState({position: position});
+					break;
 			}
 		}
 
-		componentWillUnmount()
+		onDocumentMouseUp(event)
 		{
-			if(this.props.onUnmount)
+			if(event.button == 0)
 			{
-				this.props.onUnmount(this);
+				switch(this.state.dragging)
+				{
+					case 'titlebar':
+						this.setState({dragging: null, draggingWindow: null});
+						break;
+				}
 			}
 		}
 
@@ -170,6 +215,7 @@ defineModule(depends, (Window) => {
 					windowId={windowId}
 					onMount={(window) => {this.onWindowMount(window)}}
 					onUnmount={(window) => {this.onWindowUnmount(window)}}
+					onTitleBarMouseDown={(event) => {this.onWindowTitleBarMouseDown(this.windows[windowId], event)}}
 					onMinimizeButtonClick={(event) => {this.onWindowMinimizeButtonClick(this.windows[windowId], event)}}
 					onMaximizeButtonClick={(event) => {this.onWindowMaximizeButtonClick(this.windows[windowId], event)}}
 					onCloseButtonClick={(event) => {this.onWindowCloseButtonClick(this.windows[windowId], event)}}/>

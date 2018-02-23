@@ -13,13 +13,6 @@ defineModule(depends, () => {
 			};
 		}
 
-		create(initialState, callback)
-		{
-			var state = Object.assign({}, initialState);
-			state.created = true;
-			this.setState(state, callback);
-		}
-
 		componentDidMount()
 		{
 			if(this.props.onMount)
@@ -34,6 +27,13 @@ defineModule(depends, () => {
 			{
 				this.props.onUnmount(this);
 			}
+		}
+
+		create(initialState, callback)
+		{
+			var state = Object.assign({}, initialState);
+			state.created = true;
+			this.setState(state, callback);
 		}
 
 		renderTitleBar()
@@ -77,8 +77,8 @@ defineModule(depends, () => {
 				return null;
 			}
 
-			var position = Object.assign({x:0,y:0}, this.props.position);
-			var size = Object.assign({x:640,y:480}, this.props.size);
+			var position = Object.assign({x:0,y:0}, this.state.position);
+			var size = Object.assign({x:640,y:480}, this.state.size);
 			var style = {
 				left: position.x,
 				top: position.y,

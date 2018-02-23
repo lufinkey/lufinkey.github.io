@@ -22,7 +22,6 @@ defineModule(depends, (FileIcon) => {
 				selectedFile: null
 			};
 
-			this.onDocumentMouseDown = this.onDocumentMouseDown.bind(this);
 			this.onDocumentMouseMove = this.onDocumentMouseMove.bind(this);
 			this.onDocumentMouseUp = this.onDocumentMouseUp.bind(this);
 		}
@@ -70,7 +69,6 @@ defineModule(depends, (FileIcon) => {
 		componentDidMount()
 		{
 			// add mouse event listeners
-			document.addEventListener('mousedown', this.onDocumentMouseDown);
 			document.addEventListener('mousemove', this.onDocumentMouseMove);
 			document.addEventListener('mouseup', this.onDocumentMouseUp);
 		}
@@ -81,7 +79,6 @@ defineModule(depends, (FileIcon) => {
 			this.setState({dragging: null, draggingFile: null, selectedFile: null});
 
 			// remove mouse event listeners	
-			document.removeEventListener('mousedown', this.onDocumentMouseDown);
 			document.removeEventListener('mousemove', this.onDocumentMouseMove);
 			document.removeEventListener('mouseup', this.onDocumentMouseUp);
 		}
@@ -112,11 +109,6 @@ defineModule(depends, (FileIcon) => {
 			{
 				this.props.onFileOpen(filename);
 			}
-		}
-
-		onDocumentMouseDown(event)
-		{
-			//
 		}
 
 		onDocumentMouseMove(event)
