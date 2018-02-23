@@ -60,8 +60,8 @@ defineModule(depends, (Window) => {
 					y: 20
 				},
 				size: {
-					x: 640,
-					y: 480
+					x: 320,
+					y: 240
 				}
 			};
 		}

@@ -78,7 +78,7 @@ defineModule(depends, () => {
 			}
 
 			var position = Object.assign({x:0,y:0}, this.state.position);
-			var size = Object.assign({x:640,y:480}, this.state.size);
+			var size = Object.assign({x:320,y:240}, this.state.size);
 			var style = {
 				left: position.x,
 				top: position.y,
