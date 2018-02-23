@@ -206,7 +206,7 @@ defineModule(depends, (Window) => {
 		render()
 		{
 			return (
-				<div className="dwm_exe">
+				<div className="window-manager">
 					{ this.state.windowIds.map((windowId) => this.renderWindow(windowId)) }
 				</div>
 			);

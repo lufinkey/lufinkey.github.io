@@ -495,7 +495,7 @@ iframe.ghost {
 
 /*========= WINDOW MANAGER =========*/
 
-.dwm_exe {
+.window-manager {
 	position: absolute;
 	left: 0;
 	top: 0;
