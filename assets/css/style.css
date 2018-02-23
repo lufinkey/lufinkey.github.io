@@ -532,14 +532,17 @@ iframe.ghost {
 }
 
 .window-title-bar > .title {
-	display: inline-block;
+	display: flex;
 	position: absolute;
+	flex-direction: column;
 
 	width: 100%;
 	height: 100%;
+	padding-left: 6em;
+	padding-right: 6em;
 
 	text-align: center;
-	line-height: 100%;
+	justify-content: center;
 
 	pointer-events: none;
 	user-select: none;
@@ -547,6 +550,7 @@ iframe.ghost {
 
 .window-title-bar > .window-buttons > button {
 	height: 100%;
+	width: 2em;
 }
 
 .window-button-minimize::before {
