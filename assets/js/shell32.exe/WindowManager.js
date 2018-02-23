@@ -117,9 +117,24 @@ defineModule(depends, (Window) => {
 			}
 		}
 
-		onTitleBarMouseDown(event)
+		onWindowTitleBarMouseDown(window, event)
 		{
 			//
+		}
+
+		onWindowMinimizeButtonClick(window, event)
+		{
+			//
+		}
+
+		onWindowMaximizeButtonClick(window, event)
+		{
+			//
+		}
+
+		onWindowCloseButtonClick(window, event)
+		{
+			this.destroyWindow(window);
 		}
 
 		componentDidMount()
@@ -141,7 +156,7 @@ defineModule(depends, (Window) => {
 		render()
 		{
 			return (
-				<div className="windowmanager">
+				<div className="dwm_exe">
 					{ this.state.windowIds.map((windowId) => this.renderWindow(windowId)) }
 				</div>
 			);
@@ -154,7 +169,10 @@ defineModule(depends, (Window) => {
 					key={"window"+windowId}
 					windowId={windowId}
 					onMount={(window) => {this.onWindowMount(window)}}
-					onUnmount={(window) => {this.onWindowUnmount(window)}} />
+					onUnmount={(window) => {this.onWindowUnmount(window)}}
+					onMinimizeButtonClick={(event) => {this.onWindowMinimizeButtonClick(this.windows[windowId], event)}}
+					onMaximizeButtonClick={(event) => {this.onWindowMaximizeButtonClick(this.windows[windowId], event)}}
+					onCloseButtonClick={(event) => {this.onWindowCloseButtonClick(this.windows[windowId], event)}}/>
 			);
 		}
 	}

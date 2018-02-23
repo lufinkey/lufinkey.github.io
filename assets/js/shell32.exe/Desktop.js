@@ -26,13 +26,15 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 
 		render()
 		{
+			console.log("Desktop: rendering...");
 			return (
 				<div id={this.props.id} className="desktop">
 					{this.renderRandomWallpaper()}
-					<FileIconLayout files={files}/>
+					<FileIconLayout files={files} onFileOpen={(fileName) => {this.onFileOpen(fileName)}}/>
 					<WindowManager
 						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
-						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}/>
+						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
+						onFileOpen={(filename) => {this.onFileOpen(filename)}}/>
 					<TaskBar/>
 					<div className="tv-effects">
 						<div className="tv-scanlines"></div>
@@ -40,6 +42,14 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 					</div>
 				</div>
 			);
+		}
+
+		onFileOpen(filename)
+		{
+			if(filename == "pornography.txt")
+			{
+				this.windowManager.createWindow({title: filename});
+			}
 		}
 
 		onWindowManagerMount(windowManager)

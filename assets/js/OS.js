@@ -8,6 +8,7 @@ defineModule(depends, (Desktop) => {
 	{
 		render()
 		{
+			console.log("OS: rendering...");
 			return (<Desktop/>)
 		}
 	}

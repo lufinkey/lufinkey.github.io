@@ -6,7 +6,7 @@ let modules = {};
 function resolveModulePath(path)
 {
 	let baseDir = "assets/js";
-	return baseDir+'/'+path+'.js';
+	return baseDir+'/'+path+'.js?v='+(Math.random()*999999999);
 }
 
 // function to handle loading a module
@@ -30,6 +30,8 @@ class ModuleRetriever
 {
 	constructor(scriptPath)
 	{
+		console.log("loading module "+scriptPath);
+
 		this.promiseCallbacks = [];
 		this.retrieved = false;
 		this.module = null;
@@ -177,6 +179,7 @@ window.addEventListener('load', () => {
 	// load the OS module
 	loadModule('OS').then((OS) => {
 		// render the OS
+		console.log("done loading OS module");
 		ReactDOM.render(
 			<OS/>,
 			document.getElementById('root')

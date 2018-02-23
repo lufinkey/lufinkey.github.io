@@ -22,7 +22,7 @@ defineModule(depends, () => {
 			};
 			
 			return (
-				<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown}>
+				<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown} onDoubleClick={this.props.onDoubleClick}>
 					<div className="icon"><div className="ghost"></div></div>
 					<div className="filename">{this.props.fileName}</div>
 				</div>

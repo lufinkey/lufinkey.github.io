@@ -106,6 +106,14 @@ defineModule(depends, (FileIcon) => {
 			}
 		}
 
+		onFileDoubleClick(filename, event)
+		{
+			if(this.props.onFileOpen)
+			{
+				this.props.onFileOpen(filename);
+			}
+		}
+
 		onDocumentMouseDown(event)
 		{
 			//
@@ -187,7 +195,14 @@ defineModule(depends, (FileIcon) => {
 			let fileState = this.state.files[fileName];
 			var selected = (this.state.selectedFile === fileName);
 			return (
-				<FileIcon key={fileName} fileName={fileName} fileType={file.type} position={fileState.position} selected={selected} onMouseDown={(event) => {this.onFileMouseDown(fileName, event)}}/>
+				<FileIcon
+					key={fileName}
+					fileName={fileName}
+					fileType={file.type}
+					position={fileState.position}
+					selected={selected}
+					onMouseDown={(event) => {this.onFileMouseDown(fileName, event)}}
+					onDoubleClick={(event) => {this.onFileDoubleClick(fileName, event)}}/>
 			);
 		}
 	}
