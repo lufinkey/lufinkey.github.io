@@ -176,15 +176,15 @@ function defineModule(scriptPath, dependencies, creator)
 
 // wait for page load
 window.addEventListener('load', () => {
-	// load the OS module
-	loadModule('OS').then((OS) => {
-		// render the OS
-		console.log("done loading OS module");
+	// load the CRT module
+	loadModule('CRT').then((CRT) => {
+		// render the CRT
+		console.log("done loading CRT module");
 		ReactDOM.render(
-			React.createElement(OS),
+			React.createElement(CRT),
 			document.getElementById('root')
 		);
 	}).catch((error) => {
-		console.error("Unable to load OS module: ", error);
+		console.error("Unable to load CRT module: ", error);
 	});
 });

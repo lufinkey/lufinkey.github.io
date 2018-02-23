@@ -13,6 +13,79 @@ body {
 
 
 
+/*========= CRT MONITOR =========*/
+
+.crt-container {
+	display: flex;
+	justify-content: center;
+}
+
+.crt {
+	position: relative;
+}
+
+.crt-bg {
+	display: block;
+	pointer-events: none;
+}
+
+@media (min-aspect-ratio: 640/427), (aspect-ratio: 640/427) {
+	.crt-container {
+		width: 100%;
+		height: 100%;
+		flex-direction: row;
+	}
+	.crt {
+		height: 100%;
+		width: auto;
+	}
+	.crt-bg {
+		height: 100%;
+	}
+}
+
+@media (max-aspect-ratio: 640/427) {
+	.crt-container {
+		width: 100%;
+		height: 100%;
+		flex-direction: column;
+	}
+	.crt {
+		width: 100%;
+		height: auto;
+	}
+	.crt-bg {
+		width: 100%;
+	}
+}
+
+.crt-screen {
+	position: absolute;
+	left: 23.9%;
+	top: 22.9%;
+	right: 28.4%;
+	bottom: 23%;
+
+	background-color: black;
+	overflow: hidden;
+	
+	transform: rotateZ(0.1deg) rotateX(6deg);
+}
+
+.os-container {
+	position: absolute;
+	display: block;
+	overflow: hidden;
+
+	border-radius: 5px;
+	left: 4px;
+	top: 4px;
+	right: 4px;
+	bottom: 4px;
+}
+
+
+
 /*========= EFFECTS / ANIMATIONS =========*/
 
 @keyframes ghost-text-shadow {
@@ -203,6 +276,7 @@ body {
 	opacity: 0.4;
 	background-image: linear-gradient(#ccc 1px, transparent 1px);
 	background-size: 20px 4px;
+	box-shadow: inset 0 0 40px 10px black;
 }
 
 .tv-static-overlay {
