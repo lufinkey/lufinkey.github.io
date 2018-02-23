@@ -102,6 +102,11 @@ defineModule(depends, (Window) => {
 					this.windows[windowCallback.windowId] = window;
 					window.create(windowCallback.state, () => {
 						windowCallback.resolve(window);
+
+						if(this.props.onWindowCreate)
+						{
+							this.props.onWindowCreate(window);
+						}
 					});
 					return;
 				}
@@ -138,6 +143,11 @@ defineModule(depends, (Window) => {
 				{
 					this.windowDestroyCallbacks.splice(i, 1);
 					windowCallback.resolve();
+
+					if(this.props.onWindowDestroy)
+					{
+						this.props.onWindowDestroy(window);
+					}
 					return;
 				}
 			}

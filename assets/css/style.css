@@ -235,7 +235,7 @@ body {
 	animation: ghost-drop-shadow 1.8s linear infinite;
 }
 
-.window-title {
+.title {
 	animation: ghost-drop-shadow 1.8s linear infinite;
 }
 
@@ -438,7 +438,7 @@ iframe.ghost {
 	border: 1px solid black;
 }
 
-.window-title-bar > .window-title {
+.window-title-bar > .title {
 	display: inline-block;
 	position: absolute;
 
@@ -524,3 +524,30 @@ iframe.ghost {
 	outline: 0px none transparent;
 }
 
+.taskbar-windows {
+	flex-grow: 1;
+
+	display: flex;
+	flex-direction: row;
+}
+
+.taskbar-window {
+	box-shadow: inset 0 0 3px 2px #c55dd8;
+	background-color: #e64fef;
+	border: 2px solid #9f15b9;
+
+	border-top-width: 2px;
+	border-bottom-width: 1px;
+
+	border-radius: 6px;
+	margin: 4px;
+
+	text-align: left;
+	width: 128px;
+
+	user-select: none;
+}
+
+.taskbar-window:hover {
+	background-color: #f871ff;
+}

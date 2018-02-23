@@ -40,7 +40,7 @@ defineModule(depends, () => {
 		{
 			return (
 				<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
-					<div className="window-title">{this.state.title}</div>
+					<div className="title">{this.state.title}</div>
 					<div className="window-buttons">
 						<button type="button" className="window-button-minimize" onClick={this.props.onMinimizeButtonClick}></button>
 						<button type="button" className="window-button-maximize" onClick={this.props.onMaximizeButtonClick}></button>

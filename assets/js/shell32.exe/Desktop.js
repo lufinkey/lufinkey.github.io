@@ -26,7 +26,12 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 
 		render()
 		{
-			console.log("Desktop: rendering...");
+			var windows = {};
+			if(this.windowManager)
+			{
+				windows = Object.assign({}, this.windowManager.windows)
+			}
+
 			return (
 				<div id={this.props.id} className="desktop">
 					{this.renderRandomWallpaper()}
@@ -34,8 +39,10 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 					<WindowManager
 						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
 						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
-						onFileOpen={(filename) => {this.onFileOpen(filename)}}/>
-					<TaskBar/>
+						onFileOpen={(filename) => {this.onFileOpen(filename)}}
+						onWindowCreate={(window) => {this.onWindowCreate(window)}}
+						onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
+					<TaskBar windows={windows}/>
 					<div className="tv-effects">
 						<div className="tv-scanlines"></div>
 						<div className="tv-static-overlay"></div>
@@ -60,6 +67,16 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager) => {
 		onWindowManagerUnmount(windowManager)
 		{
 			this.windowManager = null;
+		}
+
+		onWindowCreate(window)
+		{
+			this.setState({windowIds: Object.keys(this.windowManager.windows)});
+		}
+
+		onWindowDestroy(window)
+		{
+			this.setState({windowIds: Object.keys(this.windowManager.windows)});
 		}
 
 		renderRandomWallpaper()
