@@ -531,21 +531,32 @@ iframe.ghost {
 	border: 1px solid black;
 }
 
-.window-title-bar > .title {
+.window-title-bar > .title-container {
 	display: flex;
-	position: absolute;
 	flex-direction: column;
-
-	width: 100%;
-	height: 100%;
-	padding-left: 6em;
-	padding-right: 6em;
+	flex-grow: 1;
 
 	text-align: center;
 	justify-content: center;
+	text-overflow: ellipsis;
+	overflow: hidden;
 
 	pointer-events: none;
 	user-select: none;
+
+	margin-left: 6em;
+}
+
+.window-title-bar > .title-container > .title {
+	width: 100%;
+	text-align: center;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.window-title-bar > .window-buttons {
+	flex: none;
 }
 
 .window-title-bar > .window-buttons > button {
