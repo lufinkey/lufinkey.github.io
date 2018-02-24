@@ -1,6 +1,6 @@
 
 const depends = [
-	'shell32.exe/TaskBarWindowButton'
+	'system/shell32.exe/TaskBarWindowButton'
 ];
 
 defineModule(depends, (TaskBarWindowButton) => {

@@ -1,6 +1,6 @@
 
 const depends = [
-	'shell32.exe/Window'
+	'system/shell32.exe/Window'
 ];
 
 defineModule(depends, (Window) => {

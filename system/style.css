@@ -86,7 +86,7 @@ body {
 	transform: rotateX(6deg) rotateY(0.5deg) rotateZ(0.1deg);
 }
 
-.os-container {
+.crt-screen-content {
 	position: absolute;
 	display: block;
 	overflow: hidden;
@@ -301,7 +301,7 @@ body {
 	top: -500px;
 	bottom: -500px;
 	opacity: 0.6;
-	background: transparent url(https://www.dropbox.com/s/h7ab1c82ctzy83n/noise.png?raw=1) 0 0;
+	background: transparent url(transcend32.exe/noise.png) 0 0;
 	animation: tv-noise 1s steps(8,end) infinite both;
 }
 
@@ -424,7 +424,7 @@ iframe.ghost {
 }
 
 .file-txt > .icon {
-	background-image: url(../images/windows95/icon-txt.png);
+	background-image: url(shell32.dll/icons/txt.png);
 }
 
 
@@ -604,12 +604,12 @@ iframe.ghost {
 	color: white;
 	text-shadow: 2px 2px 4px black;
 
-	-webkit-mask-image: url(../masks/start-button-mask.png);
+	-webkit-mask-image: url(shell32.dll/start-button-mask.png);
 	-webkit-mask-mode: alpha;
 	-webkit-mask-repeat: no-repeat;
 	-webkit-mask-size: 100% 100%;
 
-	mask-image: url(../masks/start-button-mask.png);
+	mask-image: url(shell32.dll/start-button-mask.png);
 	mask-mode: alpha;
 	mask-repeat: no-repeat;
 	mask-size: 100% 100%;
@@ -625,7 +625,7 @@ iframe.ghost {
 	height: 60%;
 	width: 30px;
 
-	background-image: url(../images/apple-icon.png);
+	background-image: url(shell32.dll/apple-icon.png);
 	background-repeat: no-repeat;
 	background-position: center;
 	background-size: contain;

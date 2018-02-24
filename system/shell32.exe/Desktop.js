@@ -1,15 +1,15 @@
 
 const depends = [
-	'shell32.exe/TaskBar',
-	'shell32.exe/FileIconLayout',
-	'shell32.exe/WindowManager',
-	'shell32.exe/Wallpaper'
+	'system/shell32.exe/TaskBar',
+	'system/shell32.exe/FileIconLayout',
+	'system/shell32.exe/WindowManager',
+	'system/shell32.exe/Wallpaper'
 ];
 
 defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 	const wallpapers = [
 		{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true},
-		{type: 'image', url: 'http://pm1.narvii.com/6687/790510e62335d76e11324dbcff09cb777623df53_00.jpg' }
+		{type: 'image', url: '/system/wallpapers/japan-purple-aesthetic.jpg'}
 	];
 	
 	const files = {
@@ -74,10 +74,6 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 					<TaskBar
 						windows={windows}
 						onWindowButtonClick={(window, event) => {this.onTaskBarWindowButtonClick(window, event)}}/>
-					<div className="tv-effects">
-						<div className="tv-scanlines"></div>
-						<div className="tv-static-overlay"></div>
-					</div>
 				</div>
 			);
 		}

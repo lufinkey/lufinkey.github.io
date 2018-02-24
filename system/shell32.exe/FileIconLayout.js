@@ -1,6 +1,6 @@
 
 const depends = [
-	'shell32.exe/FileIcon'
+	'system/shell32.exe/FileIcon'
 ];
 
 defineModule(depends, (FileIcon) => {

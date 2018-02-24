@@ -5,8 +5,7 @@ let modules = {};
 // function to resolve the path to a specified module
 function resolveModulePath(path)
 {
-	let baseDir = "assets/js";
-	return baseDir+'/'+path+'.js?v='+(Math.random()*999999999);
+	return path+'.js?v='+(Math.random()*999999999);
 }
 
 // function to handle loading a module
@@ -176,15 +175,15 @@ function defineModule(scriptPath, dependencies, creator)
 
 // wait for page load
 window.addEventListener('load', () => {
-	// load the CRT module
-	loadModule('CRT').then((CRT) => {
-		// render the CRT
-		console.log("done loading CRT module");
+	// load the OS module
+	loadModule('system/OS').then((OS) => {
+		// render the OS
+		console.log("done loading OS module");
 		ReactDOM.render(
-			React.createElement(CRT),
+			React.createElement(OS),
 			document.getElementById('root')
 		);
 	}).catch((error) => {
-		console.error("Unable to load CRT module: ", error);
+		console.error("Unable to load OS module: ", error);
 	});
 });
