@@ -98,6 +98,114 @@ body {
 	bottom: 4px;
 }
 
+@keyframes crt-noise {
+	0% {
+		transform: translateX(0px,0px);
+	}
+	10% {
+		transform: translate(-100px, 100px);
+	}
+	20% {
+		transform: translate(150px, -100px);
+	}
+	30% {
+		transform: translate(-100px,100px);
+	}
+	40% {
+		transform: translate(100px, -150px);
+	}
+	50% {
+		transform: translate(-100px, 200px);
+	}
+	60% {
+		transform: translate(-200px, -100px);
+	}
+	70% {
+		transform: translateY(50px, 100px);
+	}
+	80% {
+		transform: translate(100px, -150px);
+	}
+	90% {
+		transform: translate(0px, 200px);
+	}
+	100% {
+		transform: translate(-100px, 100px);
+	}
+}
+
+@keyframes crt-turn-on {
+	0% {
+		transform: scale(0.001,0.0001) translate3d(0,0,0);
+		-webkit-filter: brightness(400%);
+		filter: brightness(400%);
+	}
+	40% {
+		transform: scale(1.2,0.01) translate3d(0,0,0);
+		-webkit-filter: brightness(350%);
+		filter: brightness(350%);
+	}
+	60% {
+		transform: scale(1.3,0.05) translate3d(0,0,0);
+		-webkit-filter: brightness(250%);
+		filter: brightness(250%);
+	}
+	80% {
+		transform: scale(1,1.4) translate3d(0,0,0);
+		-webkit-filter: brightness(200%);
+		filter: brightness(200%);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1,1) translate3d(0,0,0);
+		-webkit-filter: brightness(100%);
+		filter: brightness(100%);
+		opacity: 1;
+	}
+}
+
+.crt-effects {
+	position: absolute;
+	overflow: hidden;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.crt-scanlines {
+	position: absolute;
+	z-index: 9998;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	opacity: 0.4;
+	background-image: linear-gradient(#ccc 1px, transparent 1px);
+	background-size: 20px 4px;
+	box-shadow: inset 0 0 8px 5px black;
+}
+
+.crt-static-overlay {
+	position: absolute;
+	z-index: 9999;
+	left: -500px;
+	right: -500px;
+	top: -500px;
+	bottom: -500px;
+	opacity: 0.6;
+	background: transparent url(transcend32.exe/noise.png) 0 0;
+	animation: crt-noise 1s steps(8,end) infinite both;
+}
+
+.crt-screen-content {
+	overflow: hidden;
+	animation: crt-turn-on 0.55s cubic-bezier(0.755, 0.050, 0.855, 0.060);
+	animation-fill-mode: both;
+	animation-delay: 0.6s;
+}
+
 
 
 /*========= EFFECTS / ANIMATIONS =========*/
@@ -202,113 +310,6 @@ body {
 	100% {
 		transform: translate(-1px, 2px);
 	}
-}
-
-@keyframes tv-noise {
-	0% {
-		transform: translateX(0px,0px);
-	}
-	10% {
-		transform: translate(-100px, 100px);
-	}
-	20% {
-		transform: translate(150px, -100px);
-	}
-	30% {
-		transform: translate(-100px,100px);
-	}
-	40% {
-		transform: translate(100px, -150px);
-	}
-	50% {
-		transform: translate(-100px, 200px);
-	}
-	60% {
-		transform: translate(-200px, -100px);
-	}
-	70% {
-		transform: translateY(50px, 100px);
-	}
-	80% {
-		transform: translate(100px, -150px);
-	}
-	90% {
-		transform: translate(0px, 200px);
-	}
-	100% {
-		transform: translate(-100px, 100px);
-	}
-}
-
-@keyframes tv-turn-on {
-	0% {
-		transform: scale(0.001,0.0001) translate3d(0,0,0);
-		-webkit-filter: brightness(400%);
-		filter: brightness(400%);
-	}
-	40% {
-		transform: scale(1.2,0.01) translate3d(0,0,0);
-		-webkit-filter: brightness(350%);
-		filter: brightness(350%);
-	}
-	60% {
-		transform: scale(1.3,0.05) translate3d(0,0,0);
-		-webkit-filter: brightness(250%);
-		filter: brightness(250%);
-	}
-	80% {
-		transform: scale(1,1.4) translate3d(0,0,0);
-		-webkit-filter: brightness(200%);
-		filter: brightness(200%);
-		opacity: 1;
-	}
-	100% {
-		transform: scale(1,1) translate3d(0,0,0);
-		-webkit-filter: brightness(100%);
-		filter: brightness(100%);
-		opacity: 1;
-	}
-}
-
-.tv-effects {
-	position: absolute;
-	overflow: hidden;
-	left: 0;
-	right: 0;
-	top: 0;
-	bottom: 0;
-	pointer-events: none;
-}
-
-.tv-scanlines {
-	position: absolute;
-	z-index: 9998;
-	left: 0;
-	right: 0;
-	top: 0;
-	bottom: 0;
-	opacity: 0.4;
-	background-image: linear-gradient(#ccc 1px, transparent 1px);
-	background-size: 20px 4px;
-	box-shadow: inset 0 0 8px 5px black;
-}
-
-.tv-static-overlay {
-	position: absolute;
-	z-index: 9999;
-	left: -500px;
-	right: -500px;
-	top: -500px;
-	bottom: -500px;
-	opacity: 0.6;
-	background: transparent url(transcend32.exe/noise.png) 0 0;
-	animation: tv-noise 1s steps(8,end) infinite both;
-}
-
-.desktop {
-	animation: tv-turn-on 0.55s cubic-bezier(0.755, 0.050, 0.855, 0.060);
-	animation-fill-mode: both;
-	animation-delay: 0.6s;
 }
 
 .file .filename {
@@ -581,10 +582,14 @@ iframe.ghost {
 /*========= TASKBAR =========*/
 
 .taskbar {
+	height: 26px;
+	border-top: ridge 2px white;
+
+	background-color: silver;
+
 	display: flex;
 	flex-direction: row;
 	align-content: center;
-	height: 34px;
 	background: linear-gradient(to bottom, #f1a4ff, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2);
 	filter: brightness(80%);
 }

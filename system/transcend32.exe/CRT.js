@@ -13,9 +13,9 @@ defineModule(depends, () => {
 						<div className="crt-screen">
 							<div className="crt-screen-content">
 								{this.props.children}
-								<div className="tv-effects">
-									<div className="tv-scanlines"></div>
-									<div className="tv-static-overlay"></div>
+								<div className="crt-effects">
+									<div className="crt-scanlines"></div>
+									<div className="crt-static-overlay"></div>
 								</div>
 							</div>
 						</div>
