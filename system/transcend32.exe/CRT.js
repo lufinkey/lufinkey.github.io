@@ -64,7 +64,7 @@ defineModule(depends, () => {
 
 					this.setState({started: true, offsetX: offsetX, offsetY: offsetY, scaleX: scaleX, scaleY: scaleY});
 				}, 33);
-			}, 3000);
+			}, 2000);
 		}
 
 		render()
