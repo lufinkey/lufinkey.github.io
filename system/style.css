@@ -506,6 +506,14 @@ iframe.ghost {
 	display: inline-block;
 	background-color: white;
 	pointer-events: initial;
+
+	border: 2px solid;
+	padding: 2px;
+	border-bottom-color: #535353;
+	border-right-color: #535353;
+	border-left-color: #dbdbdb;
+	border-top-color: #dbdbdb;
+	background-color: #bfbfbf;
 }
 
 .window.minimized {
@@ -518,34 +526,23 @@ iframe.ghost {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
+	align-items: center;
 
-	height: 32px;
-	
-	border: 1px solid black;
+	background-color: #808080;
+	padding: 2px 4px 3px 4px;
+	font-size: 13px;
 }
 
-.window-title-bar > .title-container {
-	display: flex;
-	flex-direction: column;
+.window-title-bar > .title {
+	color: white;
+
 	flex-grow: 1;
-
-	text-align: center;
-	justify-content: center;
-	text-overflow: ellipsis;
-	overflow: hidden;
-
-	pointer-events: none;
-	user-select: none;
-
-	margin-left: 6em;
-}
-
-.window-title-bar > .title-container > .title {
-	width: 100%;
-	text-align: center;
+	text-align: left;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	white-space: nowrap;
+
+	user-select: none;
 }
 
 .window-title-bar > .window-buttons {
@@ -553,8 +550,30 @@ iframe.ghost {
 }
 
 .window-title-bar > .window-buttons > button {
-	height: 100%;
-	width: 2em;
+	width: 18px;
+	height: 18px;
+	font-size: 12px;
+
+	border: 2px solid;
+	border-top-color: #a6a6a6;
+    border-left-color: #a6a6a6;
+    border-bottom-color: #444;
+	border-right-color: #444;
+    background-color: #bfbfbf;
+}
+
+.window-title-bar > .window-buttons > button:active {
+	border-top-color: #444;
+    border-left-color: #444;
+    border-bottom-color: #a6a6a6;
+	border-right-color: #a6a6a6;
+}
+
+.window-title-bar > .window-buttons > button::before {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
 
 .window-button-minimize::before {

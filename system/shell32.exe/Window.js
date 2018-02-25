@@ -38,7 +38,7 @@ defineModule(depends, () => {
 
 		onMinimizeButtonClick(event)
 		{
-			this.setState({minimized: true});
+			//this.setState({minimized: true});
 		}
 
 		onMaximizeButtonClick(event)
@@ -50,7 +50,7 @@ defineModule(depends, () => {
 		{
 			if(this.props.windowManager)
 			{
-				this.props.windowManager.destroyWindow(this);
+				//this.props.windowManager.destroyWindow(this);
 			}
 		}
 
@@ -58,9 +58,7 @@ defineModule(depends, () => {
 		{
 			return (
 				<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
-					<div className="title-container">
-						<div className="title">{this.state.title}</div>
-					</div>
+					<div className="title">{this.state.title}</div>
 					<div className="window-buttons">
 						<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
 						<button type="button" className="window-button-maximize" onClick={(event) => {this.onMaximizeButtonClick(event)}}></button>
