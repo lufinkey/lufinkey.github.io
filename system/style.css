@@ -316,14 +316,6 @@ body {
 	animation: ghost-text-shadow 1.8s linear infinite;
 }
 
-.start-button {
-	animation: ghost-text-shadow 1.8s linear infinite;
-}
-
-.start-button > .icon {
-	animation: ghost-drop-shadow 1.8s linear infinite;
-}
-
 .title {
 	animation: ghost-drop-shadow 1.8s linear infinite;
 }
@@ -582,72 +574,37 @@ iframe.ghost {
 /*========= TASKBAR =========*/
 
 .taskbar {
-	height: 26px;
-	border-top: ridge 2px white;
-
-	background-color: silver;
-
 	display: flex;
 	flex-direction: row;
-	align-content: center;
-	background: linear-gradient(to bottom, #f1a4ff, #d834f9, #d847f2, #d847f2, #d847f2, #d834f9, #a42de2);
-	filter: brightness(80%);
+	align-items: center;
+	height: 26px;
+
+	background-color: silver;
+	border-top: ridge 2px white;
 }
 
 .start-button {
-	position: relative;
-	flex: none;
-	height: 100%;
-	width: 6em;
+	height: 90%;
+	width: 56px;
 	padding: 0;
 	margin: 0;
 
-	padding-left: 10px;
+	margin-left: 2px;
+	margin-top: 5%;
+	margin-bottom: 5%;
+
+	padding-left: 16px;
+	padding-top: 1px;
 
 	font-weight: bold;
-	font-size: 100%;
-	color: white;
-	text-shadow: 2px 2px 4px black;
-
-	-webkit-mask-image: url(shell32.dll/start-button-mask.png);
-	-webkit-mask-mode: alpha;
-	-webkit-mask-repeat: no-repeat;
-	-webkit-mask-size: 100% 100%;
-
-	mask-image: url(shell32.dll/start-button-mask.png);
-	mask-mode: alpha;
-	mask-repeat: no-repeat;
-	mask-size: 100% 100%;
-
-	background: linear-gradient(to bottom, #91ee7e, #4ed62c, #51c539, #3ab334, #42962d, #269720, #3f9b20);
-	border: 0px none transparent;
-}
-
-.start-button > .icon {
-	position: absolute;
-	top: 14%;
-	left: 1px;
-	height: 60%;
-	width: 30px;
+	font-size: 12px;
+	color: black;
 
 	background-image: url(shell32.dll/apple-icon.png);
 	background-repeat: no-repeat;
-	background-position: center;
-	background-size: contain;
-
-	filter: drop-shadow(1px 1px 1px black);
-}
-
-.start-button:active:hover {
-	background: linear-gradient(to bottom, #4a913b, #428d2f, #3c942a, #349b2f, #42962d, #269720, #3f9b20);
-}
-
-.start-button:active:hover > .icon {
-	opacity: 0.7;
-}
-
-.start-button:visited {
-	outline: 0px none transparent;
+	background-position-x: 4px;
+	background-position-y: center;
+	background-size: auto 80%;
 }
 
 .taskbar-windows {

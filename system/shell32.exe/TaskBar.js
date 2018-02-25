@@ -10,9 +10,7 @@ defineModule(depends, (TaskBarWindowButton) => {
 		{
 			return (
 				<div className="taskbar">
-					<button type="button" className="start-button">
-						<span className="icon"><span className="ghost"></span></span> Start
-					</button>
+					<button type="button" className="start-button">Start</button>
 					<div className="taskbar-windows">
 						{Object.keys(this.props.windows).map((windowId) => (
 							<TaskBarWindowButton
