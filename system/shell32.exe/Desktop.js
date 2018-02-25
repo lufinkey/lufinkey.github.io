@@ -16,6 +16,8 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 		"pornography.txt": {type: 'txt'}
 	};
 
+	const startupAudio = new Audio('system/shell32.dll/startup.mp3');
+
 	class Desktop extends React.Component
 	{
 		constructor(props)
@@ -23,6 +25,12 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 			super(props);
 
 			this.windowManager = null;
+		}
+		
+		componentDidMount()
+		{
+			
+			startupAudio.play();
 		}
 
 		onFileOpen(filename)
