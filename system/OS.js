@@ -1,19 +1,19 @@
 
 const depends = [
-	'system/transcend32.exe/CRT',
-	'system/shell32.exe/Desktop'
+	'system/transcend32.exe/main',
+	'system/shell32.exe/main'
 ];
 
-defineModule(depends, (CRT, Desktop) => {
+defineModule(depends, (Transcend32, Shell32) => {
 	class OS extends React.Component
 	{
 		render()
 		{
 			console.log("OS: rendering...");
 			return (
-				<CRT>
-					<Desktop/>
-				</CRT>
+				<Transcend32>
+					<Shell32/>
+				</Transcend32>
 			);
 		}
 	}
