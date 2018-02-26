@@ -2,6 +2,7 @@
 // sandbox kernel data
 (function(){
 
+
 // function to evaluate a given script
 function evalScript(__scope, __code) {
 	// define scope
@@ -19,15 +20,13 @@ function evalScript(__scope, __code) {
 	return module.exports;
 };
 
+
+
+
 // Kernel class
-function Kernel()
+function Kernel(bootOptions)
 {
 	const osName = 'finkeos';
-
-	const bootOptions = {
-		freshInstall: true,
-		forceNoCache: true
-	};
 
 	// if this is a fresh install, clear local storage
 	if(bootOptions.freshInstall)
@@ -395,48 +394,66 @@ function Kernel()
 
 
 
-	// declare kernel object
-	this.filesystem = new Filesystem(window.localStorage);
-
-	// declare initial filesystem
-	const initialFilesystem = {
-		'system': {
-			'boot.js': new RemoteFile('system/boot.js')
-		}
-	};
-
-	// build initial filesystem
-	function buildFilesystem(filesystem, structure, path)
+	function prepare()
 	{
-		var promises = [];
+		// declare initial filesystem
+		const initialFilesystem = {
+			'system': {
+				'boot.js': new RemoteFile('system/boot.js')
+			}
+		};
 
-		for(const entryName in structure)
+		// build initial filesystem
+		function buildFilesystem(filesystem, structure, path)
 		{
-			var entry = structure[entryName];
-			var entryPath = path+'/'+entryName;
+			var promises = [];
 
-			if(entry instanceof RemoteFile)
+			for(const entryName in structure)
 			{
-				var promise = entry.saveToFile(filesystem, entryPath);
-				promises.push(promise);
+				var entry = structure[entryName];
+				var entryPath = path+'/'+entryName;
+
+				if(entry instanceof RemoteFile)
+				{
+					var promise = entry.saveToFile(filesystem, entryPath);
+					promises.push(promise);
+				}
+				else
+				{
+					filesystem.createDir(entryPath, {ignoreIfExists: true});
+					promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
+				}
 			}
-			else
-			{
-				filesystem.createDir(entryPath, {ignoreIfExists: true});
-				promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
-			}
+
+			return promises;
 		}
 
-		return promises;
+		var remoteFilePromises = buildFilesystem(this.filesystem, initialFilesystem, '');
+		return Promise.all(remoteFilePromises);
 	}
 
-	var remoteFilePromises = buildFilesystem(this.filesystem, initialFilesystem, '');
-	Promise.all(remoteFilePromises).then((results) => {
-		this.filesystem.executeFile('/system/boot.js');
-	}).catch((error) => {
-		console.error("kernel error: ", error);
-	});
+
+
+
+	this.filesystem = new Filesystem(window.localStorage);
+	this.prepare = prepare;
 }
+
+
+
+
+// start kernel
+const bootOptions = {
+	freshInstall: true,
+	forceNoCache: true
+};
+var kernel = new Kernel(bootOptions);
+kernel.prepare().then(() => {
+	kernel.filesystem.executeFile('/system/boot.js');
+}).catch((error) => {
+	console.error("kernel error: ", error);
+});
+
 
 // end kernel sandbox
 })();
