@@ -6,7 +6,7 @@ const depends = [
 	'system/shell32.exe/Wallpaper'
 ];
 
-const startupAudio = new Audio('system/shell32.dll/startup.mp3');
+const startupAudio = new Audio('system/shell32.exe/audio/startup.mp3');
 
 defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 	const wallpapers = [

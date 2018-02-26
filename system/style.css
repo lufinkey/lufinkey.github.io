@@ -413,7 +413,7 @@ iframe.ghost {
 }
 
 .file-txt > .icon {
-	background-image: url(shell32.dll/icons/txt.png);
+	background-image: url(shell32.exe/images/icons/txt.png);
 }
 
 
@@ -635,7 +635,7 @@ iframe.ghost {
     border-bottom-color: #2b2800;
 	border-right-color: #2b2800;
 
-	background-image: url(shell32.dll/apple-icon.png);
+	background-image: url(shell32.exe/images/apple-icon.png);
 	background-repeat: no-repeat;
 	background-position-x: 4px;
 	background-position-y: center;
