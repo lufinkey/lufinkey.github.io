@@ -1,14 +1,38 @@
 
+// function to evaluate a given script
+function evalScript(__scope, __code) {
+	// define scope
+	const require = __scope.require;
+	const __dirname = __scope.__dirname;
+	
+	const module = {
+		exports: {}
+	};
+
+	(function(){
+		eval(__code);
+	}).bind({})();
+
+	return module.exports;
+};
+
+
+
+
 // sandbox kernel data
 (function(){
 	const osName = 'finkeos';
 
 	const bootOptions = {
-		fetchAll: true,
+		freshInstall: true,
 		forceNoCache: true
 	};
 
-	const kernel = {};
+	// if this is a fresh install, clear local storage
+	if(bootOptions.freshInstall)
+	{
+		window.localStorage.clear();
+	}
 
 	// Filesystem class
 	function Filesystem(storage)
@@ -32,6 +56,10 @@
 			{
 				return false;
 			}
+			if(pathParts.length == 2 && pathParts[1] === "")
+			{
+				return true;
+			}
 			for(var i=1; i<pathParts.length; i++)
 			{
 				if(pathParts[i] === "")
@@ -47,6 +75,18 @@
 		{
 			var pathParts = path.split('/');
 			pathParts = pathParts.slice(0, pathParts.length-1);
+			if(pathParts.length==1)
+			{
+				if(pathParts[0] === "")
+				{
+					return '/';
+				}
+				return pathParts[0];
+			}
+			else if(pathParts.length==0)
+			{
+				return '/';
+			}
 			return pathParts.join('/');
 		}
 
@@ -89,7 +129,7 @@
 				dateUpdated: new Date().getTime()
 			};
 
-			for(const metaKey of defaultMeta)
+			for(const metaKey in defaultMeta)
 			{
 				if(newMeta[metaKey] === undefined)
 				{
@@ -117,7 +157,7 @@
 			var dirMeta = readMeta(dirPath);
 			if(dirMeta == null)
 			{
-				throw new Error("containing directory does not exist");
+				throw new Error("parent directory does not exist");
 			}
 			else if(dirMeta.type !== 'dir')
 			{
@@ -127,11 +167,11 @@
 			var dirData = readDir(dirPath);
 
 			// create new meta data
-			var meta = entryMeta;
-			if(meta == null)
+			var newMeta = entryMeta;
+			if(newMeta == null)
 			{
 				// create default meta
-				meta = createMeta(meta);
+				newMeta = createMeta(meta);
 			}
 			else
 			{
@@ -143,7 +183,7 @@
 			}
 
 			// add updated entry meta info
-			meta.dateUpdated = new Date().getTime();
+			newMeta.dateUpdated = new Date().getTime();
 
 			// add updated parent dir entry meta info
 			dirMeta.dateUpdated = new Date().getTime();
@@ -264,12 +304,19 @@
 			return writeEntry(path, {type: 'file'}, data);
 		}
 
+		// execute a js script at a given path
+		function executeFile(path)
+		{
+			var data = readFile(path);
+			return evalScript({}, data);
+		}
+
 		// create default filesystem, if necessary
 		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
-		if(rootDirMeta)
+		if(!rootDirMeta)
 		{
 			// root dir has no meta. create empty filesystem
-			storage.setItem(fsMetaPrefix+'/', createMeta({type: 'dir'}));
+			storage.setItem(fsMetaPrefix+'/', JSON.stringify(createMeta({type: 'dir'})));
 			storage.setItem(fsPrefix+'/', JSON.stringify([]));
 		}
 
@@ -280,10 +327,11 @@
 		this.createDir = createDir;
 		this.readFile = readFile;
 		this.writeFile = writeFile;
+		this.executeFile = executeFile;
 	}
 
 
-	
+
 
 	// class for retrieving a remote file
 	class RemoteFile
@@ -293,17 +341,17 @@
 			this.url = remoteURL;
 		}
 
-		save(filesystem, path)
+		saveToFile(filesystem, path)
 		{
 			return new Promise((resolve, reject) => {
 				// stop if the file exists locally and we're not fetching everything
-				if(filesystem.exists(path) && !bootOptions.fetchAll && !bootOptions.forceNoCache)
+				if(filesystem.exists(path) && !freshInstall)
 				{
 					resolve();
 					return;
 				}
 				
-				// send request to retrieve remote file
+				// create request to retrieve remote file
 				var xhr = new XMLHttpRequest();
 				xhr.onreadystatechange = () => {
 					if(xhr.readyState == 4)
@@ -336,9 +384,55 @@
 					url += '?v='+(Math.random()*999999999);
 				}
 
+				// send remote file request
 				xhr.open("GET", url);
 				xhr.send();
 			});
 		}
 	}
+
+	// declare kernel object
+	const kernel = {
+		filesystem: new Filesystem(window.localStorage)
+	};
+
+	// declare initial filesystem
+	const initialFilesystem = {
+		'system': {
+			'boot.js': new RemoteFile('system/boot.js')
+		}
+	};
+
+	// build initial filesystem
+	function buildFilesystem(filesystem, structure, path)
+	{
+		var promises = [];
+
+		for(const entryName in structure)
+		{
+			var entry = structure[entryName];
+			var entryPath = path+'/'+entryName;
+
+			if(entry instanceof RemoteFile)
+			{
+				var promise = entry.saveToFile(filesystem, entryPath);
+				promises.push(promise);
+			}
+			else
+			{
+				filesystem.createDir(entryPath, {ignoreIfExists: true});
+				promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
+			}
+		}
+
+		return promises;
+	}
+
+	var remoteFilePromises = buildFilesystem(kernel.filesystem, initialFilesystem, '');
+	Promise.all(remoteFilePromises).then((results) => {
+		kernel.filesystem.executeFile('/system/boot.js');
+	}).catch((error) => {
+		console.error("kernel error: ", error);
+	});
+
 })();
