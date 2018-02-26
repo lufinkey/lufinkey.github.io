@@ -32,9 +32,10 @@ defineModule(depends, () => {
 					timeMillis += 33;
 
 					var progress = (timeMillis/totalTime);
+					var done = false;
 
 					var scaleX = startScaleX + ((1.0-startScaleX) * progress);
-					var scaleY = startScaleX + ((1.0-startScaleX) * progress);
+					var scaleY = startScaleY + ((1.0-startScaleY) * progress);
 					
 					var radians = progress * Math.PI * 4;
 
@@ -54,6 +55,7 @@ defineModule(depends, () => {
 						scaleX = 1;
 						scaleY = 1;
 						clearInterval(animInterval);
+						done = true;
 					}
 					else
 					{
@@ -62,7 +64,27 @@ defineModule(depends, () => {
 						offsetY *= offsetScale * 0.7;
 					}
 
-					this.setState({started: true, offsetX: offsetX, offsetY: offsetY, scaleX: scaleX, scaleY: scaleY});
+					if(!done)
+					{
+						this.setState({
+							started: true,
+							offsetX: offsetX,
+							offsetY: offsetY,
+							scaleX: scaleX,
+							scaleY: scaleY
+						});
+					}
+					else
+					{
+						this.setState({
+							started: true,
+							fullscreen: true,
+							offsetX: undefined,
+							offsetY: undefined,
+							scaleX: undefined,
+							scaleY: undefined
+						});
+					}
 				}, 33);
 			}, 2000);
 		}
@@ -81,12 +103,21 @@ defineModule(depends, () => {
 				var centerX = rootRect.left + (rootRect.width/2);
 				var centerY = rootRect.top + (rootRect.height/2);
 
+				if(this.state.fullscreen)
+				{
+					style.left = 0;
+					style.top = 0;
+					style.right = 0;
+					style.bottom = 0;
+				}
+				else
+				{
+					style.left = (centerX - (width/2) + this.state.offsetX);
+					style.top = (centerY - (height/2) + this.state.offsetY);
+					style.width = width;
+					style.height = height;
+				}
 				style.position = 'fixed';
-				style.zIndex = 9999;
-				style.left = (centerX - (width/2) + this.state.offsetX);
-				style.top = (centerY - (height/2) + this.state.offsetY);
-				style.right = rootRect.width - (centerX + (width/2) + this.state.offsetX);
-				style.bottom = rootRect.height - (centerY + (height/2) + this.state.offsetY);
 				style.animation = 'none';
 
 				return (
