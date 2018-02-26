@@ -521,6 +521,17 @@ iframe.ghost {
 	opacity: 0;
 }
 
+@keyframes rainbow-titlebar {
+	0% {
+		background-position: 0% 50%;
+		background-repeat: repeat;
+	}
+	100% {
+		background-position: 200% 50%;
+		background-repeat: repeat;
+	}
+}
+
 .window-title-bar {
 	position: relative;
 	display: flex;
@@ -528,7 +539,10 @@ iframe.ghost {
 	justify-content: flex-end;
 	align-items: center;
 
-	background: linear-gradient(to right, purple, blue);
+	background: linear-gradient(-45deg, #E73C7E, #25ea2f, #441adb, #5EECFF, #E73C7E);
+	background-size: 200% 200%;
+	animation: rainbow-titlebar 7s linear infinite;
+
 	padding: 2px 4px 3px 4px;
 	font-size: 13px;
 }
