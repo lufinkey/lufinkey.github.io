@@ -1,4 +1,7 @@
 
+// sandbox kernel data
+(function(){
+
 // function to evaluate a given script
 function evalScript(__scope, __code) {
 	// define scope
@@ -16,11 +19,9 @@ function evalScript(__scope, __code) {
 	return module.exports;
 };
 
-
-
-
-// sandbox kernel data
-(function(){
+// Kernel class
+function Kernel()
+{
 	const osName = 'finkeos';
 
 	const bootOptions = {
@@ -391,10 +392,11 @@ function evalScript(__scope, __code) {
 		}
 	}
 
+
+
+
 	// declare kernel object
-	const kernel = {
-		filesystem: new Filesystem(window.localStorage)
-	};
+	this.filesystem = new Filesystem(window.localStorage);
 
 	// declare initial filesystem
 	const initialFilesystem = {
@@ -428,11 +430,13 @@ function evalScript(__scope, __code) {
 		return promises;
 	}
 
-	var remoteFilePromises = buildFilesystem(kernel.filesystem, initialFilesystem, '');
+	var remoteFilePromises = buildFilesystem(this.filesystem, initialFilesystem, '');
 	Promise.all(remoteFilePromises).then((results) => {
-		kernel.filesystem.executeFile('/system/boot.js');
+		this.filesystem.executeFile('/system/boot.js');
 	}).catch((error) => {
 		console.error("kernel error: ", error);
 	});
+}
 
+// end kernel sandbox
 })();
