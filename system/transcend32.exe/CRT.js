@@ -85,10 +85,8 @@ defineModule(depends, () => {
 				style.zIndex = 9999;
 				style.left = (centerX - (width/2) + this.state.offsetX);
 				style.top = (centerY - (height/2) + this.state.offsetY);
-				style.right = (centerX + (width/2) + this.state.offsetX);
-				style.bottom = (centerY + (height/2) + this.state.offsetY);
-				style.width = width;
-				style.height = height;
+				style.right = rootRect.width - (centerX + (width/2) + this.state.offsetX);
+				style.bottom = rootRect.height - (centerY + (height/2) + this.state.offsetY);
 				style.animation = 'none';
 
 				return (
