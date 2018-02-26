@@ -24,6 +24,20 @@ const loadModule = function(scriptPath)
 	return modules[fullScriptPath].retrieve();
 }
 
+// function to handle unloading a module
+const unloadModule = function(scriptPath)
+{
+	// resolve the module path
+	var fullScriptPath = resolveModulePath(scriptPath);
+	// remove module if it's already been added
+	if(modules[fullScriptPath])
+	{
+		// remove the module
+		modules[fullScriptPath].destroy();
+		delete modules[fullScriptPath];
+	}
+}
+
 // class to handle retrieving module for multiple dependents
 class ModuleRetriever
 {
@@ -35,12 +49,22 @@ class ModuleRetriever
 		this.retrieved = false;
 		this.module = null;
 		this.error = null;
+		this.destroyed = false;
+		this.defined = false;
+		this.dependences = [];
 
 		// send request to retrieve module
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = () => {
 			if(xhr.readyState == 4)
 			{
+				// ensure we weren't destroyed while loading
+				if(this.destroyed)
+				{
+					return;
+				}
+
+				// handle result
 				if(xhr.status == 200)
 				{
 					// attempt to load the module's script
@@ -113,14 +137,36 @@ class ModuleRetriever
 			this.promiseCallbacks.push({resolve: resolve, reject: reject});
 		});
 	}
+
+	destroy()
+	{
+		if(this.destoryed)
+		{
+			return;
+		}
+		this.destroyed = true;
+
+		if(this.retrieved)
+		{
+			this.error = null;
+			this.module = null;
+			return;
+		}
+		else
+		{
+			this.reject(new Error("module was manually destroyed"));
+		}
+	}
 }
 
 // function to handle loading a module's script and returning the module
 function loadModuleScript(scriptPath, code)
 {
 	return new Promise((resolve, reject) => {
-		// create defineModule function
-		const define = (dependencies, creator) => {
+		// create the sandbox scope
+		const scope = {};
+		// defineModule
+		scope.defineModule = (dependencies, creator) => {
 			// define the module
 			defineModule(scriptPath, dependencies, creator).then((module) => {
 				resolve(module);
@@ -129,19 +175,30 @@ function loadModuleScript(scriptPath, code)
 			});
 		}
 		// evaluate the module
-		evalModuleScript(define, code);
+		evalModuleScript(scope, code);
 	});
 }
 
 // function to sandbox the eval function while it's loading the module
-function evalModuleScript(defineModule, __code)
-{
+const evalModuleScript = (__scope, __code) => {
+	const defineModule = __scope.defineModule;
 	eval(Babel.transform(__code, {presets:['react']}).code);
-}
+};
 
 // function to handle loading a module's dependencies and then returning it
 function defineModule(scriptPath, dependencies, creator)
 {
+	if(!modules[scriptPath])
+	{
+		throw new Error("defining module for undefined script path");
+	}
+	else if(modules[scriptPath].defined)
+	{
+		throw new Error("module has already been defined for this script");
+	}
+	modules[scriptPath].defined = true;
+	modules[scriptPath].dependencies = dependencies;
+
 	return new Promise((resolve, reject) => {
 		// load dependencies
 		var promises = [];
