@@ -46,7 +46,7 @@ defineModule(depends, () => {
 
 		onMinimizeButtonClick(event)
 		{
-			//this.setState({minimized: true});
+			this.setState({minimized: true});
 		}
 
 		onMaximizeButtonClick(event)
@@ -58,7 +58,7 @@ defineModule(depends, () => {
 		{
 			if(this.props.windowManager)
 			{
-				//this.props.windowManager.destroyWindow(this);
+				this.props.windowManager.destroyWindow(this);
 			}
 		}
 
