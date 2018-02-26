@@ -155,6 +155,20 @@
 			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
 		}
 
+		// check if an entry exists
+		function exists(path)
+		{
+			if(!validatePath(path))
+			{
+				throw new Error("invalid path");
+			}
+			if(storage.getItem(fsPrefix+path) == null)
+			{
+				return false;
+			}
+			return true;
+		}
+
 		// read the contents of a directory
 		function readDir(path)
 		{
