@@ -21,6 +21,14 @@ defineModule(depends, () => {
 			}
 		}
 
+		componentWillUpdate()
+		{
+			if(this.props.onWillUpdate)
+			{
+				this.props.onWillUpdate();
+			}
+		}
+
 		componentWillUnmount()
 		{
 			if(this.props.onUnmount)

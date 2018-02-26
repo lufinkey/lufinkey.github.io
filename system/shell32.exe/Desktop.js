@@ -25,6 +25,7 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 			super(props);
 
 			this.windowManager = null;
+			this.taskbar = null;
 		}
 		
 		componentDidMount()
@@ -61,6 +62,21 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 			this.setState({windowIds: Object.keys(this.windowManager.windows)});
 		}
 
+		onWindowWillUpdate(window)
+		{
+			this.taskbar.forceUpdate();
+		}
+
+		onTaskBarMount(taskbar)
+		{
+			this.taskbar = taskbar;
+		}
+
+		onTaskBarUnmount(taskbar)
+		{
+			this.taskbar = null;
+		}
+
 		render()
 		{
 			var windows = {};
@@ -76,11 +92,14 @@ defineModule(depends, (TaskBar, FileIconLayout, WindowManager, Wallpaper) => {
 					<WindowManager
 						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
 						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
+						onWindowWillUpdate={(window) => {this.onWindowWillUpdate(window)}}
 						onFileOpen={(filename) => {this.onFileOpen(filename)}}
 						onWindowCreate={(window) => {this.onWindowCreate(window)}}
 						onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
 					<TaskBar
 						windows={windows}
+						onMount={(taskbar) => {this.onTaskBarMount(taskbar)}}
+						onUnmount={(taskbar) => {this.onTaskBarUnmount(taskbar)}}
 						onWindowButtonClick={(window, event) => {this.onTaskBarWindowButtonClick(window, event)}}/>
 				</div>
 			);

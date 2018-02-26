@@ -153,6 +153,14 @@ defineModule(depends, (Window) => {
 			}
 		}
 
+		onWindowWillUpdate(window)
+		{
+			if(this.props.onWindowWillUpdate)
+			{
+				this.props.onWindowWillUpdate(window);
+			}
+		}
+
 		minimizeWindow(window)
 		{
 			window.setState({minimized: true});
@@ -221,6 +229,7 @@ defineModule(depends, (Window) => {
 					windowManager={this}
 					onMount={(window) => {this.onWindowMount(window)}}
 					onUnmount={(window) => {this.onWindowUnmount(window)}}
+					onWillUpdate={() => {this.onWindowWillUpdate(this.windows[windowId])}}
 					onTitleBarMouseDown={(event) => {this.onWindowTitleBarMouseDown(this.windows[windowId], event)}}/>
 			);
 		}

@@ -21,12 +21,17 @@ defineModule(depends, () => {
 		render()
 		{
 			var window = this.props.window;
+			var classes = ["taskbar-window"];
+			if(window.state.minimized)
+			{
+				classes.push("minimized");
+			}
 			
 			return (
-				<div className="taskbar-window" onClick={(event) => {this.onClick(event)}}>
+				<button className={classes.join(' ')} onClick={(event) => {this.onClick(event)}}>
 					<span className="icon"></span>
 					<span className="title">{window.state.title}</span>
-				</div>
+				</button>
 			);
 		}
 	}
