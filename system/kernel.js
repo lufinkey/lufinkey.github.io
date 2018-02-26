@@ -297,5 +297,23 @@
 		{
 			return writeEntry(path, {type: 'file'}, data);
 		}
+
+		// create default filesystem, if necessary
+		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
+		if(rootDirMeta)
+		{
+			// root dir has no meta. create empty filesystem
+			storage.setItem(fsMetaPrefix+'/', createMeta({type: 'dir'}));
+			storage.setItem(fsPrefix+'/', JSON.stringify([]));
+		}
+
+		// add properties
+		this.dirname = dirname;
+		this.basename = basename;
+		this.readMeta = readMeta;
+		this.readDir = readDir;
+		this.createDir = createDir;
+		this.readFile = readFile;
+		this.writeFile = writeFile;
 	}
 })();
