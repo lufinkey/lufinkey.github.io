@@ -3,6 +3,13 @@
 (function(){
 	const osName = 'finkeos';
 
+	const bootOptions = {
+		fetchAll: true,
+		forceNoCache: true
+	};
+
+	const kernel = {};
+
 	// Filesystem class
 	function Filesystem(storage)
 	{
@@ -267,12 +274,71 @@
 		}
 
 		// add properties
-		this.dirname = dirname;
-		this.basename = basename;
+		this.exists = exists;
 		this.readMeta = readMeta;
 		this.readDir = readDir;
 		this.createDir = createDir;
 		this.readFile = readFile;
 		this.writeFile = writeFile;
+	}
+
+
+	
+
+	// class for retrieving a remote file
+	class RemoteFile
+	{
+		constructor(remoteURL)
+		{
+			this.url = remoteURL;
+		}
+
+		save(filesystem, path)
+		{
+			return new Promise((resolve, reject) => {
+				// stop if the file exists locally and we're not fetching everything
+				if(filesystem.exists(path) && !bootOptions.fetchAll && !bootOptions.forceNoCache)
+				{
+					resolve();
+					return;
+				}
+				
+				// send request to retrieve remote file
+				var xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = () => {
+					if(xhr.readyState == 4)
+					{
+						// handle result
+						if(xhr.status == 200)
+						{
+							// attempt to load the module's script
+							try
+							{
+								filesystem.writeFile(path, xhr.responseText);
+							}
+							catch(error)
+							{
+								reject(error);
+								return;
+							}
+							resolve();
+						}
+						else
+						{
+							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
+						}
+					}
+				};
+
+				var url = this.url;
+				if(bootOptions.forceNoCache)
+				{
+					url += '?v='+(Math.random()*999999999);
+				}
+
+				xhr.open("GET", url);
+				xhr.send();
+			});
+		}
 	}
 })();
