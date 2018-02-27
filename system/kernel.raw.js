@@ -39,7 +39,7 @@ function randomString(length = 32)
 
 function deepCopyObject(object)
 {
-	if(['null', 'undefined', 'function', 'symbol'].includes(typeof object))
+	if(['null', 'undefined', 'function', 'boolean', 'symbol'].includes(typeof object))
 	{
 		return object;
 	}
@@ -507,6 +507,55 @@ function Kernel()
 			return writeEntry(context, path, {type: 'file'}, data);
 		}
 
+		// download a file to a given path
+		function downloadFile(context, url, path)
+		{
+			const downloadPath = resolvePath(context, path);
+
+			return new Promise((resolve, reject) => {
+				// create request to retrieve remote file
+				var xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = () => {
+					if(xhr.readyState == 4)
+					{
+						// handle result
+						if(xhr.status == 200)
+						{
+							// attempt to write file to filesystem
+							try
+							{
+								var content = xhr.responseText;
+								writeFile(context, downloadPath, content);
+							}
+							catch(error)
+							{
+								reject(error);
+								return;
+							}
+							resolve();
+						}
+						else
+						{
+							var errorMessage = "request failed";
+							if(xhr.status > 0)
+							{
+								errorMessage += " with status "+xhr.status;
+								if(xhr.statusText.length > 0)
+								{
+									errorMessage += ": "+xhr.statusText;
+								}
+							}
+							reject(new Error(errorMessage));
+						}
+					}
+				};
+
+				// send remote file request
+				xhr.open("GET", url);
+				xhr.send();
+			});
+		}
+
 		// determine the interpreter for the file
 		function getInterpreter(context, path)
 		{
@@ -532,7 +581,7 @@ function Kernel()
 			return runScript(kernel, interpreter, scope, data);
 		}
 
-		// create default filesystem, if necessary
+		// create empty filesystem, if necessary
 		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
 		if(!rootDirMeta)
 		{
@@ -551,6 +600,7 @@ function Kernel()
 		this.createDir = createDir;
 		this.readFile = readFile;
 		this.writeFile = writeFile;
+		this.downloadFile = downloadFile;
 		this.executeFile = executeFile;
 		this.requireFile = requireFile;
 	}
@@ -811,6 +861,20 @@ function Kernel()
 					throw new Error("invalid system call");
 				}
 				return kernel.execute(context, ...args);
+				
+			case 'log':
+				if(funcParts[1] != null)
+				{
+					throw new Error("invalid system call");
+				}
+				return kernel.log(context, ...args);
+
+			case 'logs':
+				if(funcParts[1] != null)
+				{
+					throw new Error("invalid system call");
+				}
+				return kernel.logs(context);
 
 			default:
 				throw new Error("invalid system call");
@@ -851,211 +915,41 @@ function Kernel()
 // end kernel class
 }
 
-
-
-
-
-// boot sandboxed
-setTimeout(() => {
-
-	const bootOptions = {
-		freshInstall: true,
-		forceNoCache: true
-	};
-
-
-
-	// class for retrieving a remote file
-	function RemoteFile(options)
-	{
-		options = Object.assign({}, options);
-
-		function saveToFile(kernel, path)
-		{
-			return new Promise((resolve, reject) => {
-				// stop if the file exists locally and we're not fetching everything
-				if(kernel.filesystem.exists(rootContext, path) && !bootOptions.freshInstall)
-				{
-					kernel.log(rootContext, path+" already downloaded; skipping...", {color: 'blue'});
-					resolve();
-					return;
-				}
-
-				// create URL
-				var url = options.url;
-				if(!url)
-				{
-					var urlBase = window.location.pathname.toString();
-					if(urlBase.endsWith('/'))
-					{
-						urlBase = urlBase.slice(0, urlBase.length-1);
-					}
-					url = urlBase + path;
-				}
-				if(url == null)
-				{
-					throw new Error("invalid URL");
-				}
-
-				kernel.log(rootContext, "downloading "+url, {color: 'yellow'});
-				
-				// create request to retrieve remote file
-				var xhr = new XMLHttpRequest();
-				xhr.onreadystatechange = () => {
-					if(xhr.readyState == 4)
-					{
-						// handle result
-						if(xhr.status == 200)
-						{
-							kernel.log(rootContext, "installing "+url, {color: 'blue'});
-							// attempt to load the module's script
-							try
-							{
-								var content = xhr.responseText;
-								if(options.filter)
-								{
-									content = options.filter(content);
-								}
-								kernel.filesystem.writeFile(rootContext, path, content);
-							}
-							catch(error)
-							{
-								kernel.log(rootContext, "failed to install "+url+": "+error.message, {color: 'red'});
-								reject(error);
-								return;
-							}
-							kernel.log(rootContext, "installed "+url, {color: 'green'});
-							resolve();
-						}
-						else
-						{
-							kernel.log(rootContext, "failed to download "+url+" with status "+xhr.status+": "+xhr.statusText, {color: 'red'});
-							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
-						}
-					}
-				};
-
-				// add random query argument to force re-caching
-				var downloadingURL = url;
-				if(bootOptions.forceNoCache)
-				{
-					downloadingURL += '?v='+(Math.random()*999999999);
-				}
-
-				// send remote file request
-				xhr.open("GET", downloadingURL);
-				xhr.send();
-			});
-		}
-
-		this.saveToFile = saveToFile;
-	}
-	
-
-
-	// function to create initial filesystem if necessary
-	function createInitialFilesystem(kernel, initialFilesystem)
-	{
-		// build initial filesystem
-		function buildFilesystem(structure, path)
-		{
-			var promises = [];
-
-			const structKeys = Object.keys(structure);
-			if(structKeys.length == 0)
-			{
-				return Promise.resolve();
-			}
-
-			// get current entry
-			const entryName = structKeys[0];
-			const entry = structure[entryName];
-			const entryPath = path+'/'+entryName;
-
-			// get next structure to parse
-			const nextStructure = Object.assign({}, structure);
-			delete nextStructure[entryName];
-			
-			// resolve file
-			return new Promise((resolve, reject) => {
-				if(entry instanceof RemoteFile)
-				{
-					// fetch remote file
-					entry.saveToFile(kernel, entryPath).then(() => {
-						// load next file in structure
-						buildFilesystem(nextStructure, path).then(resolve).catch(reject);
-					}).catch(reject);
-				}
-				else
-				{
-					// create directory
-					kernel.filesystem.createDir(rootContext, entryPath, {ignoreIfExists: true});
-					// fetch remote files in folder
-					buildFilesystem(entry, entryPath).then(() => {
-						// load next file in structure
-						buildFilesystem(nextStructure, path).then(resolve).catch(reject);
-					}).catch(reject);
-				}
-			});
-			
-		}
-
-		return buildFilesystem(initialFilesystem, '');
-	}
-
-
-	// clear local storage if fresh install
-	if(bootOptions.freshInstall)
-	{
-		window.localStorage.clear();
-	}
-
-
-	// declare initial filesystem
-	const initialFilesystem = {
-		'system': {
-			'slib': {
-				'react.raw.js': new RemoteFile({url:'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js'}),
-				'react-dom.raw.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js'}),
-				'babel.raw.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js'}),
-			},
-			'lib': {
-				'shell32.dll': {
-					'Desktop.js': new RemoteFile(),
-					'FileIcon.js': new RemoteFile(),
-					'FileIconLayout.js': new RemoteFile(),
-					'index.js': new RemoteFile(),
-					'TaskBar.js': new RemoteFile(),
-					'TaskBarWindowButton.js': new RemoteFile(),
-					'Wallpaper.js': new RemoteFile(),
-					'Window.js': new RemoteFile(),
-					'WindowManager.js': new RemoteFile()
-				},
-				'transcend32.dll': {
-					'CRT.js': new RemoteFile(),
-					'index.js': new RemoteFile()
-				},
-			},
-			'OS.js': new RemoteFile(),
-			'boot.js': new RemoteFile()
-		}
-	};
-
+// create boot sandbox
+(function(){
 	// start kernel
 	var kernel = new Kernel();
-	createInitialFilesystem(kernel, initialFilesystem).then(() => {
-		setTimeout(() => {
-			kernel.execute(rootContext, {}, '/system/boot');
-		}, 500);
+
+	kernel.log(rootContext, "downloading boot data...");
+
+	// create system folders
+	const dirOptions = {ignoreIfExists: true};
+	kernel.filesystem.createDir(rootContext, '/system', dirOptions);
+	kernel.filesystem.createDir(rootContext, '/system/bin', dirOptions);
+	kernel.filesystem.createDir(rootContext, '/system/lib', dirOptions);
+	kernel.filesystem.createDir(rootContext, '/system/slib', dirOptions);
+	kernel.filesystem.createDir(rootContext, '/system/share', dirOptions);
+
+	// download system files
+	const downloads = [];
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.raw.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.raw.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.raw.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.js?v='+(Math.random()*9999999999), '/system/boot.js'));
+
+	// wait for files to finish downloading
+	Promise.all(downloads).then(() => {
+		kernel.log(rootContext, "boot data downloaded; booting...");
+		kernel.execute(rootContext, {}, '/system/boot');
 	}).catch((error) => {
-		console.error("fatal kernel error");
-		console.error(error);
+		kernel.log(rootContext, "fatal error", {color: 'red'});
+		kernel.log(rootContext, error.toString(), {color: 'red'});
 	});
 // end boot sandbox
-}, 500);
+})();
 
 // end kernel sandbox
 })();
 
-// end event listener
+// end window 'load' event listener
 });

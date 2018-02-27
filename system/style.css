@@ -13,6 +13,14 @@ body {
 
 
 
+/*========= BOOT LOGS =========*/
+
+.bootlog {
+	color: white;
+}
+
+
+
 /*========= CRT MONITOR =========*/
 
 .crt-container {
