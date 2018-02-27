@@ -859,28 +859,46 @@ setTimeout(() => {
 		{
 			var promises = [];
 
-			for(const entryName in structure)
+			const structKeys = Object.keys(structure);
+			if(structKeys.length == 0)
 			{
-				var entry = structure[entryName];
-				var entryPath = path+'/'+entryName;
+				return Promise.resolve();
+			}
 
+			// get current entry
+			const entryName = structKeys[0];
+			const entry = structure[entryName];
+			const entryPath = path+'/'+entryName;
+
+			// get next structure to parse
+			const nextStructure = Object.assign({}, structure);
+			delete nextStructure[entryName];
+			
+			// resolve file
+			return new Promise((resolve, reject) => {
 				if(entry instanceof RemoteFile)
 				{
-					var promise = entry.saveToFile(kernel, entryPath);
-					promises.push(promise);
+					// fetch remote file
+					entry.saveToFile(kernel, entryPath).then(() => {
+						// load next file in structure
+						buildFilesystem(nextStructure, path).then(resolve).catch(reject);
+					}).catch(reject);
 				}
 				else
 				{
+					// create directory
 					kernel.filesystem.createDir(rootContext, entryPath, {ignoreIfExists: true});
-					promises = promises.concat(buildFilesystem(entry, entryPath));
+					// fetch remote files in folder
+					buildFilesystem(entry, entryPath).then(() => {
+						// load next file in structure
+						buildFilesystem(nextStructure, path).then(resolve).catch(reject);
+					}).catch(reject);
 				}
-			}
-
-			return promises;
+			});
+			
 		}
 
-		var remoteFilePromises = buildFilesystem(initialFilesystem, '');
-		return Promise.all(remoteFilePromises);
+		return buildFilesystem(initialFilesystem, '');
 	}
 
 
