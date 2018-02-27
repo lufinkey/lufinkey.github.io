@@ -611,6 +611,50 @@ function Kernel()
 	let loadedModules = {};
 	let sharedModules = {};
 
+	// check if a given path is a folder
+	function checkIfFolder(kernel, context, path)
+	{
+		var meta = kernel.filesystem.readMeta(context, path);
+		if(meta.type === 'dir')
+		{
+			return true;
+		}
+		return false;
+	}
+
+	// find a valid module path from the given context, base path, and path
+	function resolveModulePath(kernel, context, basePath, path)
+	{
+		var modulePath = null;
+		try
+		{
+			modulePath = kernel.filesystem.resolvePath(context, path, basePath);
+		}
+		catch(error)
+		{
+			throw new Error("unable to resolve module path");
+		}
+		
+		// find full module path
+		var fullModulePath = modulePath;
+		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
+		{
+			return fullModulePath;
+		}
+		fullModulePath = modulePath + '.js';
+		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
+		{
+			return fullModulePath;
+		}
+		fullModulePath = modulePath + '.raw.js';
+		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
+		{
+			return fullModulePath;
+		}
+		
+		throw new Error("module not found");
+	}
+
 	function require(kernel, context, parentScope, dir, path)
 	{
 		var modulePath = null;
@@ -618,7 +662,7 @@ function Kernel()
 		{
 			try
 			{
-				modulePath = kernel.filesystem.resolvePath(context, path, dir);
+				modulePath = resolveModulePath(kernel, context, dir, path);
 			}
 			catch(error)
 			{
@@ -635,7 +679,7 @@ function Kernel()
 			{
 				try
 				{
-					modulePath = kernel.filesystem.resolvePath(context, path, basePath);
+					modulePath = resolveModulePath(kernel, context, basePath, path);
 					break;
 				}
 				catch(error)
@@ -647,12 +691,6 @@ function Kernel()
 			{
 				throw new Error("could not resolve module");
 			}
-		}
-
-		modulePath += '.js';
-		if(!kernel.filesystem.exists(context, modulePath))
-		{
-			throw new Error("module does not exist");
 		}
 
 		if(!loadedModules[context.pid])
