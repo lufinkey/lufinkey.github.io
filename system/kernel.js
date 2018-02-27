@@ -22,11 +22,17 @@ function evalScript(__scope, __code) {
 (function(){
 
 
+const rootContext = {
+	cwd: '/',
+	uid: 0,
+	gid: 0
+};
+
+
 // Kernel class
 function Kernel()
 {
 	const osName = 'finkeos';
-
 
 
 	// Filesystem class
@@ -36,7 +42,7 @@ function Kernel()
 		const fsPrefix = osName+'/fs:';
 
 		// get path of directory containing path
-		function dirname(path)
+		function dirname(context, path)
 		{
 			var pathParts = path.split('/');
 			if(pathParts.length === 0 || (pathParts.length === 1 && pathParts[0] === ""))
@@ -52,7 +58,7 @@ function Kernel()
 			}
 
 			// remove empty entries in path
-			for(var i=1; i<pathParts.length; i++)
+			for(var i=0; i<pathParts.length; i++)
 			{
 				if(pathParts[i] === "")
 				{
@@ -85,12 +91,12 @@ function Kernel()
 
 
 		// get entry name of path
-		function basename(path)
+		function basename(context, path)
 		{
 			var pathParts = path.split('/');
 			
 			// remove empty entries in path
-			for(var i=1; i<pathParts.length; i++)
+			for(var i=0; i<pathParts.length; i++)
 			{
 				if(pathParts[i] === "")
 				{
@@ -110,8 +116,14 @@ function Kernel()
 
 
 		// validate path
-		function resolvePath(path, cwd='/')
+		function resolvePath(context, path)
 		{
+			var cwd = context.cwd;
+			if(!cwd)
+			{
+				cwd = '/';
+			}
+
 			// ensure string
 			if(typeof path !== 'string')
 			{
@@ -175,7 +187,7 @@ function Kernel()
 					{
 						throw new Error("path goes above root directory");
 					}
-					var cwdDir = dirname(cwd);
+					var cwdDir = dirname(context, cwd);
 					return resolvePathParts(pathParts.slice(1), cwdDir);
 				}
 				return resolvePathParts(pathParts.slice(1), cwd+'/'+pathParts[0]);
@@ -183,7 +195,7 @@ function Kernel()
 
 			if(absolute)
 			{
-				cwd = '/';
+				cwd = '';
 			}
 
 			return resolvePathParts(pathParts, cwd);
@@ -191,9 +203,9 @@ function Kernel()
 
 
 		// get metadata about item at path
-		function readMeta(path)
+		function readMeta(context, path)
 		{
-			path = resolvePath(path);
+			path = resolvePath(context, path);
 
 			var meta = storage.getItem(fsMetaPrefix+path);
 			if(meta != null)
@@ -212,7 +224,7 @@ function Kernel()
 
 
 		// create a default meta object
-		function createMeta(meta)
+		function createMeta(context, meta)
 		{
 			var newMeta = Object.assign({}, meta);
 			var defaultMeta = {
@@ -234,9 +246,9 @@ function Kernel()
 
 
 		// write an entry
-		function writeEntry(path, meta, data)
+		function writeEntry(context, path, meta, data)
 		{
-			path = resolvePath(path);
+			path = resolvePath(context, path);
 			
 			// validate data
 			if(typeof data !== 'string')
@@ -245,11 +257,11 @@ function Kernel()
 			}
 
 			// get info about potentially already existing entry
-			var entryMeta = readMeta(path);
+			var entryMeta = readMeta(context, path);
 
 			// validate containing directory
-			var dirPath = dirname(path);
-			var dirMeta = readMeta(dirPath);
+			var dirPath = dirname(context, path);
+			var dirMeta = readMeta(context, dirPath);
 			if(dirMeta == null)
 			{
 				throw new Error("parent directory does not exist");
@@ -259,14 +271,14 @@ function Kernel()
 				throw new Error("invalid containing directory");
 			}
 
-			var dirData = readDir(dirPath);
+			var dirData = readDir(context, dirPath);
 
 			// create new meta data
 			var newMeta = entryMeta;
 			if(newMeta == null)
 			{
 				// create default meta
-				newMeta = createMeta(meta);
+				newMeta = createMeta(context, meta);
 			}
 			else
 			{
@@ -284,7 +296,7 @@ function Kernel()
 			dirMeta.dateUpdated = new Date().getTime();
 
 			// add entry to parent directory contents, if not already added
-			var entryName = basename(path);
+			var entryName = basename(context, path);
 			if(!dirData.includes(entryName))
 			{
 				dirData.push(entryName);
@@ -299,9 +311,9 @@ function Kernel()
 
 
 		// check if an entry exists
-		function exists(path)
+		function exists(context, path)
 		{
-			path = resolvePath(path);
+			path = resolvePath(context, path);
 			if(storage.getItem(fsPrefix+path) == null)
 			{
 				return false;
@@ -310,12 +322,12 @@ function Kernel()
 		}
 
 		// read the contents of a directory
-		function readDir(path)
+		function readDir(context, path)
 		{
-			path = resolvePath(path);
+			path = resolvePath(context, path);
 
 			// read dir meta
-			var meta = readMeta(path);
+			var meta = readMeta(context, path);
 			if(meta == null)
 			{
 				throw new Error("directory does not exist");
@@ -344,12 +356,12 @@ function Kernel()
 		}
 
 		// create a directory
-		function createDir(path, options)
+		function createDir(context, path, options)
 		{
-			path = resolvePath(path);
+			path = resolvePath(context, path);
 			options = Object.assign({}, options);
 
-			var meta = readMeta(path);
+			var meta = readMeta(context, path);
 			if(meta != null)
 			{
 				if(meta.type == 'dir')
@@ -369,15 +381,15 @@ function Kernel()
 				}
 			}
 
-			writeEntry(path, {type: 'dir'}, JSON.stringify([]));
+			return writeEntry(context, path, {type: 'dir'}, JSON.stringify([]));
 		}
 
 		// read file from a given path
-		function readFile(path)
+		function readFile(context, path)
 		{
-			path = resolvePath(path);
+			path = resolvePath(context, path);
 			
-			var meta = readMeta(path);
+			var meta = readMeta(context, path);
 			if(meta == null)
 			{
 				throw new Error("file does not exist");
@@ -397,15 +409,15 @@ function Kernel()
 		}
 
 		// write file to a given path
-		function writeFile(path, data)
+		function writeFile(context, path, data)
 		{
-			return writeEntry(path, {type: 'file'}, data);
+			return writeEntry(context, path, {type: 'file'}, data);
 		}
 
 		// execute a js script at a given path
-		function executeFile(path, scope)
+		function executeFile(context, path, scope)
 		{
-			return (new Process(this, path, scope)).execute();
+			return (new Process(kernel, context, path, scope)).execute();
 		}
 
 		// create default filesystem, if necessary
@@ -413,7 +425,7 @@ function Kernel()
 		if(!rootDirMeta)
 		{
 			// root dir has no meta. create empty filesystem
-			storage.setItem(fsMetaPrefix+'/', JSON.stringify(createMeta({type: 'dir'})));
+			storage.setItem(fsMetaPrefix+'/', JSON.stringify(createMeta(rootContext, {type: 'dir'})));
 			storage.setItem(fsPrefix+'/', JSON.stringify([]));
 		}
 
@@ -431,9 +443,9 @@ function Kernel()
 
 
 
-	function Process(kernel, path, scope)
+	function Process(kernel, context, path, scope)
 	{
-		const dir = dirname(path);
+		const dir = kernel.filesystem.dirname(context, path);
 		
 		const require = (path) => {
 			var resolvedPath = null;
@@ -441,7 +453,7 @@ function Kernel()
 			{
 				try
 				{
-					resolvedPath = this.filesystem.resolvePath(path, dir);
+					resolvedPath = kernel.filesystem.resolvePath(context, path, dir);
 				}
 				catch(error)
 				{
@@ -458,7 +470,7 @@ function Kernel()
 				{
 					try
 					{
-						resolvedPath = this.filesystem.resolvePath(path, basePath);
+						resolvedPath = kernel.filesystem.resolvePath(context, path, basePath);
 					}
 					catch(error)
 					{
@@ -477,13 +489,15 @@ function Kernel()
 
 		scope = Object.assign({
 			require: require,
-			__dirname: dirname(path),
+			__dirname: kernel.filesystem.dirname(context, path),
 			module: {exports:{}}
 		}, scope);
 
+
+
 		this.execute = () => {
-			var data = readFile(path);
-			return evalScript(this.scope, data);
+			var data = kernel.filesystem.readFile(context, path);
+			return evalScript(scope, data);
 		};
 	}
 
@@ -504,6 +518,8 @@ function Kernel()
 		forceNoCache: true
 	};
 
+
+
 	// class for retrieving a remote file
 	class RemoteFile
 	{
@@ -518,7 +534,7 @@ function Kernel()
 			
 			return new Promise((resolve, reject) => {
 				// stop if the file exists locally and we're not fetching everything
-				if(filesystem.exists(path) && !bootOptions.freshInstall)
+				if(filesystem.exists(rootContext, path) && !bootOptions.freshInstall)
 				{
 					resolve();
 					return;
@@ -535,7 +551,7 @@ function Kernel()
 							// attempt to load the module's script
 							try
 							{
-								filesystem.writeFile(path, xhr.responseText);
+								filesystem.writeFile(rootContext, path, xhr.responseText);
 							}
 							catch(error)
 							{
@@ -563,8 +579,7 @@ function Kernel()
 			});
 		}
 	}
-
-
+	
 
 
 	// function to create initial filesystem if necessary
@@ -578,7 +593,7 @@ function Kernel()
 		};
 
 		// build initial filesystem
-		function buildFilesystem(filesystem, structure, path)
+		function buildFilesystem(structure, path)
 		{
 			var promises = [];
 
@@ -589,30 +604,35 @@ function Kernel()
 
 				if(entry instanceof RemoteFile)
 				{
-					var promise = entry.saveToFile(filesystem, entryPath);
+					var promise = entry.saveToFile(kernel.filesystem, entryPath);
 					promises.push(promise);
 				}
 				else
 				{
-					filesystem.createDir(entryPath, {ignoreIfExists: true});
-					promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
+					kernel.filesystem.createDir(rootContext, entryPath, {ignoreIfExists: true});
+					promises = promises.concat(buildFilesystem(entry, entryPath));
 				}
 			}
 
 			return promises;
 		}
 
-		var remoteFilePromises = buildFilesystem(kernel.filesystem, initialFilesystem, '');
+		var remoteFilePromises = buildFilesystem(initialFilesystem, '');
 		return Promise.all(remoteFilePromises);
 	}
 
 
+	// clear local storage if fresh install
+	if(bootOptions.freshInstall)
+	{
+		window.localStorage.clear();
+	}
 
 
 	// start kernel
 	var kernel = new Kernel();
 	createInitialFilesystem(kernel).then(() => {
-		kernel.filesystem.executeFile('/system/boot.js');
+		kernel.filesystem.executeFile(rootContext, '/system/boot.js');
 	}).catch((error) => {
 		console.error(error);
 	});
