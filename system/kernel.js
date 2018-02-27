@@ -516,9 +516,9 @@ function Kernel()
 		}
 
 		// execute a js script at a given path
-		function executeFile(context, scope, path, ...args)
+		function executeFile(context, path, ...args)
 		{
-			return (new Process(kernel, context, scope, path, ...args)).execute();
+			return (new Process(kernel, context, path, ...args)).execute();
 		}
 
 		// load a js script into the current process
@@ -556,7 +556,7 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function Process(kernel, parentContext, scope, path, ...args)
+	function Process(kernel, parentContext, path, ...args)
 	{
 		const pid = pidCounter;
 		pidCounter++;
@@ -567,7 +567,7 @@ function Kernel()
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
 
-		scope = Object.assign({
+		var scope = {
 			syscall: (func, ...args) => {
 				return syscall(kernel, context, func, ...args);
 			},
@@ -576,7 +576,7 @@ function Kernel()
 			},
 			__dirname: dir,
 			module: {exports:{}},
-		}, scope);
+		};
 
 		let executed = false;
 
@@ -658,9 +658,9 @@ function Kernel()
 		
 		throw new Error("module not found");
 	}
-
-	// load a module into the current context
-	function require(kernel, context, parentScope, dir, path)
+	
+	// find a valid module path from the given context, base paths, and path
+	function findModulePath(kernel, context, basePaths, dir, path)
 	{
 		var modulePath = null;
 		if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
@@ -676,11 +676,11 @@ function Kernel()
 		}
 		else
 		{
-			if(!context.env || !context.env.libpaths)
+			if(!basePaths)
 			{
-				throw new Error("could not resolve module");
+				basePaths = [];
 			}
-			for(const basePath of context.env.libpaths)
+			for(const basePath of basePaths)
 			{
 				try
 				{
@@ -697,13 +697,41 @@ function Kernel()
 				throw new Error("could not resolve module");
 			}
 		}
+		return modulePath;
+	}
 
+	// execute a module in a new context
+	function execute(kernel, context, path, ...args)
+	{
+		// get full module path
+		var paths = [];
+		if(context.env && context.env.paths)
+		{
+			paths = context.env.paths;
+		}
+		var modulePath = findModulePath(kernel, context, paths, context.cwd, path);
+
+		return kernel.filesystem.executeFile(context, modulePath, ...args);
+	}
+
+	// load a module into the current context
+	function require(kernel, context, parentScope, dir, path)
+	{
+		// get full module path
+		var libpaths = [];
+		if(context.env && context.env.libpaths)
+		{
+			libpaths = context.env.libpaths;
+		}
+		var modulePath = findModulePath(kernel, context, libpaths, dir, path);
+
+		// add empty modules object for context if necessary
 		if(!loadedModules[context.pid])
 		{
 			loadedModules[context.pid] = {};
 		}
 
-		// share library if in slib
+		// use shared container if library is in /system/slib
 		let moduleContext = context;
 		let moduleContainer = loadedModules[context.pid];
 		if(modulePath.startsWith('/system/slib'))
@@ -718,8 +746,10 @@ function Kernel()
 			return moduleContainer[modulePath];
 		}
 
+		// get parent directory of module path
 		const pathDir = kernel.filesystem.dirname(context, modulePath);
 
+		// create module scope
 		var scope = Object.assign({}, parentScope);
 		scope.require = (path) => {
 			return require(kernel, moduleContext, scope, pathDir, path);
@@ -727,10 +757,13 @@ function Kernel()
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
 
+		// require file
 		kernel.filesystem.requireFile(moduleContext, scope, modulePath);
 
+		// save exported module
 		moduleContainer[modulePath] = scope.module.exports;
 
+		// return exported module
 		return scope.module.exports;
 	}
 
@@ -764,6 +797,13 @@ function Kernel()
 				var caller = kernel.filesystem[funcParts[1]];
 				return caller(context, ...args);
 
+			case 'execute':
+				if(funcParts[1] != null)
+				{
+					throw new Error("invalid system call");
+				}
+				return kernel.execute(context, ...args);
+
 			default:
 				throw new Error("invalid system call");
 		}
@@ -788,6 +828,9 @@ function Kernel()
 
 
 	this.filesystem = new Filesystem(this, window.localStorage);
+	this.execute = (context, path, ...args) => {
+		return execute(this, context, path, ...args);
+	};
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
 	};
@@ -989,7 +1032,7 @@ setTimeout(() => {
 	var kernel = new Kernel();
 	createInitialFilesystem(kernel, initialFilesystem).then(() => {
 		setTimeout(() => {
-			kernel.filesystem.executeFile(rootContext, {}, '/system/boot.js');
+			kernel.filesystem.executeFile(rootContext, '/system/boot.js');
 		}, 500);
 	}).catch((error) => {
 		console.error("fatal kernel error");
