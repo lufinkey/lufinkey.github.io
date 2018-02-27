@@ -726,10 +726,14 @@ function Kernel()
 
 
 
-	function log(kernel, context, message)
+	function log(kernel, context, message, options)
 	{
+		options = Object.assign({}, options);
+
 		const logElement = document.createElement("DIV");
 		logElement.textContent = message;
+		logElement.style.color = options.color;
+
 		document.getElementById("kernel").appendChild(logElement);
 	}
 
@@ -739,8 +743,8 @@ function Kernel()
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
 	};
-	this.log = (context, message) => {
-		return log(this, context, message);
+	this.log = (context, message, options) => {
+		return log(this, context, message, options);
 	};
 // end kernel class
 }
@@ -750,8 +754,8 @@ function Kernel()
 
 
 // boot sandboxed
-(function()
-{
+setTimeout(() => {
+
 	const bootOptions = {
 		freshInstall: true,
 		forceNoCache: true
@@ -770,7 +774,7 @@ function Kernel()
 				// stop if the file exists locally and we're not fetching everything
 				if(kernel.filesystem.exists(rootContext, path) && !bootOptions.freshInstall)
 				{
-					kernel.log(rootContext, path+" already downloaded; skipping...");
+					kernel.log(rootContext, path+" already downloaded; skipping...", {color: 'blue'});
 					resolve();
 					return;
 				}
@@ -790,6 +794,8 @@ function Kernel()
 				{
 					throw new Error("invalid URL");
 				}
+
+				kernel.log(rootContext, "downloading "+url, {color: 'yellow'});
 				
 				// create request to retrieve remote file
 				var xhr = new XMLHttpRequest();
@@ -799,7 +805,7 @@ function Kernel()
 						// handle result
 						if(xhr.status == 200)
 						{
-							kernel.log(rootContext, "installing "+url);
+							kernel.log(rootContext, "installing "+url, {color: 'blue'});
 							// attempt to load the module's script
 							try
 							{
@@ -812,22 +818,20 @@ function Kernel()
 							}
 							catch(error)
 							{
-								kernel.log(rootContext, "failed to install "+url+": "+error.message);
+								kernel.log(rootContext, "failed to install "+url+": "+error.message, {color: 'red'});
 								reject(error);
 								return;
 							}
-							kernel.log(rootContext, "installed "+url);
+							kernel.log(rootContext, "installed "+url, {color: 'green'});
 							resolve();
 						}
 						else
 						{
-							kernel.log(rootContext, "failed to download "+url+" with status "+xhr.status+": "+xhr.statusText);
+							kernel.log(rootContext, "failed to download "+url+" with status "+xhr.status+": "+xhr.statusText, {color: 'red'});
 							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
 						}
 					}
 				};
-
-				kernel.log(rootContext, "downloading "+url);
 
 				// add random query argument to force re-caching
 				var downloadingURL = url;
@@ -924,7 +928,7 @@ function Kernel()
 		console.error(error);
 	});
 // end boot sandbox
-})();
+}, 1000);
 
 // end kernel sandbox
 })();
