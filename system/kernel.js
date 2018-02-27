@@ -1,4 +1,6 @@
 
+// wait for window load to create kernel
+window.addEventListener('load', () => {
 
 // function to evaluate a given script
 function evalScript(__scope, __code) {
@@ -675,7 +677,7 @@ function Kernel()
 
 		var scope = Object.assign({}, parentScope);
 		scope.require = (path) => {
-			return kernel.require(moduleContext, scope, pathDir, path);
+			return require(kernel, moduleContext, scope, pathDir, path);
 		};
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
@@ -724,17 +726,30 @@ function Kernel()
 
 
 
+	function log(kernel, context, message)
+	{
+		const logElement = document.createElement("DIV");
+		logElement.textContent = message;
+		document.getElementById("kernel").appendChild(logElement);
+	}
+
+
+
 	this.filesystem = new Filesystem(this, window.localStorage);
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
 	};
+	this.log = (context, message) => {
+		return log(this, context, message);
+	};
+// end kernel class
 }
 
 
 
 
 
-// boot kernel sandboxed
+// boot sandboxed
 (function()
 {
 	const bootOptions = {
@@ -749,48 +764,18 @@ function Kernel()
 	{
 		options = Object.assign({}, options);
 
-		function saveToFile(filesystem, path)
+		function saveToFile(kernel, path)
 		{
 			return new Promise((resolve, reject) => {
 				// stop if the file exists locally and we're not fetching everything
-				if(filesystem.exists(rootContext, path) && !bootOptions.freshInstall)
+				if(kernel.filesystem.exists(rootContext, path) && !bootOptions.freshInstall)
 				{
+					kernel.log(rootContext, path+" already downloaded; skipping...");
 					resolve();
 					return;
 				}
-				
-				// create request to retrieve remote file
-				var xhr = new XMLHttpRequest();
-				xhr.onreadystatechange = () => {
-					if(xhr.readyState == 4)
-					{
-						// handle result
-						if(xhr.status == 200)
-						{
-							// attempt to load the module's script
-							try
-							{
-								var content = xhr.responseText;
-								if(options.filter)
-								{
-									content = options.filter(content);
-								}
-								filesystem.writeFile(rootContext, path, content);
-							}
-							catch(error)
-							{
-								reject(error);
-								return;
-							}
-							resolve();
-						}
-						else
-						{
-							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
-						}
-					}
-				};
 
+				// create URL
 				var url = options.url;
 				if(!url)
 				{
@@ -805,14 +790,54 @@ function Kernel()
 				{
 					throw new Error("invalid URL");
 				}
+				
+				// create request to retrieve remote file
+				var xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = () => {
+					if(xhr.readyState == 4)
+					{
+						// handle result
+						if(xhr.status == 200)
+						{
+							kernel.log(rootContext, "installing "+url);
+							// attempt to load the module's script
+							try
+							{
+								var content = xhr.responseText;
+								if(options.filter)
+								{
+									content = options.filter(content);
+								}
+								kernel.filesystem.writeFile(rootContext, path, content);
+							}
+							catch(error)
+							{
+								kernel.log(rootContext, "failed to install "+url+": "+error.message);
+								reject(error);
+								return;
+							}
+							kernel.log(rootContext, "installed "+url);
+							resolve();
+						}
+						else
+						{
+							kernel.log(rootContext, "failed to download "+url+" with status "+xhr.status+": "+xhr.statusText);
+							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
+						}
+					}
+				};
 
+				kernel.log(rootContext, "downloading "+url);
+
+				// add random query argument to force re-caching
+				var downloadingURL = url;
 				if(bootOptions.forceNoCache)
 				{
-					url += '?v='+(Math.random()*999999999);
+					downloadingURL += '?v='+(Math.random()*999999999);
 				}
 
 				// send remote file request
-				xhr.open("GET", url);
+				xhr.open("GET", downloadingURL);
 				xhr.send();
 			});
 		}
@@ -837,7 +862,7 @@ function Kernel()
 
 				if(entry instanceof RemoteFile)
 				{
-					var promise = entry.saveToFile(kernel.filesystem, entryPath);
+					var promise = entry.saveToFile(kernel, entryPath);
 					promises.push(promise);
 				}
 				else
@@ -903,3 +928,6 @@ function Kernel()
 
 // end kernel sandbox
 })();
+
+// end event listener
+});
