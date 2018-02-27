@@ -36,76 +36,173 @@ function Kernel()
 {
 	const osName = 'finkeos';
 
+
 	// Filesystem class
 	function Filesystem(storage)
 	{
 		const fsMetaPrefix = osName+'/fs-meta:';
 		const fsPrefix = osName+'/fs:';
 
-		// validate path
-		function validatePath(path)
-		{
-			if(typeof path !== 'string')
-			{
-				return false;
-			}
-			var pathParts = path.split('/');
-			if(pathParts.length == 0)
-			{
-				return false;
-			}
-			if(pathParts[0] !== "")
-			{
-				return false;
-			}
-			if(pathParts.length == 2 && pathParts[1] === "")
-			{
-				return true;
-			}
-			for(var i=1; i<pathParts.length; i++)
-			{
-				if(pathParts[i] === "")
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
 		// get path of directory containing path
 		function dirname(path)
 		{
 			var pathParts = path.split('/');
-			pathParts = pathParts.slice(0, pathParts.length-1);
-			if(pathParts.length==1)
+			if(pathParts.length === 0 || (pathParts.length === 1 && pathParts[0] === ""))
 			{
-				if(pathParts[0] === "")
+				throw new Error("invalid path");
+			}
+
+			// determine if path is absolute
+			var absolute = false;
+			if(pathParts[0] === "")
+			{
+				absolute = true;
+			}
+
+			// remove empty entries in path
+			for(var i=1; i<pathParts.length; i++)
+			{
+				if(pathParts[i] === "")
+				{
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+
+			// trim last entry
+			pathParts = pathParts.slice(0, pathParts.length-1);
+			
+			// return dir name
+			if(pathParts.length==0)
+			{
+				if(absolute)
 				{
 					return '/';
 				}
-				return pathParts[0];
+				else
+				{
+					return ".";
+				}
 			}
-			else if(pathParts.length==0)
+			if(absolute)
 			{
-				return '/';
+				return '/'+pathParts.join('/');
 			}
 			return pathParts.join('/');
 		}
+
 
 		// get entry name of path
 		function basename(path)
 		{
 			var pathParts = path.split('/');
+			
+			// remove empty entries in path
+			for(var i=1; i<pathParts.length; i++)
+			{
+				if(pathParts[i] === "")
+				{
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+
+			// return empty string if no path parts
+			if(pathParts.length === 0)
+			{
+				return "";
+			}
+
 			return pathParts[pathParts.length-1];
 		}
+
+
+		// validate path
+		function resolvePath(path, cwd='/')
+		{
+			// ensure string
+			if(typeof path !== 'string')
+			{
+				throw new Error("path is not a string");
+			}
+			path = ''+path;
+
+			// split path into parts
+			var pathParts = path.split('/');
+			if(pathParts.length === 0)
+			{
+				throw new Error("no path parts somehow?");
+			}
+			else if(pathParts.length === 1 && pathParts[0] === "")
+			{
+				throw new Error("empty path string");
+			}
+
+			// check if path is absolute
+			var absolute = false;
+			if(pathParts[0] === "")
+			{
+				absolute = true;
+				if(pathParts.length === 2 && pathParts[1] === "")
+				{
+					return '/';
+				}
+				pathParts = pathParts.slice(1);
+			}
+
+			// shave off trailing '/' if necessary
+			if(pathParts[pathParts.length-1] === "")
+			{
+				pathParts = pathParts.slice(0, pathParts.length-1);
+			}
+			
+			// remove empty contents in path
+			for(var i=0; i<pathParts.length; i++)
+			{
+				if(pathParts[i] === "")
+				{
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+
+			function resolvePathParts(pathParts, cwd)
+			{
+				if(pathParts.length === 0)
+				{
+					return cwd;
+				}
+
+				if(pathParts[0] == '.')
+				{
+					return resolvePathParts(pathParts.slice(1), cwd);
+				}
+				else if(pathParts[0] == '..')
+				{
+					if(cwd === '/')
+					{
+						throw new Error("path goes above root directory");
+					}
+					var cwdDir = dirname(cwd);
+					return resolvePathParts(pathParts.slice(1), cwdDir);
+				}
+				return resolvePathParts(pathParts.slice(1), cwd+'/'+pathParts[0]);
+			}
+
+			if(absolute)
+			{
+				cwd = '/';
+			}
+
+			return resolvePathParts(pathParts, cwd);
+		}
+
 
 		// get metadata about item at path
 		function readMeta(path)
 		{
-			if(!validatePath(path))
-			{
-				throw new Error("invalid path");
-			}
+			path = resolvePath(path);
+
 			var meta = storage.getItem(fsMetaPrefix+path);
 			if(meta != null)
 			{
@@ -120,6 +217,7 @@ function Kernel()
 			}
 			return meta;
 		}
+
 
 		// create a default meta object
 		function createMeta(meta)
@@ -142,9 +240,12 @@ function Kernel()
 			return newMeta;
 		}
 
+
 		// write an entry
 		function writeEntry(path, meta, data)
 		{
+			path = resolvePath(path);
+			
 			// validate data
 			if(typeof data !== 'string')
 			{
@@ -204,13 +305,11 @@ function Kernel()
 			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
 		}
 
+
 		// check if an entry exists
 		function exists(path)
 		{
-			if(!validatePath(path))
-			{
-				throw new Error("invalid path");
-			}
+			path = resolvePath(path);
 			if(storage.getItem(fsPrefix+path) == null)
 			{
 				return false;
@@ -221,6 +320,8 @@ function Kernel()
 		// read the contents of a directory
 		function readDir(path)
 		{
+			path = resolvePath(path);
+
 			// read dir meta
 			var meta = readMeta(path);
 			if(meta == null)
@@ -253,6 +354,7 @@ function Kernel()
 		// create a directory
 		function createDir(path, options)
 		{
+			path = resolvePath(path);
 			options = Object.assign({}, options);
 
 			var meta = readMeta(path);
@@ -281,6 +383,8 @@ function Kernel()
 		// read file from a given path
 		function readFile(path)
 		{
+			path = resolvePath(path);
+			
 			var meta = readMeta(path);
 			if(meta == null)
 			{
@@ -310,7 +414,10 @@ function Kernel()
 		function executeFile(path)
 		{
 			var data = readFile(path);
-			return evalScript({}, data);
+			const scope = {
+				__dirname: dirname(path)
+			}
+			return evalScript(scope, data);
 		}
 
 		// create default filesystem, if necessary
@@ -323,6 +430,8 @@ function Kernel()
 		}
 
 		// add properties
+		this.dirname = dirname;
+		this.basename = basename;
 		this.exists = exists;
 		this.readMeta = readMeta;
 		this.readDir = readDir;
@@ -331,8 +440,6 @@ function Kernel()
 		this.writeFile = writeFile;
 		this.executeFile = executeFile;
 	}
-
-
 
 	this.filesystem = new Filesystem(window.localStorage);
 }
@@ -450,7 +557,7 @@ var kernel = new Kernel();
 createInitialFilesystem(kernel).then(() => {
 	kernel.filesystem.executeFile('/system/boot.js');
 }).catch((error) => {
-	console.error("kernel error: ", error);
+	console.error(error);
 });
 
 
