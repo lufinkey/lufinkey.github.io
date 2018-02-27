@@ -77,6 +77,7 @@ const rootContext = {
 	pid: 0,
 	uid: 0,
 	gid: 0,
+	argv: ['[kernel]'],
 	env: {
 		paths: [
 			'/system/slib',
@@ -511,13 +512,13 @@ function Kernel()
 		}
 
 		// execute a js script at a given path
-		function executeFile(context, path, scope)
+		function executeFile(context, scope, path, ...args)
 		{
-			return (new Process(kernel, context, path, scope)).execute();
+			return (new Process(kernel, context, scope, path, ...args)).execute();
 		}
 
 		// load a js script into the current process
-		function requireFile(context, path, scope)
+		function requireFile(context, scope, path)
 		{
 			const data = kernel.filesystem.readFile(context, path);
 			const interpreter = getInterpreter(context, path);
@@ -551,13 +552,14 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function Process(kernel, parentContext, path, scope)
+	function Process(kernel, parentContext, scope, path, ...args)
 	{
 		const pid = pidCounter;
 		pidCounter++;
 
 		const context = deepCopyObject(parentContext);
 		context.pid = pid;
+		context.argv = [path].concat(args);
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
 
@@ -599,7 +601,7 @@ function Kernel()
 					reject(...args);
 				};
 
-				kernel.filesystem.requireFile(context, path, scope);
+				kernel.filesystem.requireFile(context, scope, path);
 			});
 		};
 	}
@@ -682,7 +684,7 @@ function Kernel()
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
 
-		kernel.filesystem.requireFile(moduleContext, modulePath, scope);
+		kernel.filesystem.requireFile(moduleContext, scope, modulePath);
 
 		moduleContainer[modulePath] = scope.module.exports;
 
@@ -730,11 +732,14 @@ function Kernel()
 	{
 		options = Object.assign({}, options);
 
+		var kernelElement = document.getElementById("kernel");
+
 		const logElement = document.createElement("DIV");
 		logElement.textContent = message;
 		logElement.style.color = options.color;
 
-		document.getElementById("kernel").appendChild(logElement);
+		kernelElement.appendChild(logElement);
+		kernelElement.scrollTop = kernelElement.scrollHeight;
 	}
 
 
@@ -941,7 +946,7 @@ setTimeout(() => {
 	var kernel = new Kernel();
 	createInitialFilesystem(kernel, initialFilesystem).then(() => {
 		setTimeout(() => {
-			kernel.filesystem.executeFile(rootContext, '/system/boot.js');
+			kernel.filesystem.executeFile(rootContext, {}, '/system/boot.js');
 		}, 500);
 	}).catch((error) => {
 		console.error("fatal kernel error");

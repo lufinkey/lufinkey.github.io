@@ -1,9 +1,6 @@
 
 #kernel {
 	position: fixed;
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
 
 	left: 0;
 	right: 0;
