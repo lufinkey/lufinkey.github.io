@@ -4,6 +4,7 @@
 function evalScript(__scope, __code) {
 	// define scope
 	const evalScript = undefined;
+	const syscall = __scope.syscall;
 	const require = __scope.require;
 	const __dirname = __scope.__dirname;
 	const module = __scope.module;
@@ -21,9 +22,22 @@ function evalScript(__scope, __code) {
 // sandbox kernel data
 (function(){
 
+function randomString(length = 32)
+{
+	var possible = 'abcdefghijklmnopqrstuvwxyz0123456789';
+	var str = '';
+	for(var i=0; i<length; i++)
+	{
+		var index = Math.floor(Math.random()*possible.length);
+		str += possible[index];
+	}
+	return str;
+}
+
 
 const rootContext = {
 	cwd: '/',
+	pid: 0,
 	uid: 0,
 	gid: 0
 };
@@ -116,12 +130,15 @@ function Kernel()
 
 
 		// validate path
-		function resolvePath(context, path)
+		function resolvePath(context, path, cwd)
 		{
-			var cwd = context.cwd;
 			if(!cwd)
 			{
-				cwd = '/';
+				cwd = context.cwd;
+				if(!cwd)
+				{
+					cwd = '/';
+				}
 			}
 
 			// ensure string
@@ -420,6 +437,13 @@ function Kernel()
 			return (new Process(kernel, context, path, scope)).execute();
 		}
 
+		// load a js script into the current process
+		function requireFile(context, path, scope)
+		{
+			var data = kernel.filesystem.readFile(context, path);
+			return evalScript(scope, data);
+		}
+
 		// create default filesystem, if necessary
 		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
 		if(!rootDirMeta)
@@ -443,62 +467,163 @@ function Kernel()
 
 
 
-	function Process(kernel, context, path, scope)
-	{
-		const dir = kernel.filesystem.dirname(context, path);
-		
-		const require = (path) => {
-			var resolvedPath = null;
-			if(path.startsWith('.') || path.startsWith('/'))
-			{
-				try
-				{
-					resolvedPath = kernel.filesystem.resolvePath(context, path, dir);
-				}
-				catch(error)
-				{
-					throw new Error("could not resolve module");
-				}
-			}
-			else
-			{
-				if(!this.paths)
-				{
-					throw new Error("could not resolve module");
-				}
-				for(const basePath of this.paths)
-				{
-					try
-					{
-						resolvedPath = kernel.filesystem.resolvePath(context, path, basePath);
-					}
-					catch(error)
-					{
-						// path couldn't be resolved
-					}
-				}
-				throw new Error("could not resolve module");
-			}
+	let pidCounter = 1;
 	
-			var scope = {
-				module: {
-					exports: {}
-				}
-			};
-		};
+	function Process(kernel, parentContext, path, scope)
+	{
+		const pid = pidCounter;
+		pidCounter++;
+
+		const context = Object.assign({}, parentContext);
+		context.pid = pid;
+
+		const dir = kernel.filesystem.dirname(parentContext, path);
 
 		scope = Object.assign({
-			require: require,
-			__dirname: kernel.filesystem.dirname(context, path),
+			syscall: (func, ...args) => {
+				return syscall(kernel, context, func, ...args);
+			},
+			require: (path) => {
+				return require(kernel, context, scope, dir, path);
+			},
+			__dirname: dir,
 			module: {exports:{}}
 		}, scope);
 
+		let executed = false;
+
+
+		function endProcess()
+		{
+			unloadRequired(kernel, context);
+		}
 
 
 		this.execute = () => {
-			var data = kernel.filesystem.readFile(context, path);
-			return evalScript(scope, data);
+			if(executed)
+			{
+				throw new Error("process already executed");
+			}
+			executed = true;
+
+			return new Promise((resolve, reject) => {
+				context.resolve = (...args) => {
+					endProcess();
+					resolve(...args);
+				};
+
+				context.reject = (...args) => {
+					endProcess();
+					reject(...args);
+				};
+
+				var data = kernel.filesystem.readFile(context, path);
+				return evalScript(scope, data);
+			});
 		};
+	}
+
+
+
+	let loadedModules = {};
+
+	function require(kernel, context, scope, dir, path)
+	{
+		var modulePath = null;
+		if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
+		{
+			try
+			{
+				modulePath = kernel.filesystem.resolvePath(context, path, dir);
+			}
+			catch(error)
+			{
+				throw new Error("could not resolve module");
+			}
+		}
+		else
+		{
+			if(!this.paths)
+			{
+				throw new Error("could not resolve module");
+			}
+			for(const basePath of context.env.paths)
+			{
+				try
+				{
+					modulePath = kernel.filesystem.resolvePath(context, path, basePath);
+					break;
+				}
+				catch(error)
+				{
+					// path couldn't be resolved
+				}
+			}
+			if(modulePath == null)
+			{
+				throw new Error("could not resolve module");
+			}
+		}
+
+		if(!loadedModules[context.pid])
+		{
+			loadedModules[context.pid] = {};
+		}
+
+		if(loadedModules[context.pid][modulePath] !== undefined)
+		{
+			return loadedModules[context.pid][modulePath];
+		}
+
+		const pathDir = kernel.filesystem.dirname(context, modulePath);
+
+		scope = Object.assign({}, scope);
+		scope.require = (path) => {
+			return require(kernel, context, scope, pathDir, path);
+		};
+		scope.__dirname = pathDir;
+		scope.module = { exports: {} };
+
+		kernel.filesystem.requireFile(context, modulePath, scope);
+
+		loadedModules[context.pid][modulePath] = scope.module.exports;
+
+		return scope.module.exports;
+	}
+
+	function unloadRequired(kernel, context)
+	{
+		delete loadedModules[context.pid];
+	}
+
+
+
+	function syscall(kernel, context, func, ...args)
+	{
+		if(typeof func != 'string')
+		{
+			throw new Error("func must be a string");
+		}
+		func = ''+func;
+
+		var funcParts = func.split('.');
+		if(funcParts.length > 2)
+		{
+			throw new Error("invalid system call");
+		}
+		switch(funcParts[0])
+		{
+			case 'filesystem':
+				if(!Object.keys(kernel.filesystem).includes(funcParts[1]))
+				{
+					throw new Error("invalid system call");
+				}
+				var caller = kernel.filesystem[funcParts[1]];
+				return caller(context, ...args);
+
+			default:
+				throw new Error("invalid system call");
+		}
 	}
 
 
@@ -634,6 +759,7 @@ function Kernel()
 	createInitialFilesystem(kernel).then(() => {
 		kernel.filesystem.executeFile(rootContext, '/system/boot.js');
 	}).catch((error) => {
+		console.error("fatal kernel error");
 		console.error(error);
 	});
 // end boot sandbox
