@@ -1035,7 +1035,7 @@ setTimeout(() => {
 				'main.js': new RemoteFile()
 			},
 			'OS.js': new RemoteFile(),
-			'boot.raw.js': new RemoteFile()
+			'boot.js': new RemoteFile()
 		}
 	};
 
