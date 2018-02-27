@@ -79,10 +79,14 @@ const rootContext = {
 	gid: 0,
 	argv: ['[kernel]'],
 	env: {
-		paths: [
+		libpaths: [
 			'/system/slib',
 			'/system/lib',
 			'/lib'
+		],
+		paths: [
+			'/system/bin',
+			'/bin'
 		]
 	}
 };
@@ -655,6 +659,7 @@ function Kernel()
 		throw new Error("module not found");
 	}
 
+	// load a module into the current context
 	function require(kernel, context, parentScope, dir, path)
 	{
 		var modulePath = null;
@@ -671,11 +676,11 @@ function Kernel()
 		}
 		else
 		{
-			if(!context.env || !context.env.paths)
+			if(!context.env || !context.env.libpaths)
 			{
 				throw new Error("could not resolve module");
 			}
-			for(const basePath of context.env.paths)
+			for(const basePath of context.env.libpaths)
 			{
 				try
 				{
