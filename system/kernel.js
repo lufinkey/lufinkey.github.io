@@ -77,6 +77,9 @@ const rootContext = {
 	pid: 0,
 	uid: 0,
 	gid: 0,
+	stdin: null,
+	stdout: null,
+	stderr: null,
 	argv: ['[kernel]'],
 	env: {
 		libpaths: [
@@ -516,9 +519,9 @@ function Kernel()
 		}
 
 		// execute a js script at a given path
-		function executeFile(context, path, ...args)
+		function executeFile(context, options, path, ...args)
 		{
-			return (new Process(kernel, context, path, ...args)).execute();
+			return (new Process(kernel, context, options, path, ...args)).execute();
 		}
 
 		// load a js script into the current process
@@ -701,7 +704,7 @@ function Kernel()
 	}
 
 	// execute a module in a new context
-	function execute(kernel, context, path, ...args)
+	function execute(kernel, context, options, path, ...args)
 	{
 		// get full module path
 		var paths = [];
@@ -711,7 +714,7 @@ function Kernel()
 		}
 		var modulePath = findModulePath(kernel, context, paths, context.cwd, path);
 
-		return kernel.filesystem.executeFile(context, modulePath, ...args);
+		return kernel.filesystem.executeFile(context, options, modulePath, ...args);
 	}
 
 	// load a module into the current context
@@ -828,8 +831,8 @@ function Kernel()
 
 
 	this.filesystem = new Filesystem(this, window.localStorage);
-	this.execute = (context, path, ...args) => {
-		return execute(this, context, path, ...args);
+	this.execute = (context, options, path, ...args) => {
+		return execute(this, context, options, path, ...args);
 	};
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
@@ -1032,7 +1035,7 @@ setTimeout(() => {
 	var kernel = new Kernel();
 	createInitialFilesystem(kernel, initialFilesystem).then(() => {
 		setTimeout(() => {
-			kernel.filesystem.executeFile(rootContext, '/system/boot.js');
+			kernel.filesystem.executeFile(rootContext, {}, '/system/boot.js');
 		}, 500);
 	}).catch((error) => {
 		console.error("fatal kernel error");
