@@ -123,7 +123,7 @@ class CRT extends React.Component
 			return (
 				<div className="crt-container">
 					<div className="crt">
-						<img className="crt-bg" src="system/transcend32.exe/CRT.jpg"/>
+						<img className="crt-bg" src="system/lib/transcend32.dll/CRT.jpg"/>
 						<div className="crt-screen">
 						</div>
 					</div>
@@ -142,7 +142,7 @@ class CRT extends React.Component
 			return (
 				<div className="crt-container">
 					<div className="crt">
-						<img className="crt-bg" src="system/transcend32.exe/CRT.jpg"/>
+						<img className="crt-bg" src="system/lib/transcend32.dll/CRT.jpg"/>
 						<div className="crt-screen">
 							<div className="crt-screen-content" style={style}>
 								{this.props.children}
