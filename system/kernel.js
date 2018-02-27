@@ -866,33 +866,9 @@ function Kernel()
 	const initialFilesystem = {
 		'system': {
 			'slib': {
-				'react.js': new RemoteFile({
-					url:'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js',
-					filter: (content) => {
-						return content+
-							'\n\n'+
-							'module.exports=React;\n'+
-							'delete window.React;';
-					}
-				}),
-				'react-dom.js': new RemoteFile({
-					url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js',
-					filter: (content) => {
-						return content+
-							'\n\n'+
-							'module.exports=ReactDOM;'+
-							'delete window.ReactDOM;';
-					}
-				}),
-				'babel.js': new RemoteFile({
-					url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js',
-					filter: (content) => {
-						return content+
-							'\n\n'+
-							'module.exports=Babel;'+
-							'delete window.Babel;';
-					}
-				}),
+				'react.js': new RemoteFile({url:'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js'}),
+				'react-dom.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js'}),
+				'babel.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js'}),
 			},
 			'shell32.exe': {
 				'Desktop.js': new RemoteFile(),
