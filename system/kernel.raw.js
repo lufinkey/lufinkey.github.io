@@ -1019,20 +1019,22 @@ setTimeout(() => {
 				'react-dom.raw.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js'}),
 				'babel.raw.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js'}),
 			},
-			'shell32.exe': {
-				'Desktop.js': new RemoteFile(),
-				'FileIcon.js': new RemoteFile(),
-				'FileIconLayout.js': new RemoteFile(),
-				'main.js': new RemoteFile(),
-				'TaskBar.js': new RemoteFile(),
-				'TaskBarWindowButton.js': new RemoteFile(),
-				'Wallpaper.js': new RemoteFile(),
-				'Window.js': new RemoteFile(),
-				'WindowManager.js': new RemoteFile()
-			},
-			'transcend32.exe': {
-				'CRT.js': new RemoteFile(),
-				'main.js': new RemoteFile()
+			'lib': {
+				'shell32.dll': {
+					'Desktop.js': new RemoteFile(),
+					'FileIcon.js': new RemoteFile(),
+					'FileIconLayout.js': new RemoteFile(),
+					'index.js': new RemoteFile(),
+					'TaskBar.js': new RemoteFile(),
+					'TaskBarWindowButton.js': new RemoteFile(),
+					'Wallpaper.js': new RemoteFile(),
+					'Window.js': new RemoteFile(),
+					'WindowManager.js': new RemoteFile()
+				},
+				'transcend32.dll': {
+					'CRT.js': new RemoteFile(),
+					'index.js': new RemoteFile()
+				},
 			},
 			'OS.js': new RemoteFile(),
 			'boot.js': new RemoteFile()

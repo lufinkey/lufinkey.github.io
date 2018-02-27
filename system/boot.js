@@ -5,6 +5,6 @@ const OS = require('./OS');
 
 // render the DOM
 ReactDOM.render(
-	React.createElement(OS),
+	<OS/>,
 	document.getElementById('root')
 );

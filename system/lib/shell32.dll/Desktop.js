@@ -6,11 +6,11 @@ const WindowManager = require('./WindowManager');
 const Wallpaper = require('./Wallpaper');
 
 
-const startupAudio = new Audio('system/shell32.exe/audio/startup.mp3');
+const startupAudio = new Audio('system/lib/shell32.dll/audio/startup.mp3');
 
 const wallpapers = [
 	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true},
-	{type: 'image', url: '/system/wallpapers/japan-purple-aesthetic.jpg'}
+	{type: 'image', url: 'system/share/wallpapers/japan-purple-aesthetic.jpg'}
 ];
 
 const files = {

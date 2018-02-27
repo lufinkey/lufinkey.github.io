@@ -196,7 +196,7 @@ body {
 	top: -500px;
 	bottom: -500px;
 	opacity: 0.6;
-	background: transparent url(transcend32.exe/noise.png) 0 0;
+	background: transparent url(lib/transcend32.dll/noise.png) 0 0;
 	animation: crt-noise 1s steps(8,end) infinite both;
 }
 
@@ -414,7 +414,7 @@ iframe.ghost {
 }
 
 .file-txt > .icon {
-	background-image: url(shell32.exe/images/icons/txt.png);
+	background-image: url(lib/shell32.dll/images/icons/txt.png);
 }
 
 
@@ -636,7 +636,7 @@ iframe.ghost {
     border-bottom-color: #2b2800;
 	border-right-color: #2b2800;
 
-	background-image: url(shell32.exe/images/apple-icon.png);
+	background-image: url(lib/shell32.dll/images/apple-icon.png);
 	background-repeat: no-repeat;
 	background-position-x: 4px;
 	background-position-y: center;

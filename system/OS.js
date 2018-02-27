@@ -1,7 +1,7 @@
 
 const React = require('react');
-const Transcend32 = require('./transcend32.exe/main');
-const Shell32 = require('./shell32.exe/main');
+const Transcend32 = require('./lib/transcend32.dll/index');
+const Shell32 = require('./lib/shell32.dll/index');
 
 class OS extends React.Component
 {
