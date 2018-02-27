@@ -575,7 +575,7 @@ function Kernel()
 
 		let scope = {
 			syscall: (func, ...args) => {
-				return syscall(kernel, context, func, ...args);
+				return kernel.syscall(context, func, ...args);
 			},
 			require: (path) => {
 				return kernel.require(context, scope, dir, path);
@@ -841,6 +841,9 @@ function Kernel()
 	};
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
+	};
+	this.syscall = (context, func, ...args) => {
+		return syscall(this, context, func, ...args);
 	};
 	this.log = (context, message, options) => {
 		return log(this, context, message, options);
