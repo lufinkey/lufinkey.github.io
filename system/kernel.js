@@ -940,7 +940,9 @@ setTimeout(() => {
 	// start kernel
 	var kernel = new Kernel();
 	createInitialFilesystem(kernel, initialFilesystem).then(() => {
-		kernel.filesystem.executeFile(rootContext, '/system/boot.js');
+		setTimeout(() => {
+			kernel.filesystem.executeFile(rootContext, '/system/boot.js');
+		}, 500);
 	}).catch((error) => {
 		console.error("fatal kernel error");
 		console.error(error);
