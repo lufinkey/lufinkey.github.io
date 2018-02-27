@@ -89,7 +89,7 @@ function runScript(kernel, interpreter, scope, code)
 	switch(interpreter)
 	{
 		case 'babel':
-			const Babel = require(kernel, rootContext, scope, '/', 'babel');
+			const Babel = kernel.require(rootContext, scope, '/', 'babel');
 			code = Babel.transform(code, {presets:['react']}).code;
 			break;
 
@@ -726,6 +726,9 @@ function Kernel()
 
 
 	this.filesystem = new Filesystem(this, window.localStorage);
+	this.require = (context, scope, dir, path) => {
+		return require(this, context, scope, dir, path);
+	};
 }
 
 
