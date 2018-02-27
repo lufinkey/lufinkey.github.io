@@ -520,7 +520,7 @@ function Kernel()
 		// execute a js script at a given path
 		function executeFile(context, options, path, ...args)
 		{
-			return (new Process(kernel, context, options, path, ...args)).execute();
+			return new Process(kernel, context, options, path, ...args);
 		}
 
 		// load a js script into the current process
@@ -556,6 +556,7 @@ function Kernel()
 
 
 
+
 	let pidCounter = 1;
 	
 	function Process(kernel, parentContext, options, path, ...args)
@@ -571,7 +572,7 @@ function Kernel()
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
 
-		var scope = {
+		let scope = {
 			syscall: (func, ...args) => {
 				return syscall(kernel, context, func, ...args);
 			},
@@ -584,14 +585,13 @@ function Kernel()
 
 		let executed = false;
 
-
 		function endProcess()
 		{
 			unloadRequired(kernel, context);
 		}
 
-
-		this.execute = () => {
+		function execute()
+		{
 			if(executed)
 			{
 				throw new Error("process already executed");
@@ -611,8 +611,11 @@ function Kernel()
 
 				kernel.filesystem.requireFile(context, scope, path);
 			});
-		};
+		}
+
+		this.promise = execute();
 	}
+
 
 
 
