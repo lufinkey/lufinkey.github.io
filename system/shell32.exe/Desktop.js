@@ -29,7 +29,6 @@ class Desktop extends React.Component
 	
 	componentDidMount()
 	{
-		
 		startupAudio.play();
 	}
 
