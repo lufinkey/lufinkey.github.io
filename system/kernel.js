@@ -948,7 +948,7 @@ setTimeout(() => {
 		console.error(error);
 	});
 // end boot sandbox
-}, 1000);
+}, 500);
 
 // end kernel sandbox
 })();
