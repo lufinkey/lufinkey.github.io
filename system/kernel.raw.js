@@ -509,9 +509,8 @@ function Kernel()
 		// determine the interpreter for the file
 		function getInterpreter(context, path)
 		{
-			// TODO don't hardcode the interpreter
 			const fullPath = resolvePath(context, path);
-			if(fullPath.startsWith('/system/slib/') || fullPath=='/system/boot.js')
+			if(fullPath.endsWith('.raw.js'))
 			{
 				return undefined;
 			}
@@ -559,8 +558,10 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function Process(kernel, parentContext, path, ...args)
+	function Process(kernel, parentContext, options, path, ...args)
 	{
+		options = Object.assign({}, options);
+
 		const pid = pidCounter;
 		pidCounter++;
 
@@ -1007,9 +1008,9 @@ setTimeout(() => {
 	const initialFilesystem = {
 		'system': {
 			'slib': {
-				'react.js': new RemoteFile({url:'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js'}),
-				'react-dom.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js'}),
-				'babel.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js'}),
+				'react.raw.js': new RemoteFile({url:'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js'}),
+				'react-dom.raw.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js'}),
+				'babel.raw.js': new RemoteFile({url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js'}),
 			},
 			'shell32.exe': {
 				'Desktop.js': new RemoteFile(),
@@ -1026,8 +1027,8 @@ setTimeout(() => {
 				'CRT.js': new RemoteFile(),
 				'main.js': new RemoteFile()
 			},
-			'boot.js': new RemoteFile(),
-			'OS.js': new RemoteFile()
+			'OS.js': new RemoteFile(),
+			'boot.raw.js': new RemoteFile()
 		}
 	};
 
@@ -1035,7 +1036,7 @@ setTimeout(() => {
 	var kernel = new Kernel();
 	createInitialFilesystem(kernel, initialFilesystem).then(() => {
 		setTimeout(() => {
-			kernel.filesystem.executeFile(rootContext, {}, '/system/boot.js');
+			kernel.execute(rootContext, {}, '/system/boot');
 		}, 500);
 	}).catch((error) => {
 		console.error("fatal kernel error");
