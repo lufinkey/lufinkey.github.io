@@ -8,6 +8,7 @@ function evalScript(__scope, __code) {
 	const require = __scope.require;
 	const __dirname = __scope.__dirname;
 	const module = __scope.module;
+	const exports = (__scope.module ? __scope.module.exports : undefined);
 	const resolve = __scope.resolve;
 	const reject = __scope.reject;
 	const process = __scope.process;
@@ -510,8 +511,7 @@ function Kernel()
 		// execute a js script at a given path
 		function executeFile(context, path, scope)
 		{
-			const interpreter = getInterpreter(context, path);
-			return (new Process(kernel, context, interpreter, path, scope)).execute();
+			return (new Process(kernel, context, path, scope)).execute();
 		}
 
 		// load a js script into the current process
@@ -549,7 +549,7 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function Process(kernel, parentContext, interpreter, path, scope)
+	function Process(kernel, parentContext, path, scope)
 	{
 		const pid = pidCounter;
 		pidCounter++;
@@ -564,10 +564,10 @@ function Kernel()
 				return syscall(kernel, context, func, ...args);
 			},
 			require: (path) => {
-				return require(kernel, context, scope, dir, path);
+				return kernel.require(context, scope, dir, path);
 			},
 			__dirname: dir,
-			module: {exports:{}}
+			module: {exports:{}},
 		}, scope);
 
 		let executed = false;
@@ -597,8 +597,7 @@ function Kernel()
 					reject(...args);
 				};
 
-				var data = kernel.filesystem.readFile(context, path);
-				return runScript(kernel, interpreter, scope, data);
+				kernel.filesystem.requireFile(context, path, scope);
 			});
 		};
 	}
@@ -608,7 +607,7 @@ function Kernel()
 	let loadedModules = {};
 	let sharedModules = {};
 
-	function require(kernel, context, scope, dir, path)
+	function require(kernel, context, parentScope, dir, path)
 	{
 		var modulePath = null;
 		if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
@@ -674,9 +673,9 @@ function Kernel()
 
 		const pathDir = kernel.filesystem.dirname(context, modulePath);
 
-		scope = Object.assign({}, scope);
+		var scope = Object.assign({}, parentScope);
 		scope.require = (path) => {
-			return require(kernel, moduleContext, scope, pathDir, path);
+			return kernel.require(moduleContext, scope, pathDir, path);
 		};
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
@@ -746,8 +745,10 @@ function Kernel()
 
 
 	// class for retrieving a remote file
-	function RemoteFile(remoteURL, filter)
+	function RemoteFile(options)
 	{
+		options = Object.assign({}, options);
+
 		function saveToFile(filesystem, path)
 		{
 			return new Promise((resolve, reject) => {
@@ -770,9 +771,9 @@ function Kernel()
 							try
 							{
 								var content = xhr.responseText;
-								if(filter)
+								if(options.filter)
 								{
-									content = filter(content);
+									content = options.filter(content);
 								}
 								filesystem.writeFile(rootContext, path, content);
 							}
@@ -790,7 +791,21 @@ function Kernel()
 					}
 				};
 
-				var url = remoteURL;
+				var url = options.url;
+				if(!url)
+				{
+					var urlBase = window.location.pathname.toString();
+					if(urlBase.endsWith('/'))
+					{
+						urlBase = urlBase.slice(0, urlBase.length-1);
+					}
+					url = urlBase + path;
+				}
+				if(url == null)
+				{
+					throw new Error("invalid URL");
+				}
+
 				if(bootOptions.forceNoCache)
 				{
 					url += '?v='+(Math.random()*999999999);
@@ -851,18 +866,51 @@ function Kernel()
 	const initialFilesystem = {
 		'system': {
 			'slib': {
-				'react.js': new RemoteFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', (content) => {
-					return ''+content+'\n\nmodule.exports=React;';
+				'react.js': new RemoteFile({
+					url:'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js',
+					filter: (content) => {
+						return content+
+							'\n\n'+
+							'module.exports=React;\n'+
+							'delete window.React;';
+					}
 				}),
-				'react-dom.js': new RemoteFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', (content) => {
-					return ''+content+'\n\nmodule.exports=ReactDOM;';
+				'react-dom.js': new RemoteFile({
+					url: 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js',
+					filter: (content) => {
+						return content+
+							'\n\n'+
+							'module.exports=ReactDOM;'+
+							'delete window.ReactDOM;';
+					}
 				}),
-				'babel.js': new RemoteFile('https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', (content) => {
-					return ''+content+'\n\nmodule.exports=Babel;';
+				'babel.js': new RemoteFile({
+					url: 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js',
+					filter: (content) => {
+						return content+
+							'\n\n'+
+							'module.exports=Babel;'+
+							'delete window.Babel;';
+					}
 				}),
 			},
-			'boot.js': new RemoteFile('system/boot.js'),
-			'OS.js': new RemoteFile('system/OS.js')
+			'shell32.exe': {
+				'Desktop.js': new RemoteFile(),
+				'FileIcon.js': new RemoteFile(),
+				'FileIconLayout.js': new RemoteFile(),
+				'main.js': new RemoteFile(),
+				'TaskBar.js': new RemoteFile(),
+				'TaskBarWindowButton.js': new RemoteFile(),
+				'Wallpaper.js': new RemoteFile(),
+				'Window.js': new RemoteFile(),
+				'WindowManager.js': new RemoteFile()
+			},
+			'transcend32.exe': {
+				'CRT.js': new RemoteFile(),
+				'main.js': new RemoteFile()
+			},
+			'boot.js': new RemoteFile(),
+			'OS.js': new RemoteFile()
 		}
 	};
 

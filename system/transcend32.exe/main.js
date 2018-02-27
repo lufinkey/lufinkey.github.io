@@ -1,18 +1,17 @@
 
-const depends = ['system/transcend32.exe/CRT'];
+const React = require('react');
+const CRT = require('./CRT');
 
-defineModule(depends, (CRT) => {
-	class Transcend32 extends React.Component
+class Transcend32 extends React.Component
+{
+	render()
 	{
-		render()
-		{
-			return (
-				<CRT>
-					{this.props.children}
-				</CRT>
-			);
-		}
+		return (
+			<CRT>
+				{this.props.children}
+			</CRT>
+		);
 	}
+}
 
-	return Transcend32;
-});
+module.exports = Transcend32;

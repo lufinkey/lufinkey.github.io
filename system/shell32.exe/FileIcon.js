@@ -1,34 +1,32 @@
 
-const depends = [];
+const React = require('react');
 
-defineModule(depends, () => {
-	class FileIcon extends React.Component
+class FileIcon extends React.Component
+{
+	render()
 	{
-		render()
+		var classNames = [ "file" ];
+		if(this.props.fileType)
 		{
-			var classNames = [ "file" ];
-			if(this.props.fileType)
-			{
-				classNames.push("file-"+this.props.fileType);
-			}
-			if(this.props.selected)
-			{
-				classNames.push("selected");
-			}
-			var position = Object.assign({x:0,y:0}, this.props.position);
-			var styles = {
-				left: position.x,
-				top: position.y
-			};
-			
-			return (
-				<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown} onDoubleClick={this.props.onDoubleClick}>
-					<div className="icon"><div className="ghost"></div></div>
-					<div className="filename">{this.props.fileName}</div>
-				</div>
-			);
+			classNames.push("file-"+this.props.fileType);
 		}
+		if(this.props.selected)
+		{
+			classNames.push("selected");
+		}
+		var position = Object.assign({x:0,y:0}, this.props.position);
+		var styles = {
+			left: position.x,
+			top: position.y
+		};
+		
+		return (
+			<div className={classNames.join(' ')} style={styles} onMouseDown={this.props.onMouseDown} onDoubleClick={this.props.onDoubleClick}>
+				<div className="icon"><div className="ghost"></div></div>
+				<div className="filename">{this.props.fileName}</div>
+			</div>
+		);
 	}
+}
 
-	return FileIcon;
-});
+module.exports = FileIcon;

@@ -1,18 +1,15 @@
 
-const depends = [
-	'system/shell32.exe/Desktop'
-];
+const React = require('react');
+const Desktop = require('./Desktop');
 
-defineModule(depends, (Desktop) => {
-	class Shell32 extends React.Component
+class Shell32 extends React.Component
+{
+	render()
 	{
-		render()
-		{
-			return (
-				<Desktop/>
-			);
-		}
+		return (
+			<Desktop/>
+		);
 	}
+}
 
-	return Shell32;
-});
+module.exports = Shell32;

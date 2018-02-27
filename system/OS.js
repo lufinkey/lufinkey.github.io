@@ -1,22 +1,20 @@
 
-const depends = [
-	'system/transcend32.exe/main',
-	'system/shell32.exe/main'
-];
+const React = require('react');
+const Transcend32 = require('./transcend32.exe/main');
+const Shell32 = require('./shell32.exe/main');
 
-defineModule(depends, (Transcend32, Shell32) => {
-	class OS extends React.Component
+class OS extends React.Component
+{
+	render()
 	{
-		render()
-		{
-			console.log("OS: rendering...");
-			return (
-				<Transcend32>
-					<Shell32/>
-				</Transcend32>
-			);
-		}
+		console.log("OS: rendering...");
+		return (
+			<Transcend32>
+				<Shell32/>
+			</Transcend32>
+		);
+		return null;
 	}
+}
 
-	return OS;
-});
+module.exports = OS;
