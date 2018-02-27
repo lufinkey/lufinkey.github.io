@@ -179,7 +179,6 @@ class OS extends React.Component
 
 	renderLogs()
 	{
-		console.log("rendering "+logs.length+" logs");
 		return (
 			<div className="bootlog">
 				{logs.map((log, index) => (
