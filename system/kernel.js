@@ -1,34 +1,25 @@
 
-// sandbox kernel data
-(function(){
-
-
-// bootup options
-const bootOptions = {
-	freshInstall: true,
-	forceNoCache: true,
-	
-};
-
 
 // function to evaluate a given script
 function evalScript(__scope, __code) {
 	// define scope
+	const evalScript = undefined;
 	const require = __scope.require;
 	const __dirname = __scope.__dirname;
-	
-	const module = {
-		exports: {}
-	};
+	const module = __scope.module;
+	const resolve = __scope.resolve;
+	const reject = __scope.reject;
+	const process = __scope.process;
 
-	(function(){
-		eval(__code);
+	return (function(){
+		return eval(__code);
 	}).bind({})();
-
-	return module.exports;
-};
+}
 
 
+
+// sandbox kernel data
+(function(){
 
 
 // Kernel class
@@ -37,8 +28,9 @@ function Kernel()
 	const osName = 'finkeos';
 
 
+
 	// Filesystem class
-	function Filesystem(storage)
+	function Filesystem(kernel, storage)
 	{
 		const fsMetaPrefix = osName+'/fs-meta:';
 		const fsPrefix = osName+'/fs:';
@@ -411,13 +403,9 @@ function Kernel()
 		}
 
 		// execute a js script at a given path
-		function executeFile(path)
+		function executeFile(path, scope)
 		{
-			var data = readFile(path);
-			const scope = {
-				__dirname: dirname(path)
-			}
-			return evalScript(scope, data);
+			return (new Process(this, path, scope)).execute();
 		}
 
 		// create default filesystem, if necessary
@@ -441,125 +429,195 @@ function Kernel()
 		this.executeFile = executeFile;
 	}
 
-	this.filesystem = new Filesystem(window.localStorage);
-}
 
 
-
-
-// class for retrieving a remote file
-class RemoteFile
-{
-	constructor(remoteURL)
+	function Process(kernel, path, scope)
 	{
-		this.url = remoteURL;
-	}
-
-	saveToFile(filesystem, path, options)
-	{
-		options = Object.assign({}, options);
+		const dir = dirname(path);
 		
-		return new Promise((resolve, reject) => {
-			// stop if the file exists locally and we're not fetching everything
-			if(filesystem.exists(path) && !bootOptions.freshInstall)
+		const require = (path) => {
+			var resolvedPath = null;
+			if(path.startsWith('.') || path.startsWith('/'))
 			{
-				resolve();
-				return;
-			}
-			
-			// create request to retrieve remote file
-			var xhr = new XMLHttpRequest();
-			xhr.onreadystatechange = () => {
-				if(xhr.readyState == 4)
+				try
 				{
-					// handle result
-					if(xhr.status == 200)
-					{
-						// attempt to load the module's script
-						try
-						{
-							filesystem.writeFile(path, xhr.responseText);
-						}
-						catch(error)
-						{
-							reject(error);
-							return;
-						}
-						resolve();
-					}
-					else
-					{
-						reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
-					}
+					resolvedPath = this.filesystem.resolvePath(path, dir);
 				}
-			};
-
-			var url = this.url;
-			if(bootOptions.forceNoCache)
-			{
-				url += '?v='+(Math.random()*999999999);
-			}
-
-			// send remote file request
-			xhr.open("GET", url);
-			xhr.send();
-		});
-	}
-}
-
-
-
-
-// function to create initial filesystem if necessary
-function createInitialFilesystem(kernel)
-{
-	// declare initial filesystem
-	const initialFilesystem = {
-		'system': {
-			'boot.js': new RemoteFile('system/boot.js')
-		}
-	};
-
-	// build initial filesystem
-	function buildFilesystem(filesystem, structure, path)
-	{
-		var promises = [];
-
-		for(const entryName in structure)
-		{
-			var entry = structure[entryName];
-			var entryPath = path+'/'+entryName;
-
-			if(entry instanceof RemoteFile)
-			{
-				var promise = entry.saveToFile(filesystem, entryPath);
-				promises.push(promise);
+				catch(error)
+				{
+					throw new Error("could not resolve module");
+				}
 			}
 			else
 			{
-				filesystem.createDir(entryPath, {ignoreIfExists: true});
-				promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
+				if(!this.paths)
+				{
+					throw new Error("could not resolve module");
+				}
+				for(const basePath of this.paths)
+				{
+					try
+					{
+						resolvedPath = this.filesystem.resolvePath(path, basePath);
+					}
+					catch(error)
+					{
+						// path couldn't be resolved
+					}
+				}
+				throw new Error("could not resolve module");
 			}
-		}
+	
+			var scope = {
+				module: {
+					exports: {}
+				}
+			};
+		};
 
-		return promises;
+		scope = Object.assign({
+			require: require,
+			__dirname: dirname(path),
+			module: {exports:{}}
+		}, scope);
+
+		this.execute = () => {
+			var data = readFile(path);
+			return evalScript(this.scope, data);
+		};
 	}
 
-	var remoteFilePromises = buildFilesystem(kernel.filesystem, initialFilesystem, '');
-	return Promise.all(remoteFilePromises);
+
+
+	this.filesystem = new Filesystem(this, window.localStorage);
 }
 
 
 
 
-// start kernel
-var kernel = new Kernel();
-createInitialFilesystem(kernel).then(() => {
-	kernel.filesystem.executeFile('/system/boot.js');
-}).catch((error) => {
-	console.error(error);
-});
 
+// boot kernel sandboxed
+(function()
+{
+	const bootOptions = {
+		freshInstall: true,
+		forceNoCache: true
+	};
+
+	// class for retrieving a remote file
+	class RemoteFile
+	{
+		constructor(remoteURL)
+		{
+			this.url = remoteURL;
+		}
+
+		saveToFile(filesystem, path, options)
+		{
+			options = Object.assign({}, options);
+			
+			return new Promise((resolve, reject) => {
+				// stop if the file exists locally and we're not fetching everything
+				if(filesystem.exists(path) && !bootOptions.freshInstall)
+				{
+					resolve();
+					return;
+				}
+				
+				// create request to retrieve remote file
+				var xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = () => {
+					if(xhr.readyState == 4)
+					{
+						// handle result
+						if(xhr.status == 200)
+						{
+							// attempt to load the module's script
+							try
+							{
+								filesystem.writeFile(path, xhr.responseText);
+							}
+							catch(error)
+							{
+								reject(error);
+								return;
+							}
+							resolve();
+						}
+						else
+						{
+							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
+						}
+					}
+				};
+
+				var url = this.url;
+				if(bootOptions.forceNoCache)
+				{
+					url += '?v='+(Math.random()*999999999);
+				}
+
+				// send remote file request
+				xhr.open("GET", url);
+				xhr.send();
+			});
+		}
+	}
+
+
+
+
+	// function to create initial filesystem if necessary
+	function createInitialFilesystem(kernel)
+	{
+		// declare initial filesystem
+		const initialFilesystem = {
+			'system': {
+				'boot.js': new RemoteFile('system/boot.js')
+			}
+		};
+
+		// build initial filesystem
+		function buildFilesystem(filesystem, structure, path)
+		{
+			var promises = [];
+
+			for(const entryName in structure)
+			{
+				var entry = structure[entryName];
+				var entryPath = path+'/'+entryName;
+
+				if(entry instanceof RemoteFile)
+				{
+					var promise = entry.saveToFile(filesystem, entryPath);
+					promises.push(promise);
+				}
+				else
+				{
+					filesystem.createDir(entryPath, {ignoreIfExists: true});
+					promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
+				}
+			}
+
+			return promises;
+		}
+
+		var remoteFilePromises = buildFilesystem(kernel.filesystem, initialFilesystem, '');
+		return Promise.all(remoteFilePromises);
+	}
+
+
+
+
+	// start kernel
+	var kernel = new Kernel();
+	createInitialFilesystem(kernel).then(() => {
+		kernel.filesystem.executeFile('/system/boot.js');
+	}).catch((error) => {
+		console.error(error);
+	});
+// end boot sandbox
+})();
 
 // end kernel sandbox
 })();
