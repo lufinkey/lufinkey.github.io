@@ -181,6 +181,14 @@ class OS extends React.Component
 	{
 		return (
 			<div className="bootlog">
+				<pre>{`
+ 88888888b oo          dP                 .88888.  .d88888b  
+ 88                    88                d8'   \`8b 88.    "' 
+a88aaaa    dP 88d888b. 88  .dP  .d8888b. 88     88 \`Y88888b. 
+ 88        88 88'  \`88 88888"   88ooood8 88     88       \`8b 
+ 88        88 88    88 88  \`8b. 88.  ... Y8.   .8P d8'   .8P 
+ dP        dP dP    dP dP   \`YP \`88888P'  \`8888P'   Y88888P
+				`}</pre>
 				{logs.map((log, index) => (
 					<div key={index} className="bootlog-line" style={{color: log.options.color}}>
 						{log.message}
