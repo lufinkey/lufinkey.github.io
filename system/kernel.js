@@ -3,6 +3,14 @@
 (function(){
 
 
+// bootup options
+const bootOptions = {
+	freshInstall: true,
+	forceNoCache: true,
+	
+};
+
+
 // function to evaluate a given script
 function evalScript(__scope, __code) {
 	// define scope
@@ -24,15 +32,9 @@ function evalScript(__scope, __code) {
 
 
 // Kernel class
-function Kernel(bootOptions)
+function Kernel()
 {
 	const osName = 'finkeos';
-
-	// if this is a fresh install, clear local storage
-	if(bootOptions.freshInstall)
-	{
-		window.localStorage.clear();
-	}
 
 	// Filesystem class
 	function Filesystem(storage)
@@ -332,123 +334,120 @@ function Kernel(bootOptions)
 
 
 
-
-	// class for retrieving a remote file
-	class RemoteFile
-	{
-		constructor(remoteURL)
-		{
-			this.url = remoteURL;
-		}
-
-		saveToFile(filesystem, path)
-		{
-			return new Promise((resolve, reject) => {
-				// stop if the file exists locally and we're not fetching everything
-				if(filesystem.exists(path) && !freshInstall)
-				{
-					resolve();
-					return;
-				}
-				
-				// create request to retrieve remote file
-				var xhr = new XMLHttpRequest();
-				xhr.onreadystatechange = () => {
-					if(xhr.readyState == 4)
-					{
-						// handle result
-						if(xhr.status == 200)
-						{
-							// attempt to load the module's script
-							try
-							{
-								filesystem.writeFile(path, xhr.responseText);
-							}
-							catch(error)
-							{
-								reject(error);
-								return;
-							}
-							resolve();
-						}
-						else
-						{
-							reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
-						}
-					}
-				};
-
-				var url = this.url;
-				if(bootOptions.forceNoCache)
-				{
-					url += '?v='+(Math.random()*999999999);
-				}
-
-				// send remote file request
-				xhr.open("GET", url);
-				xhr.send();
-			});
-		}
-	}
-
-
-
-
-	function prepare()
-	{
-		// declare initial filesystem
-		const initialFilesystem = {
-			'system': {
-				'boot.js': new RemoteFile('system/boot.js')
-			}
-		};
-
-		// build initial filesystem
-		function buildFilesystem(filesystem, structure, path)
-		{
-			var promises = [];
-
-			for(const entryName in structure)
-			{
-				var entry = structure[entryName];
-				var entryPath = path+'/'+entryName;
-
-				if(entry instanceof RemoteFile)
-				{
-					var promise = entry.saveToFile(filesystem, entryPath);
-					promises.push(promise);
-				}
-				else
-				{
-					filesystem.createDir(entryPath, {ignoreIfExists: true});
-					promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
-				}
-			}
-
-			return promises;
-		}
-
-		var remoteFilePromises = buildFilesystem(this.filesystem, initialFilesystem, '');
-		return Promise.all(remoteFilePromises);
-	}
-
-
-
-
 	this.filesystem = new Filesystem(window.localStorage);
-	this.prepare = prepare;
+}
+
+
+
+
+// class for retrieving a remote file
+class RemoteFile
+{
+	constructor(remoteURL)
+	{
+		this.url = remoteURL;
+	}
+
+	saveToFile(filesystem, path, options)
+	{
+		options = Object.assign({}, options);
+		
+		return new Promise((resolve, reject) => {
+			// stop if the file exists locally and we're not fetching everything
+			if(filesystem.exists(path) && !bootOptions.freshInstall)
+			{
+				resolve();
+				return;
+			}
+			
+			// create request to retrieve remote file
+			var xhr = new XMLHttpRequest();
+			xhr.onreadystatechange = () => {
+				if(xhr.readyState == 4)
+				{
+					// handle result
+					if(xhr.status == 200)
+					{
+						// attempt to load the module's script
+						try
+						{
+							filesystem.writeFile(path, xhr.responseText);
+						}
+						catch(error)
+						{
+							reject(error);
+							return;
+						}
+						resolve();
+					}
+					else
+					{
+						reject(new Error("request failed with status "+xhr.status+": "+xhr.statusText));
+					}
+				}
+			};
+
+			var url = this.url;
+			if(bootOptions.forceNoCache)
+			{
+				url += '?v='+(Math.random()*999999999);
+			}
+
+			// send remote file request
+			xhr.open("GET", url);
+			xhr.send();
+		});
+	}
+}
+
+
+
+
+// function to create initial filesystem if necessary
+function createInitialFilesystem(kernel)
+{
+	// declare initial filesystem
+	const initialFilesystem = {
+		'system': {
+			'boot.js': new RemoteFile('system/boot.js')
+		}
+	};
+
+	// build initial filesystem
+	function buildFilesystem(filesystem, structure, path)
+	{
+		var promises = [];
+
+		for(const entryName in structure)
+		{
+			var entry = structure[entryName];
+			var entryPath = path+'/'+entryName;
+
+			if(entry instanceof RemoteFile)
+			{
+				var promise = entry.saveToFile(filesystem, entryPath);
+				promises.push(promise);
+			}
+			else
+			{
+				filesystem.createDir(entryPath, {ignoreIfExists: true});
+				promises = promises.concat(buildFilesystem(filesystem, entry, entryPath));
+			}
+		}
+
+		return promises;
+	}
+
+	var remoteFilePromises = buildFilesystem(kernel.filesystem, initialFilesystem, '');
+	return Promise.all(remoteFilePromises);
 }
 
 
 
 
 // start kernel
-const bootOptions = {
-	freshInstall: true,
-	forceNoCache: true
-};
-var kernel = new Kernel(bootOptions);
-kernel.prepare().then(() => {
+var kernel = new Kernel();
+createInitialFilesystem(kernel).then(() => {
 	kernel.filesystem.executeFile('/system/boot.js');
 }).catch((error) => {
 	console.error("kernel error: ", error);
