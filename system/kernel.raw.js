@@ -104,6 +104,7 @@ function runScript(kernel, interpreter, scope, code)
 			code = Babel.transform(code, {presets:['react']}).code;
 			break;
 
+		case null:
 		case undefined:
 			break;
 
