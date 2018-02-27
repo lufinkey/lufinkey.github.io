@@ -34,12 +34,53 @@ function randomString(length = 32)
 	return str;
 }
 
+function deepCopyObject(object)
+{
+	if(['null', 'undefined', 'function', 'symbol'].includes(typeof object))
+	{
+		return object;
+	}
+	else if(typeof object === 'number')
+	{
+		return 0+object;
+	}
+	else if(typeof object == 'string')
+	{
+		return ''+object;
+	}
+	else if(object instanceof Array)
+	{
+		var newObject = object.slice(0);
+		for(var i=0; i<newObject.length; i++)
+		{
+			newObject[i] = deepCopyObject(newObject[i]);
+		}
+		return newObject;
+	}
+	else
+	{
+		var newObject = {};
+		for(const key in object)
+		{
+			newObject[key] = deepCopyObject(object[key]);
+		}
+		return newObject;
+	}
+}
+
 
 const rootContext = {
 	cwd: '/',
 	pid: 0,
 	uid: 0,
-	gid: 0
+	gid: 0,
+	env: {
+		paths: [
+			'/system/slib',
+			'/system/lib',
+			'/lib'
+		]
+	}
 };
 
 
@@ -207,12 +248,16 @@ function Kernel()
 					var cwdDir = dirname(context, cwd);
 					return resolvePathParts(pathParts.slice(1), cwdDir);
 				}
-				return resolvePathParts(pathParts.slice(1), cwd+'/'+pathParts[0]);
-			}
-
-			if(absolute)
-			{
-				cwd = '';
+				var nextCwd = null;
+				if(cwd === '/')
+				{
+					nextCwd = '/'+pathParts[0];
+				}
+				else
+				{
+					nextCwd = cwd + '/' + pathParts[0];
+				}
+				return resolvePathParts(pathParts.slice(1), nextCwd);
 			}
 
 			return resolvePathParts(pathParts, cwd);
@@ -456,6 +501,7 @@ function Kernel()
 		// add properties
 		this.dirname = dirname;
 		this.basename = basename;
+		this.resolvePath = resolvePath;
 		this.exists = exists;
 		this.readMeta = readMeta;
 		this.readDir = readDir;
@@ -463,6 +509,7 @@ function Kernel()
 		this.readFile = readFile;
 		this.writeFile = writeFile;
 		this.executeFile = executeFile;
+		this.requireFile = requireFile;
 	}
 
 
@@ -474,7 +521,7 @@ function Kernel()
 		const pid = pidCounter;
 		pidCounter++;
 
-		const context = Object.assign({}, parentContext);
+		const context = deepCopyObject(parentContext);
 		context.pid = pid;
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
@@ -526,6 +573,7 @@ function Kernel()
 
 
 	let loadedModules = {};
+	let sharedModules = {};
 
 	function require(kernel, context, scope, dir, path)
 	{
@@ -543,7 +591,7 @@ function Kernel()
 		}
 		else
 		{
-			if(!this.paths)
+			if(!context.env || !context.env.paths)
 			{
 				throw new Error("could not resolve module");
 			}
@@ -565,28 +613,44 @@ function Kernel()
 			}
 		}
 
+		modulePath += '.js';
+		if(!kernel.filesystem.exists(context, modulePath))
+		{
+			throw new Error("module does not exist");
+		}
+
 		if(!loadedModules[context.pid])
 		{
 			loadedModules[context.pid] = {};
 		}
 
-		if(loadedModules[context.pid][modulePath] !== undefined)
+		// share library if in slib
+		let moduleContext = context;
+		let moduleContainer = loadedModules[context.pid];
+		if(modulePath.startsWith('/system/slib'))
 		{
-			return loadedModules[context.pid][modulePath];
+			moduleContext = rootContext;
+			moduleContainer = sharedModules;
+		}
+
+		// check if module already loaded
+		if(moduleContainer[modulePath] !== undefined)
+		{
+			return moduleContainer[modulePath];
 		}
 
 		const pathDir = kernel.filesystem.dirname(context, modulePath);
 
 		scope = Object.assign({}, scope);
 		scope.require = (path) => {
-			return require(kernel, context, scope, pathDir, path);
+			return require(kernel, moduleContext, scope, pathDir, path);
 		};
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
 
-		kernel.filesystem.requireFile(context, modulePath, scope);
+		kernel.filesystem.requireFile(moduleContext, modulePath, scope);
 
-		loadedModules[context.pid][modulePath] = scope.module.exports;
+		moduleContainer[modulePath] = scope.module.exports;
 
 		return scope.module.exports;
 	}
@@ -646,17 +710,10 @@ function Kernel()
 
 
 	// class for retrieving a remote file
-	class RemoteFile
+	function RemoteFile(remoteURL, filter)
 	{
-		constructor(remoteURL)
+		function saveToFile(filesystem, path)
 		{
-			this.url = remoteURL;
-		}
-
-		saveToFile(filesystem, path, options)
-		{
-			options = Object.assign({}, options);
-			
 			return new Promise((resolve, reject) => {
 				// stop if the file exists locally and we're not fetching everything
 				if(filesystem.exists(rootContext, path) && !bootOptions.freshInstall)
@@ -676,7 +733,12 @@ function Kernel()
 							// attempt to load the module's script
 							try
 							{
-								filesystem.writeFile(rootContext, path, xhr.responseText);
+								var content = xhr.responseText;
+								if(filter)
+								{
+									content = filter(content);
+								}
+								filesystem.writeFile(rootContext, path, content);
 							}
 							catch(error)
 							{
@@ -692,7 +754,7 @@ function Kernel()
 					}
 				};
 
-				var url = this.url;
+				var url = remoteURL;
 				if(bootOptions.forceNoCache)
 				{
 					url += '?v='+(Math.random()*999999999);
@@ -703,20 +765,15 @@ function Kernel()
 				xhr.send();
 			});
 		}
+
+		this.saveToFile = saveToFile;
 	}
 	
 
 
 	// function to create initial filesystem if necessary
-	function createInitialFilesystem(kernel)
+	function createInitialFilesystem(kernel, initialFilesystem)
 	{
-		// declare initial filesystem
-		const initialFilesystem = {
-			'system': {
-				'boot.js': new RemoteFile('system/boot.js')
-			}
-		};
-
 		// build initial filesystem
 		function buildFilesystem(structure, path)
 		{
@@ -754,9 +811,28 @@ function Kernel()
 	}
 
 
+	// declare initial filesystem
+	const initialFilesystem = {
+		'system': {
+			'slib': {
+				'react.js': new RemoteFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', (content) => {
+					return ''+content+'\n\nmodule.exports=React;';
+				}),
+				'react-dom.js': new RemoteFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', (content) => {
+					return ''+content+'\n\nmodule.exports=ReactDOM;';
+				}),
+				'babel.js': new RemoteFile('https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', (content) => {
+					return ''+content+'\n\nmodule.exports=Babel;';
+				}),
+			},
+			'boot.js': new RemoteFile('system/boot.js'),
+			'OS.js': new RemoteFile('system/OS.js')
+		}
+	};
+
 	// start kernel
 	var kernel = new Kernel();
-	createInitialFilesystem(kernel).then(() => {
+	createInitialFilesystem(kernel, initialFilesystem).then(() => {
 		kernel.filesystem.executeFile(rootContext, '/system/boot.js');
 	}).catch((error) => {
 		console.error("fatal kernel error");
