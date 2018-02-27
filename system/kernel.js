@@ -84,6 +84,25 @@ const rootContext = {
 };
 
 
+function runScript(kernel, interpreter, scope, code)
+{
+	switch(interpreter)
+	{
+		case 'babel':
+			const Babel = require(kernel, rootContext, scope, '/', 'babel');
+			code = Babel.transform(code, {presets:['react']}).code;
+			break;
+
+		case undefined:
+			break;
+
+		default:
+			throw new Error("invalid interpreter");
+	}
+	return evalScript(scope, code);
+}
+
+
 // Kernel class
 function Kernel()
 {
@@ -476,17 +495,31 @@ function Kernel()
 			return writeEntry(context, path, {type: 'file'}, data);
 		}
 
+		// determine the interpreter for the file
+		function getInterpreter(context, path)
+		{
+			// TODO don't hardcode the interpreter
+			const fullPath = resolvePath(context, path);
+			if(fullPath.startsWith('/system/slib/') || fullPath=='/system/boot.js')
+			{
+				return undefined;
+			}
+			return 'babel';
+		}
+
 		// execute a js script at a given path
 		function executeFile(context, path, scope)
 		{
-			return (new Process(kernel, context, path, scope)).execute();
+			const interpreter = getInterpreter(context, path);
+			return (new Process(kernel, context, interpreter, path, scope)).execute();
 		}
 
 		// load a js script into the current process
 		function requireFile(context, path, scope)
 		{
-			var data = kernel.filesystem.readFile(context, path);
-			return evalScript(scope, data);
+			const data = kernel.filesystem.readFile(context, path);
+			const interpreter = getInterpreter(context, path);
+			return runScript(kernel, interpreter, scope, data);
 		}
 
 		// create default filesystem, if necessary
@@ -516,7 +549,7 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function Process(kernel, parentContext, path, scope)
+	function Process(kernel, parentContext, interpreter, path, scope)
 	{
 		const pid = pidCounter;
 		pidCounter++;
@@ -565,7 +598,7 @@ function Kernel()
 				};
 
 				var data = kernel.filesystem.readFile(context, path);
-				return evalScript(scope, data);
+				return runScript(kernel, interpreter, scope, data);
 			});
 		};
 	}
