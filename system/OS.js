@@ -13,7 +13,6 @@ class OS extends React.Component
 				<Shell32/>
 			</Transcend32>
 		);
-		return null;
 	}
 }
 
