@@ -845,9 +845,7 @@ function Kernel()
 		const fullPath = kernel.filesystem.resolvePath(parentContext, path);
 
 		let executed = false;
-		let resolved = false;
 		let exited = false;
-		let ended = false;
 
 		// build process scope
 		let scope = {
@@ -898,24 +896,15 @@ function Kernel()
 					{
 						code = 0;
 					}
-					if(exited)
+					if(code != 0)
 					{
-						throw new Error("already gave exit code for this process");
+						context.reject(new Error("process exitted with code "+code));
 					}
-					exited = true;
-					kernel.log(context, "exiting process "+pid);
+					else
+					{
+						context.resolve();
+					}
 					var exitSignal = new ExitSignal(code);
-					if(!resolved)
-					{
-						if(code != 0)
-						{
-							context.reject(exitSignal);
-						}
-						else
-						{
-							context.resolve();
-						}
-					}
 					throw exitSignal;
 				},
 				writable: false
@@ -934,7 +923,7 @@ function Kernel()
 			});
 
 			Object.defineProperty(this, 'platform', {
-				value: 'finkeos',
+				value: osName,
 				writable: false
 			});
 		})();
@@ -944,9 +933,9 @@ function Kernel()
 
 		function endProcess()
 		{
-			if(!ended)
+			if(!exited)
 			{
-				ended = true;
+				exited = true;
 				unloadRequired(kernel, context);
 			}
 		}
@@ -961,21 +950,11 @@ function Kernel()
 
 			return new ProcPromise((resolve, reject) => {
 				context.resolve = (...args) => {
-					if(resolved)
-					{
-						throw new Error("the process has already been resolved or rejected");
-					}
-					resolved = true;
 					endProcess();
 					resolve(...args);
 				};
 
 				context.reject = (...args) => {
-					if(resolved)
-					{
-						throw new Error("the process has already been resolved or rejected");
-					}
-					resolved = true;
 					endProcess();
 					reject(...args);
 				};
@@ -992,8 +971,9 @@ function Kernel()
 					}
 					else
 					{
-						if(!ended)
+						if(!exited)
 						{
+							console.error("unhandled process error: ", error);
 							context.reject(error);
 						}
 						else

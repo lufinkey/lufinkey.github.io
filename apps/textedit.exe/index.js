@@ -1,8 +1,6 @@
 
 const React = require('react');
 
-console.log("launching textedit with pid "+process.pid);
-
 var getWindowManager = process.env['GET_WINDOW_MANAGER'];
 let windowManager = null;
 if(getWindowManager)
