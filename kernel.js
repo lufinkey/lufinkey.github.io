@@ -833,7 +833,7 @@ function Kernel()
 			}
 			catch(error)
 			{
-				throw new Error("could not resolve module");
+				throw new Error("could not resolve module: "+error.message);
 			}
 		}
 		else
