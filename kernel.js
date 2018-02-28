@@ -606,9 +606,9 @@ function Kernel()
 		}
 
 		// execute a js script at a given path
-		function executeFile(context, options, path, ...args)
+		function executeFile(context, path, args=[], options=null)
 		{
-			return new ChildProcess(kernel, context, options, path, ...args);
+			return new ChildProcess(kernel, context, path, args, options);
 		}
 
 		// load a js script into the current process
@@ -671,8 +671,16 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function ChildProcess(kernel, parentContext, options, path, ...args)
+	function ChildProcess(kernel, parentContext, path, args, options)
 	{
+		if(typeof path !== 'string')
+		{
+			throw new TypeError("path must be a string");
+		}
+		if(!(args instanceof Array))
+		{
+			throw new TypeError("args must be an Array");
+		}
 		options = Object.assign({}, options);
 
 		const pid = pidCounter;
@@ -998,7 +1006,7 @@ function Kernel()
 	}
 
 	// execute a module in a new context
-	function execute(kernel, context, options, path, ...args)
+	function execute(kernel, context, path, args=[], options=null)
 	{
 		// get full module path
 		var paths = [];
@@ -1008,7 +1016,7 @@ function Kernel()
 		}
 		var modulePath = findModulePath(kernel, context, paths, context.cwd, path, {folderExtensions: ['exe']});
 
-		return kernel.filesystem.executeFile(context, options, modulePath, ...args);
+		return kernel.filesystem.executeFile(context, modulePath, args, options);
 	}
 
 	// find the path to a required module
@@ -1146,8 +1154,8 @@ function Kernel()
 
 
 	this.filesystem = new Filesystem(this, window.localStorage);
-	this.execute = (context, options, path, ...args) => {
-		return execute(this, context, options, path, ...args);
+	this.execute = (context, path, args=[], options=null) => {
+		return execute(this, context, path, args, options);
 	};
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
@@ -1186,7 +1194,7 @@ function Kernel()
 	// wait for files to finish downloading
 	Promise.all(downloads).then(() => {
 		kernel.log(rootContext, "boot data downloaded; booting...");
-		kernel.execute(rootContext, {}, '/system/boot');
+		kernel.execute(rootContext, '/system/boot');
 	}).catch((error) => {
 		kernel.log(rootContext, "fatal error", {color: 'red'});
 		kernel.log(rootContext, error.toString(), {color: 'red'});
