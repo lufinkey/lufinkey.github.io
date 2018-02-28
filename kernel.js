@@ -8,17 +8,19 @@ window.addEventListener('load', () => {
 // function to evaluate a given script
 function evalScript(__scope, __code) {
 	// define scope
-	const evalScript = undefined;
-	const syscall = __scope.syscall;
-	const require = __scope.require;
-	const __dirname = __scope.__dirname;
-	const module = __scope.module;
-	const exports = (__scope.module ? __scope.module.exports : undefined);
-	const resolve = __scope.resolve;
-	const reject = __scope.reject;
-	const process = __scope.process;
-
+	__scope = Object.assign({Promise: Promise}, __scope);
 	return (function(){
+		const evalScript = undefined;
+		const syscall = __scope.syscall;
+		const require = __scope.require;
+		const __dirname = __scope.__dirname;
+		const module = __scope.module;
+		const exports = (__scope.module ? __scope.module.exports : undefined);
+		const resolve = __scope.resolve;
+		const reject = __scope.reject;
+		const process = __scope.process;
+		const Promise = __scope.Promise;
+
 		return eval(__code);
 	}).bind({})();
 }
@@ -123,6 +125,178 @@ function runScript(kernel, interpreter, scope, code)
 function Kernel()
 {
 	const osName = 'finkeos';
+
+
+	// process exit signal
+	class ExitSignal extends Error
+	{
+		constructor(signal, message)
+		{
+			if(typeof signal === 'string')
+			{
+				message = signal;
+				signal = null;
+			}
+			
+			if(!message && signal)
+			{
+				message = "process exited with signal "+signal;
+			}
+			super(message);
+			this.signal = signal;
+		}
+	}
+
+	// promise to handle exit signals
+	class ProcPromise extends Promise
+	{
+		constructor(callback)
+		{
+			let exitSignal = null;
+			super((resolve, reject) => {
+				try
+				{
+					callback(resolve, reject);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			});
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+		}
+
+		then(callback)
+		{
+			let exitSignal = null;
+			var retVal = super.then((...args) => {
+				try
+				{
+					if(callback !== undefined)
+					{
+						return callback(...args);
+					}
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			});
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			return retVal;
+		}
+
+		catch(callback)
+		{
+			let exitSignal = null;
+			var retVal = super.catch((...args) => {
+				try
+				{
+					return callback(...args);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			});
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			return retVal;
+		}
+
+		static resolve(...args)
+		{
+			return new ProcPromise((resolve, reject) => {
+				resolve(...args);
+			});
+		}
+
+		static reject(...args)
+		{
+			return new ProcPromise((resolve, reject) => {
+				reject(...args);
+			});
+		}
+
+		static all(promises)
+		{
+			let exitSignal = null;
+			var promise = new ProcPromise((resolve, reject) => {
+				Promise.all(promises).then((...args) => {
+					try
+					{
+						return resolve(...args);
+					}
+					catch(error)
+					{
+						if(error instanceof ExitSignal)
+						{
+							exitSignal = error;
+							return;
+						}
+						else
+						{
+							throw error;
+						}
+					}
+				}).catch((...args) => {
+					try
+					{
+						return resolve(...args);
+					}
+					catch(error)
+					{
+						if(error instanceof ExitSignal)
+						{
+							exitSignal = error;
+							return;
+						}
+						else
+						{
+							throw error;
+						}
+					}
+				});
+			});
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			return promise;
+		}
+	}
 
 
 	// Filesystem class
@@ -550,7 +724,7 @@ function Kernel()
 		{
 			const downloadPath = resolvePath(context, path);
 
-			return new Promise((resolve, reject) => {
+			return new ProcPromise((resolve, reject) => {
 				// create request to retrieve remote file
 				var xhr = new XMLHttpRequest();
 				xhr.onreadystatechange = () => {
@@ -646,29 +820,6 @@ function Kernel()
 
 
 
-
-	class ExitSignal extends Error
-	{
-		constructor(signal, message)
-		{
-			if(typeof signal === 'string')
-			{
-				message = signal;
-				signal = null;
-			}
-			
-			if(!message && signal)
-			{
-				message = "process exited with signal "+signal;
-			}
-			super(message);
-			this.signal = signal;
-		}
-	}
-
-
-
-
 	let pidCounter = 1;
 	
 	function ChildProcess(kernel, parentContext, path, args, options)
@@ -691,6 +842,7 @@ function Kernel()
 		context.argv = [path].concat(args);
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
+		const fullPath = kernel.filesystem.resolvePath(parentContext, path);
 
 		let executed = false;
 		let resolved = false;
@@ -706,7 +858,9 @@ function Kernel()
 				return kernel.require(context, scope, dir, path);
 			},
 			__dirname: dir,
+			__filename: fullPath,
 			module: {exports:{}},
+			Promise: ProcPromise
 		};
 
 		scope.require.resolve = (path) => {
@@ -749,6 +903,7 @@ function Kernel()
 						throw new Error("already gave exit code for this process");
 					}
 					exited = true;
+					kernel.log(context, "exiting process "+pid);
 					var exitSignal = new ExitSignal(code);
 					if(!resolved)
 					{
@@ -804,7 +959,7 @@ function Kernel()
 			}
 			executed = true;
 
-			return new Promise((resolve, reject) => {
+			return new ProcPromise((resolve, reject) => {
 				context.resolve = (...args) => {
 					if(resolved)
 					{

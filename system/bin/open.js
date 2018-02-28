@@ -19,7 +19,7 @@ if(extension.startsWith('.'))
 var appdefaults = null;
 try
 {
-	appdefaults = JSON.stringify(syscall('filesystem.readFile', '/system/share/appdefaults.json'));
+	appdefaults = JSON.parse(syscall('filesystem.readFile', '/system/share/appdefaults.json'));
 }
 catch(error)
 {
@@ -30,7 +30,7 @@ catch(error)
 var defaultcmd = appdefaults[extension];
 if(!defaultcmd)
 {
-	console.error("no default app is defined for this file type");
+	console.error("no default app is defined for "+extension);
 	process.exit(1);
 }
 else if(!(defaultcmd instanceof Array))

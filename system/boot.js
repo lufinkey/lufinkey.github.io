@@ -282,7 +282,8 @@ class OS extends React.Component
 					bootlog("failed to build user home directory", {color: 'red'});
 				});
 			}).catch((error) => {
-				bootlog("failed to download shell32.dll", {color: 'red'});
+				console.error(error);
+				bootlog("failed to download system files", {color: 'red'});
 			});
 		});
 	}

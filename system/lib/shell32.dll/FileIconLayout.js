@@ -9,7 +9,7 @@ class FileIconLayout extends React.Component
 	{
 		if(!props.files)
 		{
-			props.files = {};
+			props.files = [];
 		}
 		super(props);
 
@@ -52,7 +52,7 @@ class FileIconLayout extends React.Component
 
 		// set default file states
 		var fileStates = Object.assign({}, this.state.files);
-		for(const fileName in this.props.files)
+		for(const fileName of this.props.files)
 		{
 			fileStates[fileName] = {position:{x:(col*72), y:(row*72)}};
 			col++;
@@ -177,20 +177,19 @@ class FileIconLayout extends React.Component
 	{
 		return (
 			<div className="icon-grid" onMouseDown={(event) => {this.onMouseDown(event)}}>
-				{Object.keys(this.props.files).map((fileName) => this.renderFile(fileName, this.props.files[fileName]))}
+				{this.props.files.map((fileName) => this.renderFile(fileName))}
 			</div>
 		);
 	}
 
-	renderFile(fileName, file)
+	renderFile(fileName)
 	{
-		let fileState = this.state.files[fileName];
+		var fileState = this.state.files[fileName];
 		var selected = (this.state.selectedFiles.includes(fileName));
 		return (
 			<FileIcon
 				key={fileName}
 				fileName={fileName}
-				fileType={file.type}
 				position={fileState.position}
 				selected={selected}
 				onMouseDown={(event) => {this.onFileMouseDown(fileName, event)}}

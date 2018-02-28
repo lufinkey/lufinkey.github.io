@@ -13,9 +13,8 @@ const wallpapers = [
 	{type: 'image', url: 'system/share/wallpapers/japan-purple-aesthetic.jpg'}
 ];
 
-const files = {
-	"pornography.txt": {type: 'txt'}
-};
+let files = null;
+
 
 class Desktop extends React.Component
 {
@@ -26,6 +25,11 @@ class Desktop extends React.Component
 		this.windowManager = null;
 		this.taskbar = null;
 	}
+
+	componentWillMount()
+	{
+		files = syscall('filesystem.readDir', '/home/Desktop');
+	}
 	
 	componentDidMount()
 	{
@@ -34,10 +38,13 @@ class Desktop extends React.Component
 
 	onFileOpen(filename)
 	{
-		if(filename == "pornography.txt")
-		{
-			this.windowManager.createWindow({title: filename});
-		}
+		syscall('execute', 'open', ['/home/Desktop/'+filename]).promise.then(() => {
+			// process executed successfully
+		}).catch((error) => {
+			// error
+			console.error("unable to run process:");
+			console.error(error);
+		});
 	}
 
 	onWindowManagerMount(windowManager)

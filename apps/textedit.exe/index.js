@@ -1,4 +1,8 @@
 
+const React = require('react');
+
+console.log("launching textedit with pid "+process.pid);
+
 var getWindowManager = process.env['GET_WINDOW_MANAGER'];
 let windowManager = null;
 if(getWindowManager)
@@ -17,12 +21,12 @@ if(process.argv.length > 2)
 	process.exit(1);
 }
 
-let textBody = "";
+let defaultTextBody = "";
 try
 {
 	if(process.argv.length === 2)
 	{
-		textBody = syscall('filesystem.readFile', process.argv[1]);
+		defaultTextBody = syscall('filesystem.readFile', process.argv[1]);
 	}
 }
 catch(error)
@@ -36,7 +40,7 @@ windowManager.createWindow().then((window) => {
 	// window created
 	window.renderContent = () => {
 		return (
-			<textarea>{textBody}</textarea>
+			<textarea defaultValue={defaultTextBody}></textarea>
 		);
 	};
 
@@ -45,6 +49,7 @@ windowManager.createWindow().then((window) => {
 		process.exit(0);
 	};
 
+	window.forceUpdate();
 }).catch((error) => {
 	console.error("unable to create window: ", error);
 	process.exit(2);

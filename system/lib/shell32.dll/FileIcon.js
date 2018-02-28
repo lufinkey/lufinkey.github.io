@@ -1,4 +1,5 @@
 
+const path = require('path');
 const React = require('react');
 
 class FileIcon extends React.Component
@@ -6,9 +7,14 @@ class FileIcon extends React.Component
 	render()
 	{
 		var classNames = [ "file" ];
-		if(this.props.fileType)
+		if(this.props.fileName)
 		{
-			classNames.push("file-"+this.props.fileType);
+			var fileType = path.extname(this.props.fileName);
+			if(fileType.startsWith('.'))
+			{
+				fileType = fileType.substring(1, fileType.length);
+			}
+			classNames.push("file-"+fileType);
 		}
 		if(this.props.selected)
 		{
