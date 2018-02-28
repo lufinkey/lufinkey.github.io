@@ -626,6 +626,7 @@ function Kernel()
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
 
+		// build process scope
 		let scope = {
 			syscall: (func, ...args) => {
 				return kernel.syscall(context, func, ...args);
@@ -636,6 +637,20 @@ function Kernel()
 			__dirname: dir,
 			module: {exports:{}},
 		};
+
+		scope.require.resolve = (path) => {
+			// get full module path
+			var libpaths = [];
+			if(context.env && context.env.libpaths)
+			{
+				libpaths = context.env.libpaths;
+			}
+			var modulePath = findModulePath(kernel, context, libpaths, dir, path);
+		}
+
+
+
+		// process lifecycle functions
 
 		let executed = false;
 
@@ -666,6 +681,9 @@ function Kernel()
 				kernel.filesystem.requireFile(context, scope, path);
 			});
 		}
+
+
+		// start process
 
 		this.promise = execute();
 	}
