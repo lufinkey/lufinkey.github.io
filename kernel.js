@@ -749,7 +749,7 @@ function Kernel()
 			return null;
 		}
 
-		var packageInfo = JSON.parse(kernel.filesystem.readFile(context, path));
+		var packageInfo = JSON.parse(kernel.filesystem.readFile(context, packagePath));
 		var mainFile = packageInfo["main"];
 		if(!mainFile)
 		{

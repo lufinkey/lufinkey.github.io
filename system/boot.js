@@ -137,7 +137,8 @@ const transcendFiles =  {
 		'lib': {
 			'transcend32.dll': {
 				'CRT.js': new FilePlaceholder(),
-				'index.js': new FilePlaceholder()
+				'index.js': new FilePlaceholder(),
+				'package.json': new FilePlaceholder()
 			}
 		}
 	}
@@ -180,7 +181,7 @@ let bootSequence = 0;
 bootlog("downloading transcend32.dll");
 downloadFiles(transcendFiles).then(() => {
 	bootlog("downloaded transcend32.dll");
-	Transcend32 = require('./lib/transcend32.dll/index');
+	Transcend32 = require('transcend32');
 	bootSequence++;
 	if(osComponent)
 	{
