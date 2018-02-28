@@ -59,6 +59,7 @@ for(var i=1; i<defaultcmd.length; i++)
 }
 
 // launch the process
+console.log("launching \""+defaultcmd.join('" "')+"\"");
 syscall('execute', defaultcmd[0], defaultcmd.slice(1)).promise.then(() => {
 	// the process executed successfully
 	process.exit(0);
