@@ -130,9 +130,16 @@ function Kernel()
 		const fsMetaPrefix = osName+'/fs-meta:';
 		const fsPrefix = osName+'/fs:';
 
+		const invalidPathCharacters = [':'];
+
 		// get path of directory containing path
 		function dirname(context, path)
 		{
+			if(typeof path !== 'string')
+			{
+				throw new TypeError("path must be a string");
+			}
+
 			var pathParts = path.split('/');
 			if(pathParts.length === 0 || (pathParts.length === 1 && pathParts[0] === ""))
 			{
@@ -182,6 +189,11 @@ function Kernel()
 		// get entry name of path
 		function basename(context, path)
 		{
+			if(typeof path !== 'string')
+			{
+				throw new TypeError("path must be a string");
+			}
+			
 			var pathParts = path.split('/');
 			
 			// remove empty entries in path
@@ -231,13 +243,25 @@ function Kernel()
 					cwd = '/';
 				}
 			}
+			else if(typeof cwd !== 'string')
+			{
+				throw new Error("cwd must be a string");
+			}
 
 			// ensure string
 			if(typeof path !== 'string')
 			{
-				throw new Error("path is not a string");
+				throw new Error("path must be a string");
 			}
-			path = ''+path;
+
+			// check for invalid characters
+			for(const invalidChar of invalidPathCharacters)
+			{
+				if(path.indexOf(invalidChar) !== -1)
+				{
+					throw new Error("invalid character in path");
+				}
+			}
 
 			// split path into parts
 			var pathParts = path.split('/');
@@ -260,12 +284,6 @@ function Kernel()
 					return '/';
 				}
 				pathParts = pathParts.slice(1);
-			}
-
-			// shave off trailing '/' if necessary
-			if(pathParts[pathParts.length-1] === "")
-			{
-				pathParts = pathParts.slice(0, pathParts.length-1);
 			}
 			
 			// remove empty contents in path
