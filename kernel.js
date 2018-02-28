@@ -203,6 +203,22 @@ function Kernel()
 			return pathParts[pathParts.length-1];
 		}
 
+		// get extension name of path
+		function extname(context, path)
+		{
+			var lastDotIndex = path.lastIndexOf('.');
+			if(lastDotIndex === -1)
+			{
+				return '';
+			}
+			var extension = path.substring(lastDotIndex, path.length);
+			if(extension.indexOf('/') !== -1)
+			{
+				return '';
+			}
+			return extension;
+		}
+
 
 		// validate path
 		function resolvePath(context, path, cwd)
@@ -596,6 +612,7 @@ function Kernel()
 		// add properties
 		this.dirname = dirname;
 		this.basename = basename;
+		this.extname = extname;
 		this.resolvePath = resolvePath;
 		this.exists = exists;
 		this.readMeta = readMeta;
