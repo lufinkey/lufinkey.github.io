@@ -1,0 +1,5 @@
+{
+	"name": "textedit",
+	"description": "edit text",
+	"main": "index.js"
+}
