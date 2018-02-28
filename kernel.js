@@ -703,7 +703,7 @@ function Kernel()
 		scope.require.resolve = (path) => {
 			// get full module path
 			return findRequirePath(kernel, context, dir, path);
-		}
+		};
 
 		// define Process object
 		scope.process = new (function(){
