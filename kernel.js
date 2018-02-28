@@ -789,13 +789,10 @@ function Kernel()
 		{
 			if(checkIfFolder(kernel, context, fullModulePath))
 			{
-				if(options.includeFolders)
+				fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+				if(fullModulePath != null)
 				{
-					fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
-					if(fullModulePath != null)
-					{
-						return fullModulePath;
-					}
+					return fullModulePath;
 				}
 			}
 			else
@@ -813,15 +810,18 @@ function Kernel()
 		{
 			return fullModulePath;
 		}
-		if(options.includeFolders)
+		if(options.folderExtensions)
 		{
-			fullModulePath = modulePath + '.dll';
-			if(kernel.filesystem.exists(context, fullModulePath) && checkIfFolder(kernel, context, fullModulePath))
+			for(const extension of options.folderExtensions)
 			{
-				fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
-				if(fullModulePath != null)
+				fullModulePath = modulePath + '.' + extension;
+				if(kernel.filesystem.exists(context, fullModulePath) && checkIfFolder(kernel, context, fullModulePath))
 				{
-					return fullModulePath;
+					fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+					if(fullModulePath != null)
+					{
+						return fullModulePath;
+					}
 				}
 			}
 		}
@@ -881,7 +881,7 @@ function Kernel()
 		{
 			paths = context.env.paths;
 		}
-		var modulePath = findModulePath(kernel, context, paths, context.cwd, path);
+		var modulePath = findModulePath(kernel, context, paths, context.cwd, path, {folderExtensions: ['exe']});
 
 		return kernel.filesystem.executeFile(context, options, modulePath, ...args);
 	}
@@ -895,7 +895,7 @@ function Kernel()
 		{
 			libpaths = context.env.libpaths;
 		}
-		var modulePath = findModulePath(kernel, context, libpaths, dir, path, {includeFolders: true});
+		var modulePath = findModulePath(kernel, context, libpaths, dir, path, {folderExtensions: ['dll']});
 
 		// add empty modules object for context if necessary
 		if(!loadedModules[context.pid])
