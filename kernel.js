@@ -702,12 +702,7 @@ function Kernel()
 
 		scope.require.resolve = (path) => {
 			// get full module path
-			var libpaths = [];
-			if(context.env && context.env.libpaths)
-			{
-				libpaths = context.env.libpaths;
-			}
-			var modulePath = findModulePath(kernel, context, libpaths, dir, path);
+			return findRequirePath(kernel, context, dir, path);
 		}
 
 		// define Process object
@@ -1015,8 +1010,8 @@ function Kernel()
 		return kernel.filesystem.executeFile(context, options, modulePath, ...args);
 	}
 
-	// load a module into the current context
-	function require(kernel, context, parentScope, dir, path)
+	// find the path to a required module
+	function findRequirePath(kernel, context, dir, path)
 	{
 		// get full module path
 		var libpaths = [];
@@ -1024,7 +1019,14 @@ function Kernel()
 		{
 			libpaths = context.env.libpaths;
 		}
-		var modulePath = findModulePath(kernel, context, libpaths, dir, path, {folderExtensions: ['dll']});
+		return findModulePath(kernel, context, libpaths, dir, path, {folderExtensions: ['dll']});
+	}
+
+	// load a module into the current context
+	function require(kernel, context, parentScope, dir, path)
+	{
+		// get full module path
+		var modulePath = findRequirePath(kernel, context, dir, path);
 
 		// add empty modules object for context if necessary
 		if(!loadedModules[context.pid])
