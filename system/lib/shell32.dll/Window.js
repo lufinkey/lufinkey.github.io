@@ -43,9 +43,22 @@ class Window extends React.Component
 		this.setState(state, callback);
 	}
 
-	onMinimizeButtonClick(event)
+	minimize()
 	{
 		this.setState({minimized: true});
+	}
+
+	close()
+	{
+		if(this.props.windowManager)
+		{
+			this.props.windowManager.destroyWindow(this);
+		}
+	}
+
+	onMinimizeButtonClick(event)
+	{
+		this.minimize();
 	}
 
 	onMaximizeButtonClick(event)
@@ -55,10 +68,7 @@ class Window extends React.Component
 
 	onCloseButtonClick(event)
 	{
-		if(this.props.windowManager)
-		{
-			this.props.windowManager.destroyWindow(this);
-		}
+		this.close();
 	}
 
 	renderTitleBar()
