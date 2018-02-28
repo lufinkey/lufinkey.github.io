@@ -1,5 +1,5 @@
 
-const path = require('path');
+const MimeType = require('mimetype');
 
 if(process.argv.length !== 2)
 {
@@ -7,13 +7,16 @@ if(process.argv.length !== 2)
 	process.exit(1);
 }
 
-// get filename and extension
+// get filename
 var filename = process.argv[1];
-var extension = path.extname(filename);
-if(extension.startsWith('.'))
+
+// determine mime type
+var mimeType = null;
+try
 {
-	extension = extension.substring(1, extension.length);
+	mimeType = MimeType.determine(filename);
 }
+catch(error) {}
 
 // load app defaults
 var appdefaults = null;
@@ -27,10 +30,11 @@ catch(error)
 	process.exit(1);
 }
 
-var defaultcmd = appdefaults[extension];
+// get command to use to launch the file
+var defaultcmd = appdefaults[mimeType];
 if(!defaultcmd)
 {
-	console.error("no default app is defined for "+extension);
+	console.error("no default app is defined for file type "+mimeType);
 	process.exit(1);
 }
 else if(!(defaultcmd instanceof Array))
@@ -44,6 +48,7 @@ else if(defaultcmd.length === 0)
 	process.exit(1);
 }
 
+// replace %@ with the filename
 for(var i=1; i<defaultcmd.length; i++)
 {
 	var arg = defaultcmd[i];

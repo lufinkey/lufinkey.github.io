@@ -1,0 +1,15 @@
+{
+	"signatures": {
+		"89504E47": "image/png",
+		"47494638": "image/gif",
+		"25504446": "application/pdf",
+		"FFD8FFDB": "image/jpeg",
+		"FFD8FFE0": "image/jpeg",
+		"FFD8FFE1": "image/jpeg",
+		"504B0304": "application/zip"
+	},
+	"extensions": {
+		"": "text/plain",
+		"txt": "text/plain"
+	}
+}

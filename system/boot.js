@@ -178,10 +178,12 @@ const systemFiles = {
 				'index.js': new FilePlaceholder(),
 				'package.json': new FilePlaceholder()
 			},
+			'mimetype.js': new FilePlaceholder(),
 			'path.js': new FilePlaceholder()
 		},
 		'share': {
-			'appdefaults.json': new FilePlaceholder()
+			'appdefaults.json': new FilePlaceholder(),
+			'magic.json': new FilePlaceholder()
 		}
 	}
 };
