@@ -43,13 +43,15 @@ class Desktop extends React.Component
 	onWindowManagerMount(windowManager)
 	{
 		this.windowManager = windowManager;
-		process.env['WINDOW_MANAGER'] = this.windowManager;
+		process.env['GET_WINDOW_MANAGER'] = () => {
+			return this.windowManager;
+		};
 	}
 
 	onWindowManagerUnmount(windowManager)
 	{
 		this.windowManager = null;
-		process.env['WINDOW_MANAGER'] = null;
+		process.env['GET_WINDOW_MANAGER'] = null;
 	}
 
 	onWindowCreate(window)
