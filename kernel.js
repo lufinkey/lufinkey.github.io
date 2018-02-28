@@ -92,6 +92,7 @@ const rootContext = {
 		],
 		paths: [
 			'/system/bin',
+			'/apps',
 			'/bin'
 		]
 	}
