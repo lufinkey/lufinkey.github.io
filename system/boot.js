@@ -144,8 +144,17 @@ const transcendFiles =  {
 	}
 };
 
-const shellFiles = {
+const systemFiles = {
+	'apps': {
+		'textedit.exe': {
+			'index.js': new FilePlaceholder(),
+			'package.json': new FilePlaceholder()
+		}
+	},
 	'system': {
+		'bin': {
+			'open.js': new FilePlaceholder()
+		},
 		'lib': {
 			'shell32.dll': {
 				'Desktop.js': new FilePlaceholder(),
@@ -158,7 +167,11 @@ const shellFiles = {
 				'WindowManager.js': new FilePlaceholder(),
 				'index.js': new FilePlaceholder(),
 				'package.json': new FilePlaceholder()
-			}
+			},
+			'path.js': new FilePlaceholder()
+		},
+		'share': {
+			'appdefaults.json': new FilePlaceholder()
 		}
 	}
 };
@@ -244,10 +257,10 @@ class OS extends React.Component
 	boot()
 	{
 		return new Promise((resolve, reject) => {
-			// download shell32.exe
-			bootlog("downloading shell32.dll");
-			downloadFilesSlowly(shellFiles).then(() => {
-				bootlog("downloaded shell32.dll");
+			// download system files
+			bootlog("downloading system files");
+			downloadFilesSlowly(systemFiles).then(() => {
+				bootlog("finished downloading system files");
 				Shell32 = require('shell32');
 				bootSequence++; //2
 				this.forceUpdate();
@@ -261,7 +274,7 @@ class OS extends React.Component
 
 					//wait a bit
 					setTimeout(() => {
-						// finish boot sequence"
+						// finish "boot" sequence
 						bootSequence++; //4
 						this.forceUpdate();
 					}, 2000);
