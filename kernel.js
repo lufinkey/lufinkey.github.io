@@ -769,8 +769,10 @@ function Kernel()
 	}
 
 	// find a valid module path from the given context, base path, and path
-	function resolveModulePath(kernel, context, basePath, path)
+	function resolveModulePath(kernel, context, basePath, path, options=null)
 	{
+		options = Object.assign({}, options);
+
 		var modulePath = null;
 		try
 		{
@@ -787,10 +789,13 @@ function Kernel()
 		{
 			if(checkIfFolder(kernel, context, fullModulePath))
 			{
-				fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
-				if(fullModulePath != null)
+				if(options.includeFolders)
 				{
-					return fullModulePath;
+					fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+					if(fullModulePath != null)
+					{
+						return fullModulePath;
+					}
 				}
 			}
 			else
@@ -808,13 +813,16 @@ function Kernel()
 		{
 			return fullModulePath;
 		}
-		fullModulePath = modulePath + '.dll';
-		if(kernel.filesystem.exists(context, fullModulePath) && checkIfFolder(kernel, context, fullModulePath))
+		if(options.includeFolders)
 		{
-			fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
-			if(fullModulePath != null)
+			fullModulePath = modulePath + '.dll';
+			if(kernel.filesystem.exists(context, fullModulePath) && checkIfFolder(kernel, context, fullModulePath))
 			{
-				return fullModulePath;
+				fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+				if(fullModulePath != null)
+				{
+					return fullModulePath;
+				}
 			}
 		}
 		
@@ -822,14 +830,16 @@ function Kernel()
 	}
 	
 	// find a valid module path from the given context, base paths, and path
-	function findModulePath(kernel, context, basePaths, dir, path)
+	function findModulePath(kernel, context, basePaths, dir, path, options=null)
 	{
+		options = Object.assign({}, options);
+
 		var modulePath = null;
 		if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
 		{
 			try
 			{
-				modulePath = resolveModulePath(kernel, context, dir, path);
+				modulePath = resolveModulePath(kernel, context, dir, path, options);
 			}
 			catch(error)
 			{
@@ -846,7 +856,7 @@ function Kernel()
 			{
 				try
 				{
-					modulePath = resolveModulePath(kernel, context, basePath, path);
+					modulePath = resolveModulePath(kernel, context, basePath, path, options);
 					break;
 				}
 				catch(error)
@@ -885,7 +895,7 @@ function Kernel()
 		{
 			libpaths = context.env.libpaths;
 		}
-		var modulePath = findModulePath(kernel, context, libpaths, dir, path);
+		var modulePath = findModulePath(kernel, context, libpaths, dir, path, {includeFolders: true});
 
 		// add empty modules object for context if necessary
 		if(!loadedModules[context.pid])
