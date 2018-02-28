@@ -1207,7 +1207,7 @@ function Kernel()
 			return require(kernel, moduleContext, scope, pathDir, path);
 		};
 		scope.requireCSS = (path) => {
-			return requireCSS(kernel, moduleContext, dir, path);
+			return requireCSS(kernel, moduleContext, pathDir, path);
 		}
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
