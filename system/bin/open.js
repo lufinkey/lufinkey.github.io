@@ -19,7 +19,7 @@ if(extension.startsWith('.'))
 var appdefaults = null;
 try
 {
-	appdefaults = JSON.stringify(syscall('filesystem.readFile', '/system/share/appdefaults.js'));
+	appdefaults = JSON.stringify(syscall('filesystem.readFile', '/system/share/appdefaults.json'));
 }
 catch(error)
 {
