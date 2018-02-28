@@ -7,7 +7,7 @@ class Transcend32 extends React.Component
 	render()
 	{
 		return (
-			<CRT>
+			<CRT onScreenTurnOn={this.props.onScreenTurnOn} fullscreen={this.props.fullscreen}>
 				{this.props.children}
 			</CRT>
 		);

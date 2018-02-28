@@ -26,7 +26,7 @@ bootlog('react loaded');
 
 function FilePlaceholder() {}
 
-function downloadFiles(structure, path)
+function downloadFiles(structure, path=null)
 {
 	var promises = [];
 	for(let entryName in structure)
@@ -45,10 +45,11 @@ function downloadFiles(structure, path)
 
 		if(entry instanceof FilePlaceholder)
 		{
-			promises.push(syscall('filesystem.downloadFile', entryPath, '/'+entryPath+'?v='+(Math.random()*9999999999)));
+			promises.push(syscall('filesystem.downloadFile', entryPath+'?v='+(Math.random()*9999999999), '/'+entryPath));
 		}
 		else
 		{
+			syscall('filesystem.createDir', entryPath, {ignoreIfExists: true});
 			promises = promises.concat( downloadFiles(entry, entryPath) );
 		}
 	}
@@ -56,83 +57,53 @@ function downloadFiles(structure, path)
 }
 
 
-function downloadFileChunks(chunks, onChunk, onError)
-{
-	if(chunks.length == 0)
-	{
-		return;
-	}
-	var currentChunk = chunks[0];
-	var nextChunks = chunks.slice(1);
-	downloadFiles(currentChunk).then(() => {
-		onChunk(currentChunk);
-		setTimeout(() => {
-			downloadFileChunks(nextChunks, onChunk, onError);
-		}, 1000);
-	}).catch((error) => {
-		onError(error);
-	});
-}
-
-
-const dataChunks = [
-	{
-		'system': {
-			'lib': {
-				'transcend32.dll': {
-					'CRT.js': new FilePlaceholder(),
-					'index.js': new FilePlaceholder()
-				}
-			}
-		}
-	},
-	{
-		'system': {
-			'lib': {
-				'shell32.dll': {
-					'Desktop.js': new FilePlaceholder(),
-					'FileIcon.js': new FilePlaceholder(),
-					'FileIconLayout.js': new FilePlaceholder(),
-					'index.js': new FilePlaceholder(),
-					'TaskBar.js': new FilePlaceholder(),
-					'TaskBarWindowButton.js': new FilePlaceholder(),
-					'Wallpaper.js': new FilePlaceholder(),
-					'Window.js': new FilePlaceholder(),
-					'WindowManager.js': new FilePlaceholder()
-				}
+const transcendFiles =  {
+	'system': {
+		'lib': {
+			'transcend32.dll': {
+				'CRT.js': new FilePlaceholder(),
+				'index.js': new FilePlaceholder()
 			}
 		}
 	}
-];
+};
 
+const shellFiles = {
+	'system': {
+		'lib': {
+			'shell32.dll': {
+				'Desktop.js': new FilePlaceholder(),
+				'FileIcon.js': new FilePlaceholder(),
+				'FileIconLayout.js': new FilePlaceholder(),
+				'index.js': new FilePlaceholder(),
+				'TaskBar.js': new FilePlaceholder(),
+				'TaskBarWindowButton.js': new FilePlaceholder(),
+				'Wallpaper.js': new FilePlaceholder(),
+				'Window.js': new FilePlaceholder(),
+				'WindowManager.js': new FilePlaceholder()
+			}
+		}
+	}
+};
 
 bootlog("downloading base system...");
 
-let chunkCount = 0;
-bootlog("downloading data chunk 0...");
-downloadFileChunks(dataChunks, (chunk) => {
-	bootlog("chunk "+chunkCount+" downloaded");
+let bootSequence = 0;
 
-	switch(chunkCount)
+
+// download transcend32.exe
+bootlog("downloading transcend32.dll");
+downloadFiles(transcendFiles).then(() => {
+	bootlog("downloaded transcend32.dll");
+	Transcend32 = require('./lib/transcend32.dll/index');
+	bootSequence++;
+	if(osComponent)
 	{
-		case 0:
-			Transcend32 = require('./lib/transcend32.dll/index');
-			break;
-
-		case 1:
-			Shell32 = require('./lib/shell32.dll/index');
-			break;
+		osComponent.forceUpdate();
 	}
-
-	chunkCount++;
-	osComponent.forceUpdate();
-	if(chunkCount < dataChunks.length)
-	{
-		bootlog("downloading data chunk "+chunkCount+"...");
-	}
-}, (error) => {
-	bootlog("fatal error: unable to download chunk "+chunkCount);
-	bootlog(error.toString());
+}).catch((error) => {
+	bootlog("error downloading transcend32.dll", {color: 'red'});
+	bootlog(error.toString(), {color: 'red'});
 });
 
 
@@ -154,23 +125,57 @@ class OS extends React.Component
 		osComponent = null;
 	}
 
+	onScreenTurnOn()
+	{
+		let bootWaitInterval = setInterval(() => {
+			if(bootSequence < 1)
+			{
+				return;
+			}
+
+			clearInterval(bootWaitInterval);
+
+			// start actual boot sequence
+
+			// download shell32.exe
+			bootlog("downloading shell32.dll");
+			downloadFiles(shellFiles).then(() => {
+				bootlog("downloaded shell32.dll");
+				Shell32 = require('./lib/shell32.dll/index');
+				bootSequence++;
+				this.forceUpdate();
+
+				//wait a bit
+				setTimeout(() => {
+					bootSequence++;
+					this.forceUpdate();
+				}, 600);
+			}).catch((error) => {
+				bootlog("error downloading shell32.dll", {color: 'red'});
+				bootlog(error.toString(), {color: 'red'});
+			});
+
+		}, 200);
+	}
+
 	render()
 	{
-		switch(chunkCount)
+		switch(bootSequence)
 		{
 			case 0:
 				return null;
 
 			case 1:
+			case 2:
 				return (
-					<Transcend32>
+					<Transcend32 onScreenTurnOn={() => {this.onScreenTurnOn()}}>
 						{this.renderLogs()}
 					</Transcend32>
 				);
 
 			default:
 				return (
-					<Transcend32>
+					<Transcend32 fullscreen={true}>
 						<Shell32/>
 					</Transcend32>
 				);

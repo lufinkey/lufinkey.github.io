@@ -1,4 +1,7 @@
 
+// clear local storage on boot for now
+window.localStorage.clear();
+
 // wait for window load to create kernel
 window.addEventListener('load', () => {
 
