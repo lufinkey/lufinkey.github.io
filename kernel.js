@@ -13,6 +13,7 @@ function evalScript(__scope, __code) {
 		const evalScript = undefined;
 		const syscall = __scope.syscall;
 		const require = __scope.require;
+		const requireCSS = __scope.requireCSS;
 		const __dirname = __scope.__dirname;
 		const module = __scope.module;
 		const exports = (__scope.module ? __scope.module.exports : undefined);
@@ -855,6 +856,9 @@ function Kernel()
 			require: (path) => {
 				return kernel.require(context, scope, dir, path);
 			},
+			requireCSS: (path) => {
+				return kernel.requireCSS(context, dir, path);
+			},
 			__dirname: dir,
 			__filename: fullPath,
 			module: {exports:{}},
@@ -995,6 +999,7 @@ function Kernel()
 
 
 	let loadedModules = {};
+	let loadedCSS = {};
 	let sharedModules = {};
 
 	// check if a given path is a folder
@@ -1201,6 +1206,9 @@ function Kernel()
 		scope.require = (path) => {
 			return require(kernel, moduleContext, scope, pathDir, path);
 		};
+		scope.requireCSS = (path) => {
+			return requireCSS(kernel, moduleContext, dir, path);
+		}
 		scope.__dirname = pathDir;
 		scope.module = { exports: {} };
 
@@ -1214,9 +1222,70 @@ function Kernel()
 		return scope.module.exports;
 	}
 
+	function requireCSS(kernel, context, dir, path)
+	{
+		if(typeof path !== 'string')
+		{
+			throw new TypeError("path must be a string");
+		}
+
+		// validate path
+		if(!path.startsWith('/') && !path.startsWith('./') && !path.startsWith('../'))
+		{
+			throw new Error("invalid path");
+		}
+
+		// resolve full path
+		var cssPath = kernel.filesystem.resolvePath(context, path, dir);
+
+		// check if css already loaded
+		if(loadedCSS[cssPath])
+		{
+			// add process PID if necessary
+			if(!loadedCSS.pids.includes(context.pid))
+			{
+				loadedCSS.pids.push(context.pid);
+			}
+			return;
+		}
+
+		// load CSS data
+		var cssData = kernel.filesystem.readFile(context, cssPath);
+
+		// inject CSS into the page
+		var head = document.querySelector('head');
+		var styleTag = document.createElement("STYLE");
+		styleTag.type = "text/css";
+		styleTag.textContent = cssData;
+		head.appendChild(styleTag);
+
+		// save injected tag
+		loadedCSS[cssPath] = {
+			pids: [context.pid],
+			tag: styleTag
+		};
+	}
+
 	function unloadRequired(kernel, context)
 	{
+		// delete any loaded modules for this PID
 		delete loadedModules[context.pid];
+		// remove PID references from loaded CSS
+		for(const cssPath of Object.keys(loadedCSS))
+		{
+			var info = loadedCSS[cssPath];
+			var pidIndex = info.pids.indexOf(context.pid);
+			if(pidIndex !== -1)
+			{
+				info.pids.splice(pidIndex, 1);
+				if(info.pids.length === 0)
+				{
+					// no referencing PIDs remaining. unload CSS
+					info.tag.parentNode.removeChild(info.tag);
+					delete loadedCSS[cssPath];
+				}
+			}
+		}
 	}
 
 
@@ -1294,6 +1363,9 @@ function Kernel()
 	};
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
+	};
+	this.requireCSS = (context, dir, path) => {
+		return requireCSS(this, context, dir, path);
 	};
 	this.syscall = (context, func, ...args) => {
 		return syscall(this, context, func, ...args);
