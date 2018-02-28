@@ -1,5 +1,10 @@
 
-const windowManager = process.env['GET_WINDOW_MANAGER']();
+var getWindowManager = process.env['GET_WINDOW_MANAGER'];
+let windowManager = null;
+if(getWindowManager)
+{
+	windowManager = getWindowManager();
+}
 if(!windowManager)
 {
 	console.error("no window manager detected");
