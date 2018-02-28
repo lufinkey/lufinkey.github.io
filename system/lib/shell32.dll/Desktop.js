@@ -1,4 +1,5 @@
 
+requireCSS('./Desktop.css');
 const React = require('react');
 const WindowManager = require('dwm');
 const TaskBar = require('./TaskBar');

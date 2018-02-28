@@ -132,10 +132,12 @@ function downloadFilesSlowly(structure, path=null)
 }
 
 
-const transcendFiles =  {
+const baseFiles =  {
 	'system': {
+		'boot.css': new FilePlaceholder(),
 		'lib': {
 			'transcend32.dll': {
+				'style.css': new FilePlaceholder(),
 				'CRT.js': new FilePlaceholder(),
 				'index.js': new FilePlaceholder(),
 				'package.json': new FilePlaceholder()
@@ -164,9 +166,12 @@ const systemFiles = {
 				'package.json': new FilePlaceholder()
 			},
 			'shell32.dll': {
+				'Desktop.css': new FilePlaceholder(),
 				'Desktop.js': new FilePlaceholder(),
 				'FileIcon.js': new FilePlaceholder(),
+				'FileIconLayout.css': new FilePlaceholder(),
 				'FileIconLayout.js': new FilePlaceholder(),
+				'TaskBar.css': new FilePlaceholder(),
 				'TaskBar.js': new FilePlaceholder(),
 				'TaskBarWindowButton.js': new FilePlaceholder(),
 				'Wallpaper.js': new FilePlaceholder(),
@@ -198,8 +203,9 @@ let bootSequence = 0;
 
 // download transcend32.exe
 bootlog("downloading transcend32.dll");
-downloadFiles(transcendFiles).then(() => {
+downloadFiles(baseFiles).then(() => {
 	bootlog("downloaded transcend32.dll");
+	requireCSS('./boot.css');
 	Transcend32 = require('transcend32');
 	bootSequence++;
 	if(osComponent)

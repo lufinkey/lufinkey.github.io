@@ -1,4 +1,5 @@
 
+requireCSS('./TaskBar.css');
 const React = require('react');
 const TaskBarWindowButton = require('./TaskBarWindowButton');
 

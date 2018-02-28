@@ -1,0 +1,82 @@
+
+.taskbar {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	height: 26px;
+
+	background-color: silver;
+	border-top: ridge 2px white;
+}
+
+.start-button {
+	height: 90%;
+	width: 56px;
+	padding: 0;
+	margin: 0;
+
+	margin-left: 2px;
+	margin-right: 2px;
+	margin-top: 5%;
+	margin-bottom: 5%;
+
+	padding-left: 16px;
+	padding-top: 1px;
+
+	font-weight: bold;
+	font-size: 12px;
+	color: black;
+
+	border-top-color: #a6a6a6;
+    border-left-color: #a6a6a6;
+    border-bottom-color: #2b2800;
+	border-right-color: #2b2800;
+
+	background-image: url(/system/lib/shell32.dll/images/apple-icon.png);
+	background-repeat: no-repeat;
+	background-position-x: 4px;
+	background-position-y: center;
+	background-size: auto 80%;
+}
+
+.start-button:active {
+	border-top-color: #2b2800;
+    border-left-color: #2b2800;
+    border-bottom-color: #a6a6a6;
+	border-right-color: #a6a6a6;
+}
+
+.taskbar-windows {
+	display: flex;
+	flex-direction: row;
+	flex-grow: 1;
+	flex-shrink: 1;
+	overflow-x: auto;
+}
+
+.taskbar-window {
+	border: 2px solid;
+
+	border-top-color: #2b2800;
+    border-left-color: #2b2800;
+    border-bottom-color: #a6a6a6;
+	border-right-color: #a6a6a6;
+
+	margin-left: 2px;
+	margin-right: 2px;
+
+	text-align: left;
+	flex-basis: 128px;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+
+	user-select: none;
+}
+
+.taskbar-window.minimized {
+	border-top-color: #a6a6a6;
+    border-left-color: #a6a6a6;
+    border-bottom-color: #2b2800;
+	border-right-color: #2b2800;
+}
