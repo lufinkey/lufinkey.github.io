@@ -646,6 +646,28 @@ function Kernel()
 
 
 
+	class ExitSignal extends Error
+	{
+		constructor(signal, message)
+		{
+			if(typeof signal === 'string')
+			{
+				message = signal;
+				signal = null;
+			}
+			
+			if(!message && signal)
+			{
+				message = "process exited with signal "+signal;
+			}
+			super(message);
+			this.signal = signal;
+		}
+	}
+
+
+
+
 	let pidCounter = 1;
 	
 	function ChildProcess(kernel, parentContext, options, path, ...args)
@@ -660,6 +682,11 @@ function Kernel()
 		context.argv = [path].concat(args);
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
+
+		let executed = false;
+		let resolved = false;
+		let exited = false;
+		let ended = false;
 
 		// build process scope
 		let scope = {
@@ -683,15 +710,83 @@ function Kernel()
 			var modulePath = findModulePath(kernel, context, libpaths, dir, path);
 		}
 
+		// define Process object
+		scope.process = new (function(){
+			
+			Object.defineProperty(this, 'cwd', {
+				value: () => {
+					return context.cwd;
+				},
+				writable: false
+			});
+
+			Object.defineProperty(this, 'env', {
+				get: () => {
+					return context.env;
+				},
+				set: (value) => {
+					context.env = value;
+				}
+			});
+
+			Object.defineProperty(this, 'exit', {
+				value: (code) => {
+					if(code == null)
+					{
+						code = 0;
+					}
+					if(exited)
+					{
+						throw new Error("already gave exit code for this process");
+					}
+					exited = true;
+					var exitSignal = new ExitSignal(code);
+					if(!resolved)
+					{
+						if(code != 0)
+						{
+							context.reject(exitSignal);
+						}
+						else
+						{
+							context.resolve();
+						}
+					}
+					throw exitSignal;
+				},
+				writable: false
+			});
+
+			Object.defineProperty(this, 'pid', {
+				get: () => {
+					return context.pid;
+				}
+			});
+
+			Object.defineProperty(this, 'ppid', {
+				get: () => {
+					return parentContext.pid;
+				}
+			});
+
+			Object.defineProperty(this, 'platform', {
+				value: () => {
+					return 'finkeos';
+				},
+				writable: false
+			});
+		})();
 
 
 		// process lifecycle functions
 
-		let executed = false;
-
 		function endProcess()
 		{
-			unloadRequired(kernel, context);
+			if(!ended)
+			{
+				ended = true;
+				unloadRequired(kernel, context);
+			}
 		}
 
 		function execute()
@@ -704,16 +799,47 @@ function Kernel()
 
 			return new Promise((resolve, reject) => {
 				context.resolve = (...args) => {
+					if(resolved)
+					{
+						throw new Error("the process has already been resolved or rejected");
+					}
+					resolved = true;
 					endProcess();
 					resolve(...args);
 				};
 
 				context.reject = (...args) => {
+					if(resolved)
+					{
+						throw new Error("the process has already been resolved or rejected");
+					}
+					resolved = true;
 					endProcess();
 					reject(...args);
 				};
 
-				kernel.filesystem.requireFile(context, scope, path);
+				try
+				{
+					kernel.filesystem.requireFile(context, scope, path);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						// process has ended
+					}
+					else
+					{
+						if(!ended)
+						{
+							context.reject(error);
+						}
+						else
+						{
+							// just ignore...
+						}
+					}
+				}
 			});
 		}
 
