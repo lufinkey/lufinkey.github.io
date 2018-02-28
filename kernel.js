@@ -712,6 +712,11 @@ function Kernel()
 
 		// define Process object
 		scope.process = new (function(){
+
+			Object.defineProperty(this, 'argv', {
+				value: context.argv.slice(0),
+				writable: false
+			});
 			
 			Object.defineProperty(this, 'cwd', {
 				value: () => {
@@ -770,9 +775,7 @@ function Kernel()
 			});
 
 			Object.defineProperty(this, 'platform', {
-				value: () => {
-					return 'finkeos';
-				},
+				value: 'finkeos',
 				writable: false
 			});
 		})();
