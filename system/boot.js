@@ -151,12 +151,13 @@ const shellFiles = {
 				'Desktop.js': new FilePlaceholder(),
 				'FileIcon.js': new FilePlaceholder(),
 				'FileIconLayout.js': new FilePlaceholder(),
-				'index.js': new FilePlaceholder(),
 				'TaskBar.js': new FilePlaceholder(),
 				'TaskBarWindowButton.js': new FilePlaceholder(),
 				'Wallpaper.js': new FilePlaceholder(),
 				'Window.js': new FilePlaceholder(),
-				'WindowManager.js': new FilePlaceholder()
+				'WindowManager.js': new FilePlaceholder(),
+				'index.js': new FilePlaceholder(),
+				'package.json': new FilePlaceholder()
 			}
 		}
 	}
@@ -247,7 +248,7 @@ class OS extends React.Component
 			bootlog("downloading shell32.dll");
 			downloadFilesSlowly(shellFiles).then(() => {
 				bootlog("downloaded shell32.dll");
-				Shell32 = require('./lib/shell32.dll/index');
+				Shell32 = require('shell32');
 				bootSequence++; //2
 				this.forceUpdate();
 
