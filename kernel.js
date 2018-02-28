@@ -714,6 +714,25 @@ function Kernel()
 			return data;
 		}
 
+		// retrieve the magic numbers for the file
+		function readFileSig(context, path)
+		{
+			var content = readFile(context, path);
+			var magic = content.slice(0, 4);
+			if(magic.length < 2)
+			{
+				return null;
+			}
+			var hexString = "";
+			for(var i=0; i<magic.length; i++)
+			{
+				var byte = magic.charCodeAt(i);
+				var hexByte = ('0' + (byte & 0xFF).toString(16)).slice(-2);
+				hexString += hexByte;
+			}
+			return hexByte;
+		}
+
 		// write file to a given path
 		function writeFile(context, path, data)
 		{
@@ -817,6 +836,7 @@ function Kernel()
 		this.downloadFile = downloadFile;
 		this.executeFile = executeFile;
 		this.requireFile = requireFile;
+		this.readFileSig = readFileSig;
 	}
 
 
