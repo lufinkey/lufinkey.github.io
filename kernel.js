@@ -607,7 +607,7 @@ function Kernel()
 		// execute a js script at a given path
 		function executeFile(context, options, path, ...args)
 		{
-			return new Process(kernel, context, options, path, ...args);
+			return new ChildProcess(kernel, context, options, path, ...args);
 		}
 
 		// load a js script into the current process
@@ -648,7 +648,7 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function Process(kernel, parentContext, options, path, ...args)
+	function ChildProcess(kernel, parentContext, options, path, ...args)
 	{
 		options = Object.assign({}, options);
 
