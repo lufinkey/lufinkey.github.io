@@ -740,6 +740,34 @@ function Kernel()
 		return false;
 	}
 
+	// resolve a module's main js file from a folder
+	function resolveModuleFolder(kernel, context, path)
+	{
+		var packagePath = path+'/package.json';
+		if(!kernel.filesystem.exists(context, packagePath))
+		{
+			return null;
+		}
+
+		var packageInfo = JSON.parse(kernel.filesystem.readFile(context, path));
+		var mainFile = packageInfo["main"];
+		if(!mainFile)
+		{
+			throw new Error("no main file specified");
+		}
+
+		if(typeof mainFile !== 'string')
+		{
+			throw new TypeError("\"main\" must be a string");
+		}
+
+		if(mainFile.startsWith('/'))
+		{
+			return mainFile;
+		}
+		return kernel.filesystem.resolvePath(context, path+'/'+mainFile);
+	}
+
 	// find a valid module path from the given context, base path, and path
 	function resolveModulePath(kernel, context, basePath, path)
 	{
@@ -755,9 +783,20 @@ function Kernel()
 		
 		// find full module path
 		var fullModulePath = modulePath;
-		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
+		if(kernel.filesystem.exists(context, fullModulePath))
 		{
-			return fullModulePath;
+			if(checkIfFolder(kernel, context, fullModulePath))
+			{
+				fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+				if(fullModulePath != null)
+				{
+					return fullModulePath;
+				}
+			}
+			else
+			{
+				return fullModulePath;
+			}
 		}
 		fullModulePath = modulePath + '.js';
 		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
@@ -768,6 +807,15 @@ function Kernel()
 		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
 		{
 			return fullModulePath;
+		}
+		fullModulePath = modulePath + '.dll';
+		if(kernel.filesystem.exists(context, fullModulePath) && checkIfFolder(kernel, context, fullModulePath))
+		{
+			fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+			if(fullModulePath != null)
+			{
+				return fullModulePath;
+			}
 		}
 		
 		throw new Error("module not found");
