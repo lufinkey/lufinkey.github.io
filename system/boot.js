@@ -161,6 +161,14 @@ const shellFiles = {
 	}
 };
 
+const homeFiles = {
+	'home': {
+		'Desktop': {
+			'ayylmao.txt': new FilePlaceholder()
+		}
+	}
+}
+
 
 
 bootlog("downloading base system...");
@@ -218,34 +226,50 @@ class OS extends React.Component
 	onScreenTurnOn()
 	{
 		let bootWaitInterval = setInterval(() => {
+			// wait for transcend32.dll to download
 			if(bootSequence < 1)
 			{
 				return;
 			}
-
 			clearInterval(bootWaitInterval);
 
 			// start actual boot sequence
+			this.boot();
 
+		}, 200);
+	}
+
+	boot()
+	{
+		return new Promise((resolve, reject) => {
 			// download shell32.exe
 			bootlog("downloading shell32.dll");
 			downloadFilesSlowly(shellFiles).then(() => {
 				bootlog("downloaded shell32.dll");
 				Shell32 = require('./lib/shell32.dll/index');
-				bootSequence++;
+				bootSequence++; //2
 				this.forceUpdate();
 
-				//wait a bit
-				setTimeout(() => {
-					bootSequence++;
+				// build user home
+				bootlog("building user home directory");
+				downloadFilesSlowly(homeFiles).then(() => {
+					bootlog("finished building user home directory");
+					bootSequence++; //3
 					this.forceUpdate();
-					//
-				}, 600);
+
+					//wait a bit
+					setTimeout(() => {
+						// finish boot sequence"
+						bootSequence++; //4
+						this.forceUpdate();
+					}, 2000);
+				}).catch((error) => {
+					bootlog("failed to build user home directory", {color: 'red'});
+				});
 			}).catch((error) => {
 				bootlog("failed to download shell32.dll", {color: 'red'});
 			});
-
-		}, 200);
+		});
 	}
 
 	render()
@@ -257,6 +281,7 @@ class OS extends React.Component
 
 			case 1:
 			case 2:
+			case 3:
 				return (
 					<Transcend32 onScreenTurnOn={() => {this.onScreenTurnOn()}}>
 						{this.renderLogs()}
