@@ -101,7 +101,7 @@ function downloadFilesSlowly(structure, path=null)
 				setTimeout(() => {
 					// load next file in structure
 					downloadFilesSlowly(nextStructure, path).then(resolve).catch(reject);
-				}, 200);
+				}, 100);
 			}).catch((error) => {
 				bootlog("failed to download /"+entryPath, {color: 'red'});
 				bootlog(error.toString(), {color: 'red'});
