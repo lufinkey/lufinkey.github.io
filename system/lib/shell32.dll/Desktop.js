@@ -1,8 +1,8 @@
 
 const React = require('react');
+const WindowManager = require('dwm');
 const TaskBar = require('./TaskBar');
 const FileIconLayout = require('./FileIconLayout');
-const WindowManager = require('./WindowManager');
 const Wallpaper = require('./Wallpaper');
 
 

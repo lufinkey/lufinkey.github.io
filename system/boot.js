@@ -156,6 +156,13 @@ const systemFiles = {
 			'open.js': new FilePlaceholder()
 		},
 		'lib': {
+			'dwm.dll': {
+				'Window.js': new FilePlaceholder(),
+				'WindowManager.js': new FilePlaceholder(),
+				'style.css': new FilePlaceholder(),
+				'index.js': new FilePlaceholder(),
+				'package.json': new FilePlaceholder()
+			},
 			'shell32.dll': {
 				'Desktop.js': new FilePlaceholder(),
 				'FileIcon.js': new FilePlaceholder(),
@@ -163,8 +170,6 @@ const systemFiles = {
 				'TaskBar.js': new FilePlaceholder(),
 				'TaskBarWindowButton.js': new FilePlaceholder(),
 				'Wallpaper.js': new FilePlaceholder(),
-				'Window.js': new FilePlaceholder(),
-				'WindowManager.js': new FilePlaceholder(),
 				'index.js': new FilePlaceholder(),
 				'package.json': new FilePlaceholder()
 			},
