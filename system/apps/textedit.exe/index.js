@@ -15,7 +15,10 @@ if(process.argv.length > 2)
 let textBody = "";
 try
 {
-	textBody = syscall('filesystem.readFile', process.argv[1]);
+	if(process.argv.length === 2)
+	{
+		textBody = syscall('filesystem.readFile', process.argv[1]);
+	}
 }
 catch(error)
 {
