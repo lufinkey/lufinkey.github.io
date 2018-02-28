@@ -43,17 +43,92 @@ function downloadFiles(structure, path=null)
 			entryPath = path+'/'+entryName;
 		}
 
-		if(entry instanceof FilePlaceholder)
+		try
 		{
-			promises.push(syscall('filesystem.downloadFile', entryPath+'?v='+(Math.random()*9999999999), '/'+entryPath));
+			if(entry instanceof FilePlaceholder)
+			{
+				promises.push(syscall('filesystem.downloadFile', entryPath+'?v='+(Math.random()*9999999999), '/'+entryPath));
+			}
+			else
+			{
+				syscall('filesystem.createDir', '/'+entryPath, {ignoreIfExists: true});
+				promises = promises.concat( downloadFiles(entry, entryPath) );
+			}
 		}
-		else
+		catch(error)
 		{
-			syscall('filesystem.createDir', entryPath, {ignoreIfExists: true});
-			promises = promises.concat( downloadFiles(entry, entryPath) );
+			promises.push(Promise.reject(error));
 		}
 	}
 	return Promise.all(promises);
+}
+
+
+
+function downloadFilesSlowly(structure, path=null)
+{
+	const structKeys = Object.keys(structure);
+	if(structKeys.length === 0)
+	{
+		return Promise.resolve();
+	}
+
+	// get current entry
+	const entryName = structKeys[0];
+	const entry = structure[entryName];
+	let entryPath = null;
+	if(path == null)
+	{
+		entryPath = entryName;
+	}
+	else
+	{
+		entryPath = path+'/'+entryName;
+	}
+
+	// get next structure to parse
+	const nextStructure = Object.assign({}, structure);
+	delete nextStructure[entryName];
+
+	return new Promise((resolve, reject) => {
+		if(entry instanceof FilePlaceholder)
+		{
+			// download file
+			bootlog("downloading /"+entryPath);
+			syscall('filesystem.downloadFile', entryPath+'?v='+(Math.random()*9999999999), '/'+entryPath).then(() => {
+				bootlog("downloaded /"+entryPath);
+				// wait a bit
+				setTimeout(() => {
+					// load next file in structure
+					downloadFilesSlowly(nextStructure, path).then(resolve).catch(reject);
+				}, 200);
+			}).catch((error) => {
+				bootlog("failed to download /"+entryPath, {color: 'red'});
+				bootlog(error.toString(), {color: 'red'});
+				reject(error);
+			});
+		}
+		else
+		{
+			// create directory
+			try
+			{
+				syscall('filesystem.createDir', '/'+entryPath, {ignoreIfExists: true});
+			}
+			catch(error)
+			{
+				bootlog("failed to create directory /"+entryPath, {color: 'red'});
+				bootlog(error.toString(), {color: 'red'});
+				reject(error);
+				return;
+			}
+			// fetch remote files in folder
+			downloadFilesSlowly(entry, entryPath).then(() => {
+				// load next file in structure
+				downloadFilesSlowly(nextStructure, path).then(resolve).catch(reject);
+			}).catch(reject);
+		}
+	});
 }
 
 
@@ -86,6 +161,8 @@ const shellFiles = {
 	}
 };
 
+
+
 bootlog("downloading base system...");
 
 let bootSequence = 0;
@@ -102,7 +179,7 @@ downloadFiles(transcendFiles).then(() => {
 		osComponent.forceUpdate();
 	}
 }).catch((error) => {
-	bootlog("error downloading transcend32.dll", {color: 'red'});
+	bootlog("failed to download transcend32.dll", {color: 'red'});
 	bootlog(error.toString(), {color: 'red'});
 });
 
@@ -118,6 +195,19 @@ class OS extends React.Component
 	componentDidMount()
 	{
 		osComponent = this;
+	}
+
+	componentDidUpdate()
+	{
+		var osElement = ReactDOM.findDOMNode(this);
+		if(osElement != null)
+		{
+			var bootlogElement = osElement.querySelector('.bootlog');
+			if(bootlogElement != null)
+			{
+				bootlogElement.scrollTop = bootlogElement.scrollHeight;
+			}
+		}
 	}
 
 	componentWillUnmount()
@@ -139,7 +229,7 @@ class OS extends React.Component
 
 			// download shell32.exe
 			bootlog("downloading shell32.dll");
-			downloadFiles(shellFiles).then(() => {
+			downloadFilesSlowly(shellFiles).then(() => {
 				bootlog("downloaded shell32.dll");
 				Shell32 = require('./lib/shell32.dll/index');
 				bootSequence++;
@@ -149,10 +239,10 @@ class OS extends React.Component
 				setTimeout(() => {
 					bootSequence++;
 					this.forceUpdate();
+					//
 				}, 600);
 			}).catch((error) => {
-				bootlog("error downloading shell32.dll", {color: 'red'});
-				bootlog(error.toString(), {color: 'red'});
+				bootlog("failed to download shell32.dll", {color: 'red'});
 			});
 
 		}, 200);
