@@ -178,7 +178,7 @@ const systemFiles = {
 				'index.js': new FilePlaceholder(),
 				'package.json': new FilePlaceholder()
 			},
-			'base64uri': new FilePlaceholder(),
+			'base64uri.js': new FilePlaceholder(),
 			'mimetype.js': new FilePlaceholder(),
 			'path.js': new FilePlaceholder()
 		},
