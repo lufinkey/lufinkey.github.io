@@ -63,6 +63,7 @@ class ChildProcess extends EventEmitter
 			});
 		}
 
+		// pid
 		Object.defineProperty(this, 'pid', {
 			get: () => {
 				if(!subprocess)
