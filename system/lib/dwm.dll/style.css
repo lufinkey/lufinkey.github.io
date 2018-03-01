@@ -14,8 +14,8 @@
 
 .window {
 	position: absolute;
-	display: inline-block;
-	background-color: white;
+	display: flex;
+	flex-direction: column;
 	pointer-events: initial;
 
 	border: 2px solid;

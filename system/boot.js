@@ -149,6 +149,7 @@ const baseFiles =  {
 const systemFiles = {
 	'apps': {
 		'textedit.exe': {
+			'style.css': new FilePlaceholder(),
 			'index.js': new FilePlaceholder(),
 			'package.json': new FilePlaceholder()
 		}

@@ -1,4 +1,5 @@
 
+requireCSS('./style.css');
 const React = require('react');
 
 var getWindowManager = process.env['GET_WINDOW_MANAGER'];
@@ -38,7 +39,7 @@ windowManager.createWindow().then((window) => {
 	// window created
 	window.renderContent = () => {
 		return (
-			<textarea defaultValue={defaultTextBody}></textarea>
+			<textarea className="textedit-area" defaultValue={defaultTextBody}></textarea>
 		);
 	};
 
