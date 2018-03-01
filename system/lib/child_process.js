@@ -1,9 +1,11 @@
 
+const EventEmitter = require('events');
+
 const child_process = {};
 module.exports = child_process;
 
 
-class ChildProcess
+class ChildProcess extends EventEmitter
 {
 	constructor(command, subprocess, error)
 	{
@@ -14,6 +16,9 @@ class ChildProcess
 
 		if(subprocess == null)
 		{
+			// process failed
+
+			// wait for next queue
 			setTimeout(() => {
 				if(error)
 				{
@@ -27,17 +32,25 @@ class ChildProcess
 		}
 		else
 		{
+			// process is running
+
+			// validate subprocess object
 			if(typeof subprocess.pid !== 'number' || !(subprocess.promise instanceof Promise))
 			{
 				throw new TypeError("invalid subprocess data");
 			}
 
+			// wait for process to finish
 			subprocess.promise.then((...args) => {
+				// wait for next queue
 				setTimeout(() => {
+					// send exit event
 					this.emit("exit", 0, null);
 				}, 0);
 			}).catch((error) => {
+				// wait for next queue
 				setTimeout(() => {
+					// send exit event
 					if(typeof error.exitCode === 'number' && Number.isInteger(error.exitCode))
 					{
 						this.emit("exit", error.exitCode, null);
@@ -59,11 +72,6 @@ class ChildProcess
 				return subprocess.pid;
 			}
 		});
-	}
-
-	emit(eventName, ...args)
-	{
-		// TODO this is just a placeholder for now
 	}
 }
 
