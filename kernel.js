@@ -308,28 +308,44 @@ function Kernel()
 
 		const invalidPathCharacters = [':'];
 
-		// get path of directory containing path
-		function dirname(context, path)
+
+		// validate a path
+		function validatePath(context, path)
+		{
+			// ensure string
+			if(typeof path !== 'string')
+			{
+				throw new TypeError("path must be a string");
+			}
+
+			// check for invalid characters
+			for(const invalidChar of invalidPathCharacters)
+			{
+				if(path.indexOf(invalidChar) !== -1)
+				{
+					throw new Error("invalid character in path");
+				}
+			}
+		}
+
+
+		// normalize a path
+		function normalizePath(context, path)
 		{
 			if(typeof path !== 'string')
 			{
 				throw new TypeError("path must be a string");
 			}
 
-			var pathParts = path.split('/');
-			if(pathParts.length === 0 || (pathParts.length === 1 && pathParts[0] === ""))
-			{
-				throw new Error("invalid path");
-			}
-
-			// determine if path is absolute
+			// check if absolute
 			var absolute = false;
-			if(pathParts[0] === "")
+			if(path.startsWith('/'))
 			{
 				absolute = true;
 			}
 
-			// remove empty entries in path
+			// split path into parts and remove empty parts
+			var pathParts = path.split('/');
 			for(var i=0; i<pathParts.length; i++)
 			{
 				if(pathParts[i] === "")
@@ -339,7 +355,91 @@ function Kernel()
 				}
 			}
 
-			// trim last entry
+			// determine base directory
+			var baseDir = null;
+			if(absolute)
+			{
+				baseDir = '/';
+			}
+			else
+			{
+				baseDir = '.';
+			}
+
+			// return base directory if empty path
+			if(pathParts.length === 0)
+			{
+				return baseDir;
+			}
+
+			// function to resolve the path resursively
+			function resolvePathParts(pathParts, base)
+			{
+				if(pathParts.length === 0)
+				{
+					return base;
+				}
+
+				if(pathParts[0] == '.')
+				{
+					return resolvePathParts(pathParts.slice(1), base);
+				}
+				else if(pathParts[0] == '..')
+				{
+					var baseDir = dirname(context, base);
+					return resolvePathParts(pathParts.slice(1), baseDir);
+				}
+				var nextBase = null;
+				if(base === '/')
+				{
+					nextBase = '/'+pathParts[0];
+				}
+				else
+				{
+					nextBase = base+'/'+pathParts[0];
+				}
+				return resolvePathParts(pathParts.slice(1), nextBase);
+			}
+
+			// resolve the path
+			var resolvedPath = resolvePathParts(pathParts, baseDir);
+			// remove relative base if it exists
+			if(resolvedPath.startsWith('./'))
+			{
+				resolvedPath = resolvedPath.substring(2, resolvedPath.length);
+				if(resolvedPath == '')
+				{
+					return '.';
+				}
+			}
+			return resolvedPath;
+		}
+
+
+		// get path of directory containing path
+		function dirname(context, path)
+		{
+			// normalize the path
+			path = normalizePath(context, path);
+
+			// determine if path is absolute
+			var absolute = false;
+			if(path.startsWith('/'))
+			{
+				absolute = true;
+			}
+
+			// split path into parts and remove empty parts
+			var pathParts = path.split('/');
+			for(var i=0; i<pathParts.length; i++)
+			{
+				if(pathParts[i] === "")
+				{
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+			// trim the last entry
 			pathParts = pathParts.slice(0, pathParts.length-1);
 			
 			// return dir name
@@ -365,14 +465,11 @@ function Kernel()
 		// get entry name of path
 		function basename(context, path)
 		{
-			if(typeof path !== 'string')
-			{
-				throw new TypeError("path must be a string");
-			}
+			// normalize the path
+			path = normalizePath(context, path);
 			
+			// split path into parts and remove empty parts
 			var pathParts = path.split('/');
-			
-			// remove empty entries in path
 			for(var i=0; i<pathParts.length; i++)
 			{
 				if(pathParts[i] === "")
@@ -388,27 +485,56 @@ function Kernel()
 				return "";
 			}
 
+			// return last path part
 			return pathParts[pathParts.length-1];
 		}
+
 
 		// get extension name of path
 		function extname(context, path)
 		{
+			// normalize the path
+			path = normalizePath(context, path);
+
+			// find last decimal
 			var lastDotIndex = path.lastIndexOf('.');
 			if(lastDotIndex === -1)
 			{
 				return '';
 			}
+
+			// ensure the last dot index comes after the last slash
 			var extension = path.substring(lastDotIndex, path.length);
 			if(extension.indexOf('/') !== -1)
 			{
 				return '';
 			}
+			
+			// return the file extension
 			return extension;
 		}
 
 
-		// validate path
+		// concatenate two paths
+		function concatPaths(context, path1, path2)
+		{
+			if(typeof path1 !== 'string' || typeof path2 !== 'string')
+			{
+				throw new TypeError("paths must be strings");
+			}
+			if(path1.length === 0)
+			{
+				if(path2.length === 0)
+				{
+					return '.';
+				}
+				return normalizePath(context, path2);
+			}
+			return normalizePath(context, path1+'/'+path2);
+		}
+
+
+		// resolve relative path from current or given cwd
 		function resolvePath(context, path, cwd)
 		{
 			if(!cwd)
@@ -421,90 +547,17 @@ function Kernel()
 			}
 			else if(typeof cwd !== 'string')
 			{
-				throw new Error("cwd must be a string");
+				throw new TypeError("cwd must be a string");
 			}
 
-			// ensure string
-			if(typeof path !== 'string')
+			// return normalized path if it's absolute
+			if(path.startsWith('/'))
 			{
-				throw new Error("path must be a string");
+				return normalizePath(context, path);
 			}
 
-			// check for invalid characters
-			for(const invalidChar of invalidPathCharacters)
-			{
-				if(path.indexOf(invalidChar) !== -1)
-				{
-					throw new Error("invalid character in path");
-				}
-			}
-
-			// split path into parts
-			var pathParts = path.split('/');
-			if(pathParts.length === 0)
-			{
-				throw new Error("no path parts somehow?");
-			}
-			else if(pathParts.length === 1 && pathParts[0] === "")
-			{
-				throw new Error("empty path string");
-			}
-
-			// check if path is absolute
-			var absolute = false;
-			if(pathParts[0] === "")
-			{
-				absolute = true;
-				if(pathParts.length === 2 && pathParts[1] === "")
-				{
-					return '/';
-				}
-				pathParts = pathParts.slice(1);
-			}
-			
-			// remove empty contents in path
-			for(var i=0; i<pathParts.length; i++)
-			{
-				if(pathParts[i] === "")
-				{
-					pathParts.splice(i, 1);
-					i--;
-				}
-			}
-
-			function resolvePathParts(pathParts, cwd)
-			{
-				if(pathParts.length === 0)
-				{
-					return cwd;
-				}
-
-				if(pathParts[0] == '.')
-				{
-					return resolvePathParts(pathParts.slice(1), cwd);
-				}
-				else if(pathParts[0] == '..')
-				{
-					if(cwd === '/')
-					{
-						throw new Error("path goes above root directory");
-					}
-					var cwdDir = dirname(context, cwd);
-					return resolvePathParts(pathParts.slice(1), cwdDir);
-				}
-				var nextCwd = null;
-				if(cwd === '/')
-				{
-					nextCwd = '/'+pathParts[0];
-				}
-				else
-				{
-					nextCwd = cwd + '/' + pathParts[0];
-				}
-				return resolvePathParts(pathParts.slice(1), nextCwd);
-			}
-
-			return resolvePathParts(pathParts, cwd);
+			// concatenate path with cwd
+			return concatPaths(context, cwd, path);
 		}
 
 
@@ -555,6 +608,7 @@ function Kernel()
 		function writeEntry(context, path, meta, data)
 		{
 			path = resolvePath(context, path);
+			validatePath(context, path);
 			
 			// validate data
 			if(typeof data !== 'string')
@@ -598,22 +652,22 @@ function Kernel()
 			// add updated entry meta info
 			newMeta.dateUpdated = new Date().getTime();
 
-			// add updated parent dir entry meta info
-			dirMeta.dateUpdated = new Date().getTime();
-
 			// add entry to parent directory contents, if not already added
 			var entryName = basename(context, path);
 			if(dirData.indexOf(entryName) === -1)
 			{
+				// add entry to parent directory
 				dirData.push(entryName);
+				// update parent dir entry meta info
+				dirMeta.dateUpdated = new Date().getTime();
 			}
 
 			// write meta + data
-			storage.setItem(fsMetaPrefix+path, JSON.stringify(newMeta));
 			storage.setItem(fsPrefix+path, data);
+			storage.setItem(fsMetaPrefix+path, JSON.stringify(newMeta));
 			// write parent dir meta + parent dir data
-			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
+			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 		}
 
 
@@ -621,7 +675,7 @@ function Kernel()
 		function removeEntry(context, path)
 		{
 			path = resolvePath(context, path);
-			const baseName = basename(context, path);
+			validatePath(context, path);
 
 			// get info about parent directory
 			let dirPath = null;
@@ -632,22 +686,23 @@ function Kernel()
 				dirData = readDir(context, dirPath);
 			}
 
-			// remove from parent directory
+			// remove from parent directory if it exists
 			if(dirData != null && baseName != '')
 			{
+				const baseName = basename(context, path);
 				var index = dirData.indexOf(baseName);
 				if(index !== -1)
 				{
+					// remove from parent directory
 					dirData.splice(index, 1);
+					// update parent dir entry meta info
+					dirMeta.dateUpdated = new Date().getTime();
 				}
 			}
 
-			// add updated parent dir entry meta info
-			dirMeta.dateUpdated = new Date().getTime();
-
 			// write parent directory meta / data
-			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
+			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 			// remove entry meta / data
 			storage.removeItem(fsMetaPrefix+path);
 			storage.removeItem(fsPrefix+path);
@@ -664,6 +719,7 @@ function Kernel()
 			}
 			return true;
 		}
+
 
 		// read the contents of a directory
 		function readDir(context, path)
@@ -699,6 +755,7 @@ function Kernel()
 			return data;
 		}
 
+
 		// create a directory
 		function createDir(context, path, options)
 		{
@@ -728,6 +785,7 @@ function Kernel()
 			return writeEntry(context, path, {type: 'dir'}, JSON.stringify([]));
 		}
 
+
 		// delete a directory
 		function deleteDir(context, path)
 		{
@@ -743,6 +801,7 @@ function Kernel()
 			}
 			removeEntry(context, path);
 		}
+
 
 		// read file from a given path
 		function readFile(context, path)
@@ -768,12 +827,14 @@ function Kernel()
 			return data;
 		}
 
-		// retrieve the magic numbers for the file
+
+		// retrieve the signature for the file
+		// (this doesn't actually work though because JS strings butcher data)
 		function readFileSig(context, path)
 		{
 			var content = readFile(context, path);
 			var magic = content.slice(0, 4);
-			if(magic.length < 2)
+			if(magic.length < 4)
 			{
 				return null;
 			}
@@ -787,11 +848,22 @@ function Kernel()
 			return hexByte;
 		}
 
+
 		// write file to a given path
 		function writeFile(context, path, data)
 		{
+			path = resolvePath(context, path);
+			if(exists(context, path))
+			{
+				var meta = readMeta(context, path);
+				if(meta.type !== 'file')
+				{
+					throw new Error("cannot write to a directory");
+				}
+			}
 			return writeEntry(context, path, {type: 'file'}, data);
 		}
+
 
 		// download a file to a given path
 		function downloadFile(context, url, path)
@@ -842,30 +914,45 @@ function Kernel()
 			});
 		}
 
+
 		// determine the interpreter for the file
 		function getInterpreter(context, path)
 		{
-			const fullPath = resolvePath(context, path);
-			if(fullPath.endsWith('.raw.js'))
+			path = resolvePath(context, path);
+			if(path.endsWith('.raw.js'))
 			{
 				return undefined;
 			}
 			return 'babel';
 		}
 
+
 		// execute a js script at a given path
-		function executeFile(context, path, args=[], options=null)
+		function executeFile(context, path, argv=[], options=null)
 		{
-			return new ChildProcess(kernel, context, path, args, options);
+			const fullPath = resolvePath(context, path);
+			if(!exists(context, fullPath))
+			{
+				throw new Error("file does not exist");
+			}
+			var meta = readMeta(context, fullPath);
+			if(meta.type !== 'file')
+			{
+				throw new Error("path is not a file");
+			}
+			return new ChildProcess(kernel, context, path, argv, options);
 		}
+
 
 		// load a js script into the current process
 		function requireFile(context, scope, path)
 		{
+			path = resolvePath(context, path);
 			const data = kernel.filesystem.readFile(context, path);
 			const interpreter = getInterpreter(context, path);
 			return runScript(kernel, interpreter, scope, data);
 		}
+
 
 		// delete a file
 		function deleteFile(context, path)
@@ -882,6 +969,72 @@ function Kernel()
 			}
 			removeEntry(context, path);
 		}
+
+
+		// rename a file or folder
+		function rename(context, oldPath, newPath)
+		{
+			const fullOldPath = resolvePath(context, oldPath);
+			const fullNewPath = resolvePath(context, oldPath);
+
+			if(!exists(context, fullOldPath))
+			{
+				throw new Error("source path does not exist");
+			}
+			const meta = readMeta(context, fullOldPath);
+
+			// stop if source and destination paths are the same
+			if(fullOldPath === fullNewPath)
+			{
+				return;
+			}
+
+			// check if destination exists
+			let destMeta = null;
+			if(exists(context, fullNewPath))
+			{
+				// ensure we can rename to the destination
+				destMeta = readMeta(context, fullNewPath);
+				if(meta.type === 'dir' && destMeta.type === 'file')
+				{
+					throw new Error("not a directory");
+				}
+				else if(meta.type === 'file' && destMeta.type === 'dir')
+				{
+					throw new Error("illegal operation on a directory");
+				}
+			}
+
+			if(meta.type === 'dir')
+			{
+				// create empty directory if one doesn't exist
+				if(destMeta === null)
+				{
+					destMeta = Object.assign({}, meta);
+					writeEntry(context, fullNewPath, destMeta, JSON.stringify('[]'));
+				}
+
+				// move contents of old directory into new directory
+				const dirEntries = readDir(context, path);
+				for(const entryName of dirEntries)
+				{
+					rename(context, fullOldPath+'/'+entryName, fullNewPath+'/'+entryName);
+				}
+
+				// delete old directory
+				removeEntry(context, fullOldPath);
+			}
+			else
+			{
+				// get source file data
+				const data = readFile(context, fullOldPath);
+
+				// remove old file entry and write new one
+				removeEntry(context, fullOldPath);
+				writeEntry(context, fullNewPath, meta, data);
+			}
+		}
+
 
 		// create empty filesystem, if necessary
 		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
@@ -915,15 +1068,15 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function ChildProcess(kernel, parentContext, path, args, options)
+	function ChildProcess(kernel, parentContext, path, argv, options)
 	{
 		if(typeof path !== 'string')
 		{
 			throw new TypeError("path must be a string");
 		}
-		if(!(args instanceof Array))
+		if(!(argv instanceof Array))
 		{
-			throw new TypeError("args must be an Array");
+			throw new TypeError("argv must be an Array");
 		}
 		options = Object.assign({}, options);
 
@@ -932,7 +1085,7 @@ function Kernel()
 
 		const context = deepCopyObject(parentContext);
 		context.pid = pid;
-		context.argv = [path].concat(args);
+		context.argv = argv.slice(0);
 
 		const dir = kernel.filesystem.dirname(parentContext, path);
 		const fullPath = kernel.filesystem.resolvePath(parentContext, path);
@@ -956,7 +1109,6 @@ function Kernel()
 			module: {exports:{}},
 			Promise: ProcPromise
 		};
-
 		scope.require.resolve = (path) => {
 			// get full module path
 			return findRequirePath(kernel, context, dir, path);
@@ -965,16 +1117,15 @@ function Kernel()
 		// define Process object
 		scope.process = new (function(){
 
+			let procArgv = context.argv.slice(0);
 			Object.defineProperty(this, 'argv', {
-				value: context.argv.slice(0),
-				writable: false
+				value: procArgv
 			});
 			
 			Object.defineProperty(this, 'cwd', {
 				value: () => {
 					return context.cwd;
-				},
-				writable: false
+				}
 			});
 
 			Object.defineProperty(this, 'env', {
@@ -1002,8 +1153,7 @@ function Kernel()
 					}
 					var exitSignal = new ExitSignal(code);
 					throw exitSignal;
-				},
-				writable: false
+				}
 			});
 
 			Object.defineProperty(this, 'pid', {
@@ -1019,11 +1169,11 @@ function Kernel()
 			});
 
 			Object.defineProperty(this, 'platform', {
-				value: osName,
-				writable: false
+				get: () => {
+					return osName;
+				}
 			});
 		})();
-
 
 		// process lifecycle functions
 
@@ -1055,6 +1205,7 @@ function Kernel()
 					reject(...args);
 				};
 
+				// run process
 				try
 				{
 					kernel.filesystem.requireFile(context, scope, path);
@@ -1069,7 +1220,7 @@ function Kernel()
 					{
 						if(!exited)
 						{
-							console.error("unhandled process error: ", error);
+							console.error("unhandled process error:", error);
 							context.reject(error);
 						}
 						else
@@ -1081,9 +1232,7 @@ function Kernel()
 			});
 		}
 
-
 		// start process
-
 		this.promise = execute();
 	}
 
@@ -1093,6 +1242,7 @@ function Kernel()
 	let loadedModules = {};
 	let loadedCSS = {};
 	let sharedModules = {};
+
 
 	// check if a given path is a folder
 	function checkIfFolder(kernel, context, path)
@@ -1104,6 +1254,7 @@ function Kernel()
 		}
 		return false;
 	}
+
 
 	// resolve a module's main js file from a folder
 	function resolveModuleFolder(kernel, context, path)
@@ -1132,6 +1283,7 @@ function Kernel()
 		}
 		return kernel.filesystem.resolvePath(context, path+'/'+mainFile);
 	}
+
 
 	// find a valid module path from the given context, base path, and path
 	function resolveModulePath(kernel, context, basePath, path, options=null)
@@ -1193,7 +1345,8 @@ function Kernel()
 		
 		throw new Error("module not found");
 	}
-	
+
+
 	// find a valid module path from the given context, base paths, and path
 	function findModulePath(kernel, context, basePaths, dir, path, options=null)
 	{
@@ -1237,9 +1390,15 @@ function Kernel()
 		return modulePath;
 	}
 
+
 	// execute a module in a new context
 	function execute(kernel, context, path, args=[], options=null)
 	{
+		if(!(args instanceof Array))
+		{
+			throw new TypeError("args must be an array");
+		}
+
 		// get full module path
 		var paths = [];
 		if(context.env && context.env.paths)
@@ -1248,8 +1407,10 @@ function Kernel()
 		}
 		var modulePath = findModulePath(kernel, context, paths, context.cwd, path, {folderExtensions: ['exe']});
 
-		return kernel.filesystem.executeFile(context, modulePath, args, options);
+		const argv = [path].concat(args);
+		return kernel.filesystem.executeFile(context, modulePath, argv, options);
 	}
+
 
 	// find the path to a required module
 	function findRequirePath(kernel, context, dir, path)
@@ -1262,6 +1423,7 @@ function Kernel()
 		}
 		return findModulePath(kernel, context, libpaths, dir, path, {folderExtensions: ['dll']});
 	}
+
 
 	// load a module into the current context
 	function require(kernel, context, parentScope, dir, path)
@@ -1291,17 +1453,21 @@ function Kernel()
 		}
 
 		// get parent directory of module path
-		const pathDir = kernel.filesystem.dirname(context, modulePath);
+		const moduleDir = kernel.filesystem.dirname(context, modulePath);
 
 		// create module scope
 		var scope = Object.assign({}, parentScope);
 		scope.require = (path) => {
-			return require(kernel, moduleContext, scope, pathDir, path);
+			return require(kernel, moduleContext, scope, moduleDir, path);
 		};
-		scope.requireCSS = (path) => {
-			return requireCSS(kernel, moduleContext, pathDir, path);
+		scope.require.resolve = (path) => {
+			return findRequirePath(kernel, moduleContext, moduleDir, path);
 		}
-		scope.__dirname = pathDir;
+		scope.requireCSS = (path) => {
+			return requireCSS(kernel, moduleContext, moduleDir, path);
+		}
+		scope.__dirname = moduleDir;
+		scope.__filename = modulePath;
 		scope.module = { exports: {} };
 
 		// require file
@@ -1314,6 +1480,8 @@ function Kernel()
 		return scope.module.exports;
 	}
 
+
+	// inject a CSS file into the current page
 	function requireCSS(kernel, context, dir, path)
 	{
 		if(typeof path !== 'string')
@@ -1358,6 +1526,8 @@ function Kernel()
 		};
 	}
 
+
+	// unload any required scripts or CSS
 	function unloadRequired(kernel, context)
 	{
 		// delete any loaded modules for this PID
@@ -1381,7 +1551,7 @@ function Kernel()
 	}
 
 
-
+	// facilitate a kernel call
 	function syscall(kernel, context, func, ...args)
 	{
 		if(typeof func != 'string')
@@ -1432,7 +1602,7 @@ function Kernel()
 	}
 
 
-
+	// append information to the system log
 	function log(kernel, context, message, options)
 	{
 		options = Object.assign({}, options);
@@ -1448,7 +1618,7 @@ function Kernel()
 	}
 
 
-
+	// build kernel object
 	this.filesystem = new Filesystem(this, window.localStorage);
 	this.execute = (context, path, args=[], options=null) => {
 		return execute(this, context, path, args, options);
@@ -1467,6 +1637,9 @@ function Kernel()
 	};
 // end kernel class
 }
+
+
+
 
 // create boot sandbox
 (function(){
