@@ -3,12 +3,7 @@ requireCSS('./style.css');
 const fs = require('fs');
 const React = require('react');
 
-var getWindowManager = process.env['GET_WINDOW_MANAGER'];
-let windowManager = null;
-if(getWindowManager)
-{
-	windowManager = getWindowManager();
-}
+var windowManager = process.env['WINDOW_MANAGER'];
 if(!windowManager)
 {
 	console.error("no window manager detected");
@@ -21,7 +16,7 @@ if(process.argv.length > 2)
 	process.exit(1);
 }
 
-let defaultTextBody = "";
+var defaultTextBody = "";
 try
 {
 	if(process.argv.length === 2)
@@ -36,7 +31,6 @@ catch(error)
 }
 
 windowManager.createWindow().then((window) => {
-	
 	// window created
 	window.renderContent = () => {
 		return (
@@ -44,11 +38,13 @@ windowManager.createWindow().then((window) => {
 		);
 	};
 
+	// handle close button
 	window.onCloseButtonClick = () => {
 		window.close();
 		process.exit(0);
 	};
 
+	// set initial state
 	window.setState({
 		title: "textedit.exe"
 	});
