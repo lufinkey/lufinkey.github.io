@@ -102,11 +102,12 @@ const rootContext = {
 };
 
 
+// run a script with a given interpreter
 function runScript(kernel, interpreter, scope, code)
 {
 	switch(interpreter)
 	{
-		case 'babel':
+		case 'react':
 			const Babel = kernel.require(rootContext, scope, '/', 'babel');
 			code = Babel.transform(code, {presets:['react']}).code;
 			break;
@@ -923,7 +924,7 @@ function Kernel()
 			{
 				return undefined;
 			}
-			return 'babel';
+			return 'react';
 		}
 
 
