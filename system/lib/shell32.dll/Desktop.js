@@ -1,5 +1,6 @@
 
 requireCSS('./Desktop.css');
+const fs = require('fs');
 const React = require('react');
 const WindowManager = require('dwm');
 const TaskBar = require('./TaskBar');
@@ -29,7 +30,7 @@ class Desktop extends React.Component
 
 	componentWillMount()
 	{
-		files = syscall('filesystem.readDir', '/home/Desktop');
+		files = fs.readdirSync('/home/Desktop');
 	}
 	
 	componentDidMount()

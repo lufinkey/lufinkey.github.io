@@ -1,4 +1,5 @@
 
+const fs = require('fs');
 const MimeType = require('mimetype');
 
 module.exports = (filename) => {
@@ -7,6 +8,6 @@ module.exports = (filename) => {
 	{
 		throw new Error("unable to determine mime type");
 	}
-	var content = syscall('filesystem.readFile', filename);
+	var content = fs.readFileSync(filename, {encoding:'utf8'});
 	return 'data:'+mimeType+';base64,'+btoa(content);
 };

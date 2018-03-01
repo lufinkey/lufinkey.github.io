@@ -834,27 +834,6 @@ function Kernel()
 		}
 
 
-		// retrieve the signature for the file
-		// (this doesn't actually work though because JS strings butcher data)
-		function readFileSig(context, path)
-		{
-			var content = readFile(context, path);
-			var magic = content.slice(0, 4);
-			if(magic.length < 4)
-			{
-				return null;
-			}
-			var hexString = "";
-			for(var i=0; i<magic.length; i++)
-			{
-				var byte = magic.charCodeAt(i);
-				var hexByte = ('0' + (byte & 0xFF).toString(16)).slice(-2);
-				hexString += hexByte;
-			}
-			return hexByte;
-		}
-
-
 		// write file to a given path
 		function writeFile(context, path, data)
 		{
@@ -1065,7 +1044,6 @@ function Kernel()
 		this.createDir = createDir;
 		this.deleteDir = deleteDir;
 		this.readFile = readFile;
-		this.readFileSig = readFileSig;
 		this.writeFile = writeFile;
 		this.downloadFile = downloadFile;
 		this.executeFile = executeFile;
@@ -1155,7 +1133,7 @@ function Kernel()
 					}
 					if(code != 0)
 					{
-						context.reject(new Error("process exitted with code "+code));
+						context.reject(new Error("process exited with code "+code));
 					}
 					else
 					{

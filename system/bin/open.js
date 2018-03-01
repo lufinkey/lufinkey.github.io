@@ -1,4 +1,5 @@
 
+const fs = require('fs');
 const MimeType = require('mimetype');
 
 if(process.argv.length !== 2)
@@ -11,18 +12,13 @@ if(process.argv.length !== 2)
 var filename = process.argv[1];
 
 // determine mime type
-var mimeType = null;
-try
-{
-	mimeType = MimeType.determine(filename);
-}
-catch(error) {}
+var mimeType = MimeType.determine(filename);
 
 // load app defaults
 var appdefaults = null;
 try
 {
-	appdefaults = JSON.parse(syscall('filesystem.readFile', '/system/share/appdefaults.json'));
+	appdefaults = JSON.parse(fs.readFileSync('/system/share/appdefaults.json', {encoding: 'utf8'}));
 }
 catch(error)
 {

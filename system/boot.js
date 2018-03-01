@@ -180,6 +180,7 @@ const systemFiles = {
 				'package.json': new FilePlaceholder()
 			},
 			'base64uri.js': new FilePlaceholder(),
+			'fs.js': new FilePlaceholder(),
 			'mimetype.js': new FilePlaceholder(),
 			'path.js': new FilePlaceholder()
 		},

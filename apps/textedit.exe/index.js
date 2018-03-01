@@ -1,5 +1,6 @@
 
 requireCSS('./style.css');
+const fs = require('fs');
 const React = require('react');
 
 var getWindowManager = process.env['GET_WINDOW_MANAGER'];
@@ -25,7 +26,7 @@ try
 {
 	if(process.argv.length === 2)
 	{
-		defaultTextBody = syscall('filesystem.readFile', process.argv[1]);
+		defaultTextBody = fs.readFileSync(process.argv[1], {encoding: 'utf8'});
 	}
 }
 catch(error)
