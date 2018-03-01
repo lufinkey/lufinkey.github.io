@@ -5,6 +5,18 @@ module.exports = FS;
 
 
 
+const constants = {
+	COPYFILE_EXCL: 0b00000000000000000000000000000001
+};
+
+Object.defineProperty(FS, 'constants', {
+	value: Object.assign({}, constants),
+	writable: false
+});
+
+
+
+
 function appendFile(path, data, options, callback)
 {
 	if(typeof options === 'function')
@@ -46,6 +58,86 @@ function appendFileSync(path, data, options)
 
 FS.appendFile = appendFile;
 FS.appendFileSync = appendFileSync;
+
+
+
+
+function copyFile(src, dest, flags, callback)
+{
+	if(typeof flags === 'function')
+	{
+		callback = flags;
+		flags = null;
+	}
+
+	setTimeout(() => {
+		try
+		{
+			copyFileSync(src, dest, flags);
+		}
+		catch(error)
+		{
+			callback(error);
+			return;
+		}
+		callback(null);
+	}, 0);
+}
+
+function copyFileSync(src, dest, flags)
+{
+	if(flags == null)
+	{
+		flags = 0;
+	}
+	if(typeof flags !== 'number')
+	{
+		throw new TypeError("flags must be a number");
+	}
+
+	var data = syscall('filesystem.readFile', src);
+	if(syscall('filesystem.exists', dest))
+	{
+		if((flags & constants.COPYFILE_EXCL) === constants.COPYFILE_EXCL)
+		{
+			throw new Error("destination already exists");
+		}
+	}
+	syscall('filesystem.writeFile', dest, data);
+}
+
+FS.copyFile = copyFile;
+FS.copyFileSync = copyFileSync;
+
+
+
+
+function exists(path, callback)
+{
+	if(typeof callback !== 'function')
+	{
+		throw new TypeError("callback function is required");
+	}
+
+	setTimeout(() => {
+		callback(existsSync(path));
+	});
+}
+
+function existsSync(path)
+{
+	try
+	{
+		return syscall('filesystem.exists', path);
+	}
+	catch(error)
+	{
+		return false;
+	}
+}
+
+FS.exists = exists;
+FS.existsSync = existsSync;
 
 
 
