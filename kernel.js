@@ -7,22 +7,8 @@ window.addEventListener('load', () => {
 
 // function to evaluate a given script
 function evalScript(__scope, __code) {
-	// define scope
-	__scope = Object.assign({Promise: Promise}, __scope);
 	return (function(){
 		const evalScript = undefined;
-		const syscall = __scope.syscall;
-		const require = __scope.require;
-		const requireCSS = __scope.requireCSS;
-		const __dirname = __scope.__dirname;
-		const __filename = __scope.__filename;
-		const module = __scope.module;
-		const exports = __scope.exports;
-		const resolve = __scope.resolve;
-		const reject = __scope.reject;
-		const process = __scope.process;
-		const Promise = __scope.Promise;
-
 		return eval(__code);
 	}).bind({})();
 }
@@ -108,7 +94,43 @@ const rootContext = {
 };
 
 
+// class to allow aliasing select globals to itself when evaluating a script
+function ScriptGlobalAlias(aliases)
+{
+	this.aliases = aliases;
+}
+
+
+// validate a scope variable name
+function validateVariableName(varName)
+{
+	if(typeof varName !== 'string')
+	{
+		throw new TypeError("variable name must be a string");
+	}
+	// ensure string isn't empty
+	if(varName.length == 0)
+	{
+		throw new Error("empty string cannot be variable name");
+	}
+	// ensure all characters are valid
+	for(const char of varName)
+	{
+		if(validScopeCharacters.indexOf(char) === -1)
+		{
+			throw new Error("invalid scope variable name "+varName);
+		}
+	}
+	// ensure name doesn't start with a number
+	if("1234567890".indexOf(varName[0]) !== -1)
+	{
+		throw new Error("variable name cannot start with a number");
+	}
+}
+
+
 // run a script with a given interpreter
+const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
 function runScript(kernel, interpreter, scope, code)
 {
 	switch(interpreter)
@@ -125,7 +147,39 @@ function runScript(kernel, interpreter, scope, code)
 		default:
 			throw new Error("invalid interpreter");
 	}
-	return evalScript(scope, code);
+	// TODO parse a little bit to check if strict mode is enabled
+	// create strings for global scope variables
+	var prefixString = '';
+	var suffixString = '';
+	for(const varName in scope)
+	{
+		validateVariableName(varName);
+		if(scope[varName] instanceof ScriptGlobalAlias)
+		{
+			var aliases = scope[varName].aliases;
+			prefixString += 'let '+varName+' = Object.defineProperties({}, { ';
+			for(var i=0; i<aliases.length; i++)
+			{
+				const alias = aliases[i];
+				validateVariableName(alias);
+				prefixString += '"'+alias+'": {';
+				prefixString += 'get:() => { return '+alias+'; },set:(___val) => { '+alias+' = ___val; }';
+				prefixString += '}';
+				if(i < (aliases.length-1))
+				{
+					prefixString += ',';
+				}
+			}
+			prefixString += '});\n';
+		}
+		else
+		{
+			prefixString += 'let '+varName+' = __scope.'+varName+';\n';
+			suffixString += '__scope.'+varName+' = '+varName+';\n';
+		}
+	}
+	// evaluate the script
+	return evalScript(scope, prefixString+'\n'+code+'\n'+suffixString);
 }
 
 
@@ -1116,6 +1170,7 @@ function Kernel()
 		context.argv = [argv0].concat(args);
 
 		// build process scope
+		let exports = null;
 		let scope = {
 			syscall: (func, ...args) => {
 				return kernel.syscall(context, func, ...args);
@@ -1128,10 +1183,10 @@ function Kernel()
 			},
 			__dirname: dir,
 			__filename: fullPath,
-			module: {exports:{}},
+			exports: {},
+			module: new ScriptGlobalAlias(['exports']),
 			Promise: ProcPromise
 		};
-		scope.exports = scope.module.exports;
 		scope.require.resolve = (path) => {
 			// get full module path
 			return findRequirePath(kernel, context, dir, path);
@@ -1508,17 +1563,25 @@ function Kernel()
 		}
 		scope.__dirname = moduleDir;
 		scope.__filename = modulePath;
-		scope.module = { exports: {} };
-		scope.exports = scope.module.exports;
+		scope.exports = {};
+		scope.module = new ScriptGlobalAlias(['exports']);
 
 		// require file
-		kernel.filesystem.requireFile(moduleContext, scope, modulePath);
+		try
+		{
+			kernel.filesystem.requireFile(moduleContext, scope, modulePath);
+		}
+		catch(error)
+		{
+			console.error("unable to require "+path, error);
+			throw error;
+		}
 
 		// save exported module
-		moduleContainer[modulePath] = scope.module.exports;
+		moduleContainer[modulePath] = scope.exports;
 
 		// return exported module
-		return scope.module.exports;
+		return scope.exports;
 	}
 
 
