@@ -48,7 +48,9 @@ windowManager.createWindow().then((window) => {
 		process.exit(0);
 	};
 
-	window.forceUpdate();
+	window.setState({
+		title: "textedit.exe"
+	});
 }).catch((error) => {
 	console.error("unable to create window: ", error);
 	process.exit(2);

@@ -17,8 +17,6 @@
 
 	margin-left: 2px;
 	margin-right: 2px;
-	margin-top: 5%;
-	margin-bottom: 5%;
 
 	padding-left: 16px;
 	padding-top: 1px;
@@ -52,6 +50,7 @@
 	flex-grow: 1;
 	flex-shrink: 1;
 	overflow-x: auto;
+	height: 100%;
 }
 
 .taskbar-window {
