@@ -690,6 +690,23 @@ function Kernel()
 			return writeEntry(context, path, {type: 'dir'}, JSON.stringify([]));
 		}
 
+		// delete a directory
+		function deleteDir(context, path)
+		{
+			const fullPath = resolvePath(context, path);
+			if(!exists(context, path))
+			{
+				return;
+			}
+			const dirData = readDir(context, path);
+			if(dirData.length > 0)
+			{
+				throw new Error("directory is not empty");
+			}
+			storage.removeItem(fsMetaPrefix+fullPath);
+			storage.removeItem(fsPrefix+fullPath);
+		}
+
 		// read file from a given path
 		function readFile(context, path)
 		{
@@ -813,6 +830,23 @@ function Kernel()
 			return runScript(kernel, interpreter, scope, data);
 		}
 
+		// delete a file
+		function deleteFile(context, path)
+		{
+			const fullPath = resolvePath(context, path);
+			if(!exists(context, path))
+			{
+				return;
+			}
+			const meta = readMeta(context, fullPath);
+			if(meta.type !== 'file')
+			{
+				throw new Error("path is not a file");
+			}
+			storage.removeItem(fsMetaPrefix+fullPath);
+			storage.removeItem(fsPrefix+fullPath);
+		}
+
 		// create empty filesystem, if necessary
 		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
 		if(!rootDirMeta)
@@ -831,12 +865,14 @@ function Kernel()
 		this.readMeta = readMeta;
 		this.readDir = readDir;
 		this.createDir = createDir;
+		this.deleteDir = deleteDir;
 		this.readFile = readFile;
+		this.readFileSig = readFileSig;
 		this.writeFile = writeFile;
 		this.downloadFile = downloadFile;
 		this.executeFile = executeFile;
 		this.requireFile = requireFile;
-		this.readFileSig = readFileSig;
+		this.deleteFile = deleteFile;
 	}
 
 
