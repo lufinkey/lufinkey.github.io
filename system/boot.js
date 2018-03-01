@@ -24,7 +24,10 @@ bootlog('react loaded');
 
 
 
-function FilePlaceholder() {}
+function RemoteFile(url)
+{
+	this.url = url;
+}
 
 function downloadFiles(structure, path=null)
 {
@@ -45,9 +48,14 @@ function downloadFiles(structure, path=null)
 
 		try
 		{
-			if(entry instanceof FilePlaceholder)
+			if(entry instanceof RemoteFile)
 			{
-				promises.push(syscall('filesystem.downloadFile', entryPath+'?v='+(Math.random()*9999999999), '/'+entryPath));
+				var url = entry.url;
+				if(!url)
+				{
+					url = entryPath+'?v='+(Math.random()*9999999999);
+				}
+				promises.push(syscall('filesystem.downloadFile', url, '/'+entryPath));
 			}
 			else
 			{
@@ -91,11 +99,18 @@ function downloadFilesSlowly(structure, path=null)
 	delete nextStructure[entryName];
 
 	return new Promise((resolve, reject) => {
-		if(entry instanceof FilePlaceholder)
+		if(entry instanceof RemoteFile)
 		{
+			// get file URL
+			var url = entry.url;
+			if(!url)
+			{
+				url = entryPath+'?v='+(Math.random()*9999999999);
+			}
+			
 			// download file
 			bootlog("downloading /"+entryPath);
-			syscall('filesystem.downloadFile', entryPath+'?v='+(Math.random()*9999999999), '/'+entryPath).then(() => {
+			syscall('filesystem.downloadFile', url, '/'+entryPath).then(() => {
 				bootlog("downloaded /"+entryPath);
 				// wait a bit
 				setTimeout(() => {
@@ -134,13 +149,13 @@ function downloadFilesSlowly(structure, path=null)
 
 const baseFiles =  {
 	'system': {
-		'boot.css': new FilePlaceholder(),
+		'boot.css': new RemoteFile(),
 		'lib': {
 			'transcend32.dll': {
-				'style.css': new FilePlaceholder(),
-				'CRT.js': new FilePlaceholder(),
-				'index.js': new FilePlaceholder(),
-				'package.json': new FilePlaceholder()
+				'style.css': new RemoteFile(),
+				'CRT.js': new RemoteFile(),
+				'index.js': new RemoteFile(),
+				'package.json': new RemoteFile()
 			}
 		}
 	}
@@ -149,44 +164,44 @@ const baseFiles =  {
 const systemFiles = {
 	'apps': {
 		'textedit.exe': {
-			'style.css': new FilePlaceholder(),
-			'index.js': new FilePlaceholder(),
-			'package.json': new FilePlaceholder()
+			'style.css': new RemoteFile(),
+			'index.js': new RemoteFile(),
+			'package.json': new RemoteFile()
 		}
 	},
 	'system': {
 		'bin': {
-			'open.js': new FilePlaceholder()
+			'open.js': new RemoteFile()
 		},
 		'lib': {
 			'dwm.dll': {
-				'Window.js': new FilePlaceholder(),
-				'WindowManager.js': new FilePlaceholder(),
-				'style.css': new FilePlaceholder(),
-				'index.js': new FilePlaceholder(),
-				'package.json': new FilePlaceholder()
+				'Window.js': new RemoteFile(),
+				'WindowManager.js': new RemoteFile(),
+				'style.css': new RemoteFile(),
+				'index.js': new RemoteFile(),
+				'package.json': new RemoteFile()
 			},
 			'shell32.dll': {
-				'Desktop.css': new FilePlaceholder(),
-				'Desktop.js': new FilePlaceholder(),
-				'FileIcon.js': new FilePlaceholder(),
-				'FileIconLayout.css': new FilePlaceholder(),
-				'FileIconLayout.js': new FilePlaceholder(),
-				'TaskBar.css': new FilePlaceholder(),
-				'TaskBar.js': new FilePlaceholder(),
-				'TaskBarWindowButton.js': new FilePlaceholder(),
-				'Wallpaper.js': new FilePlaceholder(),
-				'index.js': new FilePlaceholder(),
-				'package.json': new FilePlaceholder()
+				'Desktop.css': new RemoteFile(),
+				'Desktop.js': new RemoteFile(),
+				'FileIcon.js': new RemoteFile(),
+				'FileIconLayout.css': new RemoteFile(),
+				'FileIconLayout.js': new RemoteFile(),
+				'TaskBar.css': new RemoteFile(),
+				'TaskBar.js': new RemoteFile(),
+				'TaskBarWindowButton.js': new RemoteFile(),
+				'Wallpaper.js': new RemoteFile(),
+				'index.js': new RemoteFile(),
+				'package.json': new RemoteFile()
 			},
-			'base64uri.js': new FilePlaceholder(),
-			'fs.js': new FilePlaceholder(),
-			'mimetype.js': new FilePlaceholder(),
-			'path.js': new FilePlaceholder()
+			'base64uri.js': new RemoteFile(),
+			'fs.js': new RemoteFile(),
+			'mimetype.js': new RemoteFile(),
+			'path.js': new RemoteFile()
 		},
 		'share': {
-			'appdefaults.json': new FilePlaceholder(),
-			'magic.json': new FilePlaceholder()
+			'appdefaults.json': new RemoteFile(),
+			'magic.json': new RemoteFile()
 		}
 	}
 };
@@ -194,7 +209,7 @@ const systemFiles = {
 const homeFiles = {
 	'home': {
 		'Desktop': {
-			'ayylmao.txt': new FilePlaceholder()
+			'ayylmao.txt': new RemoteFile()
 		}
 	}
 }
