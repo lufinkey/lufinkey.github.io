@@ -17,7 +17,7 @@ function evalScript(__scope, __code) {
 		const __dirname = __scope.__dirname;
 		const __filename = __scope.__filename;
 		const module = __scope.module;
-		const exports = (__scope.module ? __scope.module.exports : undefined);
+		const exports = __scope.exports;
 		const resolve = __scope.resolve;
 		const reject = __scope.reject;
 		const process = __scope.process;
@@ -1131,11 +1131,11 @@ function Kernel()
 			module: {exports:{}},
 			Promise: ProcPromise
 		};
+		scope.exports = scope.module.exports;
 		scope.require.resolve = (path) => {
 			// get full module path
 			return findRequirePath(kernel, context, dir, path);
 		};
-
 		// define Process object
 		scope.process = new (function(){
 
@@ -1509,6 +1509,7 @@ function Kernel()
 		scope.__dirname = moduleDir;
 		scope.__filename = modulePath;
 		scope.module = { exports: {} };
+		scope.exports = scope.module.exports;
 
 		// require file
 		kernel.filesystem.requireFile(moduleContext, scope, modulePath);
