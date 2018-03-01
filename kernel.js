@@ -603,16 +603,54 @@ function Kernel()
 
 			// add entry to parent directory contents, if not already added
 			var entryName = basename(context, path);
-			if(!dirData.includes(entryName))
+			if(dirData.indexOf(entryName) === -1)
 			{
 				dirData.push(entryName);
 			}
 
-			// write meta + data + parent dir meta + parent dir data
+			// write meta + data
 			storage.setItem(fsMetaPrefix+path, JSON.stringify(newMeta));
 			storage.setItem(fsPrefix+path, data);
+			// write parent dir meta + parent dir data
 			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
+		}
+
+
+		// remove an entry
+		function removeEntry(context, path)
+		{
+			path = resolvePath(context, path);
+			const baseName = basename(context, path);
+
+			// get info about parent directory
+			let dirPath = null;
+			let dirData = null;
+			if(path !== '/')
+			{
+				dirPath = dirname(path);
+				dirData = readDir(context, dirPath);
+			}
+
+			// remove from parent directory
+			if(dirData != null && baseName != '')
+			{
+				var index = dirData.indexOf(baseName);
+				if(index !== -1)
+				{
+					dirData.splice(index, 1);
+				}
+			}
+
+			// add updated parent dir entry meta info
+			dirMeta.dateUpdated = new Date().getTime();
+
+			// write parent directory meta / data
+			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
+			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
+			// remove entry meta / data
+			storage.removeItem(fsMetaPrefix+path);
+			storage.removeItem(fsPrefix+path);
 		}
 
 
@@ -693,7 +731,7 @@ function Kernel()
 		// delete a directory
 		function deleteDir(context, path)
 		{
-			const fullPath = resolvePath(context, path);
+			path = resolvePath(context, path);
 			if(!exists(context, path))
 			{
 				return;
@@ -703,8 +741,7 @@ function Kernel()
 			{
 				throw new Error("directory is not empty");
 			}
-			storage.removeItem(fsMetaPrefix+fullPath);
-			storage.removeItem(fsPrefix+fullPath);
+			removeEntry(context, path);
 		}
 
 		// read file from a given path
@@ -833,7 +870,7 @@ function Kernel()
 		// delete a file
 		function deleteFile(context, path)
 		{
-			const fullPath = resolvePath(context, path);
+			path = resolvePath(context, path);
 			if(!exists(context, path))
 			{
 				return;
@@ -843,8 +880,7 @@ function Kernel()
 			{
 				throw new Error("path is not a file");
 			}
-			storage.removeItem(fsMetaPrefix+fullPath);
-			storage.removeItem(fsPrefix+fullPath);
+			removeEntry(context, path);
 		}
 
 		// create empty filesystem, if necessary
