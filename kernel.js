@@ -135,23 +135,23 @@ function Kernel()
 	const osName = 'finkeos';
 
 
-	// process exit signal
+	// exception for process exit signal
 	class ExitSignal extends Error
 	{
-		constructor(signal, message)
+		constructor(exitCode, message)
 		{
-			if(typeof signal === 'string')
+			if(typeof exitCode === 'string')
 			{
-				message = signal;
-				signal = null;
+				message = exitCode;
+				exitCode = null;
 			}
 			
-			if(!message && signal)
+			if(!message && exitCode)
 			{
-				message = "process exited with signal "+signal;
+				message = "process exited with signal "+exitCode;
 			}
 			super(message);
-			this.signal = signal;
+			this.exitCode = exitCode;
 		}
 	}
 
@@ -1132,9 +1132,15 @@ function Kernel()
 					{
 						code = 0;
 					}
+					if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
+					{
+						throw new Error("invalid exit code");
+					}
 					if(code != 0)
 					{
-						context.reject(new Error("process exited with code "+code));
+						var error = new Error("process exited with code "+code);
+						error.exitCode = code;
+						context.reject(error);
 					}
 					else
 					{
@@ -1220,6 +1226,12 @@ function Kernel()
 				}
 			});
 		}
+
+		Object.defineProperty(this, 'pid', {
+			get: () => {
+				return pid;
+			}
+		});
 
 		// start process
 		this.promise = execute();
@@ -1381,7 +1393,7 @@ function Kernel()
 
 
 	// execute a module in a new context
-	function execute(kernel, context, path, args=[], options=null)
+	function execute(kernel, context, command, args=[], options=null)
 	{
 		if(!(args instanceof Array))
 		{
@@ -1394,9 +1406,9 @@ function Kernel()
 		{
 			paths = context.env.paths;
 		}
-		var modulePath = findModulePath(kernel, context, paths, context.cwd, path, {folderExtensions: ['exe']});
+		var modulePath = findModulePath(kernel, context, paths, context.cwd, command, {folderExtensions: ['exe']});
 
-		const argv = [path].concat(args);
+		const argv = [command].concat(args);
 		return kernel.filesystem.executeFile(context, modulePath, argv, options);
 	}
 
