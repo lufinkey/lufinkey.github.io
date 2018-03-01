@@ -69,6 +69,10 @@ function copyFile(src, dest, flags, callback)
 		callback = flags;
 		flags = null;
 	}
+	if(typeof callback !== 'function')
+	{
+		throw new TypeError("callback function is required");
+	}
 
 	setTimeout(() => {
 		try
@@ -138,6 +142,44 @@ function existsSync(path)
 
 FS.exists = exists;
 FS.existsSync = existsSync;
+
+
+
+
+function mkdir(path, mode, callback)
+{
+	if(typeof mode === 'function')
+	{
+		callback = mode;
+		mode = null;
+	}
+	if(typeof callback !== 'function')
+	{
+		throw new TypeError("callback function is required");
+	}
+
+	setTimeout(() => {
+		try
+		{
+			mkdirSync(path, mode);
+		}
+		catch(error)
+		{
+			callback(error);
+			return;
+		}
+		callback(null);
+	}, 0);
+}
+
+function mkdirSync(path, mode)
+{
+	if(mode == null)
+	{
+		mode = 0o777;
+	}
+	syscall('filesystem.createDir', path);
+}
 
 
 
