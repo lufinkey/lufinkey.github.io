@@ -45,35 +45,40 @@ function randomString(length = 32)
 
 function deepCopyObject(object)
 {
-	if(['null', 'undefined', 'function', 'boolean', 'symbol'].includes(typeof object))
+	switch(typeof object)
 	{
-		return object;
-	}
-	else if(typeof object === 'number')
-	{
-		return 0+object;
-	}
-	else if(typeof object == 'string')
-	{
-		return ''+object;
-	}
-	else if(object instanceof Array)
-	{
-		var newObject = object.slice(0);
-		for(var i=0; i<newObject.length; i++)
-		{
-			newObject[i] = deepCopyObject(newObject[i]);
-		}
-		return newObject;
-	}
-	else
-	{
-		var newObject = {};
-		for(const key in object)
-		{
-			newObject[key] = deepCopyObject(object[key]);
-		}
-		return newObject;
+		case 'object':
+			if(object === null)
+			{
+				return null;
+			}
+			else if(object instanceof Array)
+			{
+				var newObject = object.slice(0);
+				for(var i=0; i<newObject.length; i++)
+				{
+					newObject[i] = deepCopyObject(newObject[i]);
+				}
+				return newObject;
+			}
+			else
+			{
+				var newObject = {};
+				for(const key of Object.keys(object))
+				{
+					newObject[key] = deepCopyObject(object[key]);
+				}
+				return newObject;
+			}
+
+		case 'number':
+			return 0+object;
+
+		case 'string':
+			return ''+object;
+		
+		default:
+			return object;
 	}
 }
 
