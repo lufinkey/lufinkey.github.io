@@ -1503,10 +1503,12 @@ function Kernel()
 		if(loadedCSS[cssPath])
 		{
 			// add process PID if necessary
-			if(!loadedCSS.pids.includes(context.pid))
+			var info = loadedCSS[cssPath];
+			if(info.pids.indexOf(context.pid) === -1)
 			{
-				loadedCSS.pids.push(context.pid);
+				info.pids.push(context.pid);
 			}
+			loadedCSS[cssPath] = info;
 			return;
 		}
 
