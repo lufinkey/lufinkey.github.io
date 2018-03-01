@@ -1618,6 +1618,8 @@ function Kernel()
 		// load CSS data
 		var cssData = kernel.filesystem.readFile(context, cssPath);
 
+		// TODO parse out special CSS functions
+
 		// inject CSS into the page
 		var head = document.querySelector('head');
 		var styleTag = document.createElement("STYLE");
