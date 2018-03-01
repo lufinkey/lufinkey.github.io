@@ -1,6 +1,7 @@
 
 requireCSS('./Desktop.css');
 const fs = require('fs');
+const child_process = require('child_process');
 const React = require('react');
 const WindowManager = require('dwm');
 const TaskBar = require('./TaskBar');
@@ -40,13 +41,7 @@ class Desktop extends React.Component
 
 	onFileOpen(filename)
 	{
-		syscall('execute', 'open', ['/home/Desktop/'+filename]).promise.then(() => {
-			// process executed successfully
-		}).catch((error) => {
-			// error
-			console.error("unable to run process:");
-			console.error(error);
-		});
+		child_process.spawn('open', ['/home/Desktop/'+filename]);
 	}
 
 	onWindowManagerMount(windowManager)

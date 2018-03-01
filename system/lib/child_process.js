@@ -9,6 +9,8 @@ class ChildProcess extends EventEmitter
 {
 	constructor(command, subprocess, error)
 	{
+		super();
+		
 		if(!command)
 		{
 			throw new TypeError("invalid subprocess data");
@@ -76,6 +78,8 @@ class ChildProcess extends EventEmitter
 	}
 }
 
+child_process.ChildProcess = ChildProcess;
+
 
 
 
@@ -115,3 +119,5 @@ function spawn(command, args=[], options=null)
 
 	return new ChildProcess(command, subprocess, subprocessError);
 }
+
+child_process.spawn = spawn;

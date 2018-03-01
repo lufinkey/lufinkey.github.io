@@ -1,5 +1,6 @@
 
 const fs = require('fs');
+const { spawn } = require("child_process");
 const MimeType = require('mimetype');
 
 if(process.argv.length !== 2)
@@ -60,13 +61,16 @@ for(var i=1; i<defaultcmd.length; i++)
 }
 
 // launch the process
+
 console.log("launching \""+defaultcmd.join('" "')+"\"");
-syscall('execute', defaultcmd[0], defaultcmd.slice(1)).promise.then(() => {
-	// the process executed successfully
-	process.exit(0);
-}).catch((error) => {
-	// TODO maintain the program's exit code
+var subprocess = spawn(defaultcmd[0], defaultcmd.slice(1));
+
+subprocess.on('error', (error) => {
 	console.error("program execution failed:");
 	console.error(error);
-	process.exit(2);
+	process.exit(1);
+});
+
+subprocess.on('exit', (exitCode) => {
+	process.exit(exitCode);
 });
