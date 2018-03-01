@@ -1047,9 +1047,12 @@ function Kernel()
 		}
 
 		// add properties
+		this.validatePath = validatePath;
+		this.normalizePath = normalizePath;
 		this.dirname = dirname;
 		this.basename = basename;
 		this.extname = extname;
+		this.concatPaths = concatPaths;
 		this.resolvePath = resolvePath;
 		this.exists = exists;
 		this.readMeta = readMeta;
@@ -1063,6 +1066,7 @@ function Kernel()
 		this.executeFile = executeFile;
 		this.requireFile = requireFile;
 		this.deleteFile = deleteFile;
+		this.rename = rename;
 	}
 
 
