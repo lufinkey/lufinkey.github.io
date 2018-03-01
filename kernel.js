@@ -15,6 +15,7 @@ function evalScript(__scope, __code) {
 		const require = __scope.require;
 		const requireCSS = __scope.requireCSS;
 		const __dirname = __scope.__dirname;
+		const __filename = __scope.__filename;
 		const module = __scope.module;
 		const exports = (__scope.module ? __scope.module.exports : undefined);
 		const resolve = __scope.resolve;
