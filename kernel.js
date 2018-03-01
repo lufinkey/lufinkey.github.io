@@ -914,19 +914,9 @@ function Kernel()
 
 
 		// execute a js script at a given path
-		function executeFile(context, path, argv=[], options=null)
+		function executeFile(context, path, args=[], options=null)
 		{
-			const fullPath = resolvePath(context, path);
-			if(!exists(context, fullPath))
-			{
-				throw new Error("file does not exist");
-			}
-			var meta = readMeta(context, fullPath);
-			if(meta.type !== 'file')
-			{
-				throw new Error("path is not a file");
-			}
-			return new ChildProcess(kernel, context, path, argv, options);
+			return new ChildProcess(kernel, context, path, args, options);
 		}
 
 
@@ -1057,15 +1047,22 @@ function Kernel()
 
 	let pidCounter = 1;
 	
-	function ChildProcess(kernel, parentContext, path, argv, options)
+	function ChildProcess(kernel, parentContext, path, args, options)
 	{
-		if(typeof path !== 'string')
+		const fullPath = kernel.filesystem.resolvePath(parentContext, path);
+		if(!kernel.filesystem.exists(parentContext, fullPath))
 		{
-			throw new TypeError("path must be a string");
+			throw new Error("file does not exist");
 		}
-		if(!(argv instanceof Array))
+		const meta = kernel.filesystem.readMeta(parentContext, fullPath);
+		if(meta.type !== 'file')
 		{
-			throw new TypeError("argv must be an Array");
+			throw new Error("path is not a file");
+		}
+		
+		if(!(args instanceof Array))
+		{
+			throw new TypeError("args must be an Array");
 		}
 		options = Object.assign({}, options);
 
@@ -1074,13 +1071,49 @@ function Kernel()
 
 		const context = deepCopyObject(parentContext);
 		context.pid = pid;
-		context.argv = argv.slice(0);
 
-		const dir = kernel.filesystem.dirname(parentContext, path);
-		const fullPath = kernel.filesystem.resolvePath(parentContext, path);
+		const dir = kernel.filesystem.dirname(parentContext, fullPath);
 
 		let executed = false;
 		let exited = false;
+		var argv0 = path;
+
+		// validate options
+		if(options.cwd)
+		{
+			if(typeof options.cwd !== 'string')
+			{
+				throw new TypeError("options.cwd must be a string");
+			}
+			if(!exists(context, options.cwd))
+			{
+				throw new Error("cwd does not exist");
+			}
+			else if(readMeta(context, cwd).type === 'file')
+			{
+				throw new Error("cwd must be a directory");
+			}
+			context.cwd = ''+options.cwd;
+		}
+		if(options.env)
+		{
+			if(typeof options.env !== 'object')
+			{
+				throw new TypeError("options.env must be an object")
+			}
+			context.env = Object.assign(context.env, deepCopyObject(options.env));
+		}
+		if(options.argv0)
+		{
+			if(typeof options.argv0 !== 'string')
+			{
+				throw new TypeError("options.argv0 must be a string");
+			}
+			argv0 = options.argv0;
+		}
+
+		// apply options
+		context.argv = [argv0].concat(args);
 
 		// build process scope
 		let scope = {
@@ -1408,8 +1441,14 @@ function Kernel()
 		}
 		var modulePath = findModulePath(kernel, context, paths, context.cwd, command, {folderExtensions: ['exe']});
 
-		const argv = [command].concat(args);
-		return kernel.filesystem.executeFile(context, modulePath, argv, options);
+		// add options
+		options = Object.assign({}, options);
+		if(!options.argv0)
+		{
+			options.argv0 = command;
+		}
+
+		return kernel.filesystem.executeFile(context, modulePath, args, options);
 	}
 
 
@@ -1671,6 +1710,7 @@ function Kernel()
 		kernel.log(rootContext, "boot data downloaded; booting...");
 		kernel.execute(rootContext, '/system/boot');
 	}).catch((error) => {
+		console.error("kernel error: ", error);
 		kernel.log(rootContext, "fatal error", {color: 'red'});
 		kernel.log(rootContext, error.toString(), {color: 'red'});
 	});
