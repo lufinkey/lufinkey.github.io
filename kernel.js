@@ -1647,14 +1647,33 @@ function Kernel()
 			return;
 		}
 
-		// load CSS data
+		// resolve actual css file
+		var testExtensions = ['', '.css', '.scss'];
+		var resolved = false;
+		for(const extension of testExtensions)
+		{
+			var testPath = cssPath+extension;
+			if(kernel.filesystem.exists(context, testPath) && !checkIfFolder(kernel, context, testPath))
+			{
+				cssPath = testPath;
+				resolved = true;
+				break;
+			}
+		}
+		if(!resolved)
+		{
+			throw new Error("unable to resolve css path "+path);
+		}
+
+		// read css data
+		var cssData = null;
 		try
 		{
-			var cssData = kernel.filesystem.readFile(context, cssPath);
+			cssData = kernel.filesystem.readFile(context, cssPath);
 		}
 		catch(error)
 		{
-			throw new Error("unable to resolve css path: "+error.message);
+			throw new Error("unable to read css file: "+error.message);
 		}
 
 		// TODO parse out special CSS functions
