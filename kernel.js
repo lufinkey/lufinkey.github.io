@@ -1220,8 +1220,16 @@ function Kernel()
 			Promise: ProcPromise
 		};
 		scope.require.resolve = (path) => {
-			// get full module path
 			return findRequirePath(kernel, context, dir, path);
+		};
+		scope.requireCSS.resolve = (path) => {
+			return resolveCSSPath(kernel, context, dir, path);
+		};
+		scope.requireCSS.wait = (path, callback) => {
+			return waitForCSS(kernel, context, dir, path, callback);
+		};
+		scope.requireCSS.ready = (path) => {
+			return isCSSReady(path);
 		};
 		// define Process object
 		scope.process = new (function(){
@@ -1589,10 +1597,19 @@ function Kernel()
 		};
 		scope.require.resolve = (path) => {
 			return findRequirePath(kernel, moduleContext, moduleDir, path);
-		}
+		};
 		scope.requireCSS = (path) => {
 			return requireCSS(kernel, moduleContext, moduleDir, path);
-		}
+		};
+		scope.requireCSS.resolve = (path) => {
+			return resolveCSSPath(kernel, context, dir, path);
+		};
+		scope.requireCSS.wait = (path, callback) => {
+			return waitForCSS(kernel, context, dir, path, callback);
+		};
+		scope.requireCSS.ready = (path) => {
+			return isCSSReady(path);
+		};
 		scope.__dirname = moduleDir;
 		scope.__filename = modulePath;
 		scope.exports = {};
@@ -1617,8 +1634,8 @@ function Kernel()
 	}
 
 
-	// inject a CSS file into the current page
-	function requireCSS(kernel, context, dir, path)
+	// resolve a required CSS file
+	function resolveCSSPath(kernel, context, dir, path)
 	{
 		if(typeof path !== 'string')
 		{
@@ -1634,6 +1651,25 @@ function Kernel()
 		// resolve full path
 		var cssPath = kernel.filesystem.resolvePath(context, path, dir);
 
+		// resolve actual css file path
+		var testExtensions = ['', '.css', '.scss'];
+		for(const extension of testExtensions)
+		{
+			var testPath = cssPath+extension;
+			if(kernel.filesystem.exists(context, testPath) && !checkIfFolder(kernel, context, testPath))
+			{
+				return cssPath;
+			}
+		}
+		throw new Error("unable to resolve css path "+path);
+	}
+
+
+	// inject a CSS file into the current page
+	function requireCSS(kernel, context, dir, path)
+	{
+		var cssPath = resolveCSSPath(kernel, context, dir, path);
+
 		// check if css already loaded
 		if(loadedCSS[cssPath])
 		{
@@ -1644,25 +1680,16 @@ function Kernel()
 				info.pids.push(context.pid);
 			}
 			loadedCSS[cssPath] = info;
-			return;
-		}
-
-		// resolve actual css file
-		var testExtensions = ['', '.css', '.scss'];
-		var resolved = false;
-		for(const extension of testExtensions)
-		{
-			var testPath = cssPath+extension;
-			if(kernel.filesystem.exists(context, testPath) && !checkIfFolder(kernel, context, testPath))
-			{
-				cssPath = testPath;
-				resolved = true;
-				break;
-			}
-		}
-		if(!resolved)
-		{
-			throw new Error("unable to resolve css path "+path);
+			return new Promise((resolve, reject) => {
+				waitForCSS(kernel, context, dir, cssPath, () => {
+					if(loadedCSS[cssPath].error)
+					{
+						reject(loadedCSS[cssPath].error);
+						return;
+					}
+					resolve();
+				})
+			});
 		}
 
 		// read css data
@@ -1686,6 +1713,7 @@ function Kernel()
 
 		// determine interpreter
 		var cssPromise = null;
+		var ready = false;
 		if(cssPath.endsWith('.scss'))
 		{
 			// parse with SCSS
@@ -1696,12 +1724,22 @@ function Kernel()
 					// check for errors
 					if(result.status !== 0)
 					{
+						if(styleTag.parentNode != null)
+						{
+							loadedCSS[cssPath].error = new Error(result.message);
+							loadedCSS[cssPath].ready = true;
+						}
 						console.error("Error compiling scss for "+cssPath+": "+result.message);
 						reject(new Error(result.message));
 						return;
 					}
 					// apply compiled scss
 					styleTag.textContent = result.text;
+					// inform that we are ready
+					if(styleTag.parentNode != null)
+					{
+						loadedCSS[cssPath].ready = true;
+					}
 					resolve(styleTag);
 				});
 			});
@@ -1710,18 +1748,105 @@ function Kernel()
 		{
 			// apply plain content
 			styleTag.textContent = cssData;
+			ready = true;
 			cssPromise = Promise.resolve(styleTag);
 		}
 
 		// save injected tag
 		loadedCSS[cssPath] = {
 			pids: [context.pid],
-			tag: styleTag
+			tag: styleTag,
+			ready: ready
 		};
 
 		return cssPromise;
 	}
 
+	
+	// check if CSS for this context is ready
+	function isCSSReady(kernel, context, dir, path=null)
+	{
+		if(path != null)
+		{
+			// check for specific CSS file
+			var cssPath = null;
+			try
+			{
+				cssPath = resolveCSSPath(kernel, context, dir, path);
+			}
+			catch(error)
+			{
+				return false;
+			}
+
+			return loadedCSS[cssPath].ready;
+		}
+		else
+		{
+			// check for all CSS files used by this context
+			for(const cssPath in loadedCSS)
+			{
+				var info = loadedCSS[cssPath];
+				if(!info.ready)
+				{
+					if(info.pids.indexOf(context.pid) !== -1)
+					{
+						return false
+					}
+				}
+			}
+
+			return true;
+		}
+	}
+
+	
+	// wait for CSS file(s) to be ready
+	function waitForCSS(kernel, context, dir, path, callback)
+	{
+		if(typeof path == 'function')
+		{
+			callback = path;
+			path = null;
+		}
+
+		// check if file(s) ready
+		var ready = true;
+		if(path instanceof Array)
+		{
+			for(const cssPath of path)
+			{
+				if(!isCSSReady(kernel, context, dir, cssPath))
+				{
+					ready = false;
+					break;
+				}
+			}
+		}
+		else if(typeof path == 'string')
+		{
+			if(!isCSSReady(kernel, context, dir, path))
+			{
+				ready = false;
+			}
+		}
+		else if(path != null)
+		{
+			throw new TypeError("path must be a string or an Array");
+		}
+
+		// finish if ready ;)
+		if(ready)
+		{
+			callback();
+			return;
+		}
+
+		// wait a little bit and try again
+		setTimeout(() => {
+			waitForCSS(kernel, context, dir, path, callback);
+		}, 100);
+	}
 
 	// unload any required scripts or CSS
 	function unloadRequired(kernel, context)
