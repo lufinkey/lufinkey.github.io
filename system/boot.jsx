@@ -178,6 +178,11 @@ const systemFiles = {
 			'style.css': new RemoteFile(),
 			'index.jsx': new RemoteFile(),
 			'package.json': new RemoteFile()
+		},
+		'terminal.exe': {
+			'style.css': new RemoteFile(),
+			'index.jsx': new RemoteFile(),
+			'package.json': new RemoteFile()
 		}
 	},
 	'system': {
@@ -221,7 +226,8 @@ const systemFiles = {
 const homeFiles = {
 	'home': {
 		'Desktop': {
-			'ayylmao.txt': new RemoteFile()
+			'ayylmao.txt': new RemoteFile(),
+			'terminal.js': new RemoteFile()
 		}
 	}
 }

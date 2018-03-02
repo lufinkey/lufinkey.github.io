@@ -1,0 +1,5 @@
+{
+	"name": "terminal",
+	"description": "run commands",
+	"main": "index.jsx"
+}

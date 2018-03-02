@@ -1,0 +1,16 @@
+
+.terminal-content {
+	display: flex;
+	flex-direction: column;
+
+	background-color: black;
+	color: white;
+	font-size: 12px;
+	flex-grow: 1;
+}
+
+.terminal-output {
+	flex-grow: 1;
+	overflow-x: hidden;
+	overflow-y: scroll;
+}
