@@ -1229,7 +1229,7 @@ function Kernel()
 			return waitForCSS(kernel, context, dir, path, callback);
 		};
 		scope.requireCSS.ready = (path) => {
-			return isCSSReady(path);
+			return isCSSReady(kernel, context, dir, path);
 		};
 		// define Process object
 		scope.process = new (function(){
@@ -1602,13 +1602,13 @@ function Kernel()
 			return requireCSS(kernel, moduleContext, moduleDir, path);
 		};
 		scope.requireCSS.resolve = (path) => {
-			return resolveCSSPath(kernel, context, dir, path);
+			return resolveCSSPath(kernel, moduleContext, dir, path);
 		};
 		scope.requireCSS.wait = (path, callback) => {
-			return waitForCSS(kernel, context, dir, path, callback);
+			return waitForCSS(kernel, moduleContext, dir, path, callback);
 		};
 		scope.requireCSS.ready = (path) => {
-			return isCSSReady(path);
+			return isCSSReady(kernel, moduleContext, dir, path);
 		};
 		scope.__dirname = moduleDir;
 		scope.__filename = modulePath;
