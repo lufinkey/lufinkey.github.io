@@ -26,6 +26,8 @@
 	background-repeat: no-repeat;
 	background-position: top;
 	background-size: contain;
+
+	background-image: url(/system/lib/shell32.dll/images/icons/default.png);
 }
 
 .file .filename {
