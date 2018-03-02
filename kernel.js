@@ -1648,7 +1648,14 @@ function Kernel()
 		}
 
 		// load CSS data
-		var cssData = kernel.filesystem.readFile(context, cssPath);
+		try
+		{
+			var cssData = kernel.filesystem.readFile(context, cssPath);
+		}
+		catch(error)
+		{
+			throw new Error("unable to resolve css path: "+error.message);
+		}
 
 		// TODO parse out special CSS functions
 
@@ -1670,8 +1677,14 @@ function Kernel()
 					// the style tag has been removed, so don't bother applying compiled scss
 					return;
 				}
-				// apply compiled sass
-				styleTag.textContent = result;
+				// check for errors
+				if(result.status !== 0)
+				{
+					console.error("Error compiling scss for "+cssPath+": "+result.message);
+					return;
+				}
+				// apply compiled scss
+				styleTag.textContent = result.text;
 			});
 		}
 		else
