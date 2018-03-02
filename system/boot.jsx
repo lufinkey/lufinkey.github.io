@@ -24,9 +24,9 @@ bootlog('react loaded');
 
 
 
-function RemoteFile(url)
+function RemoteFile(options)
 {
-	this.url = url;
+	this.options = Object.assign({}, options);
 }
 
 function downloadFiles(structure, path=null)
@@ -50,7 +50,7 @@ function downloadFiles(structure, path=null)
 		{
 			if(entry instanceof RemoteFile)
 			{
-				var url = entry.url;
+				var url = entry.options.url;
 				if(!url)
 				{
 					url = entryPath+'?v='+(Math.random()*9999999999);
@@ -102,7 +102,7 @@ function downloadFilesSlowly(structure, path=null)
 		if(entry instanceof RemoteFile)
 		{
 			// get file URL
-			var url = entry.url;
+			var url = entry.options.url;
 			if(!url)
 			{
 				url = entryPath+'?v='+(Math.random()*9999999999);
@@ -112,6 +112,13 @@ function downloadFilesSlowly(structure, path=null)
 			bootlog("downloading /"+entryPath);
 			syscall('filesystem.downloadFile', url, '/'+entryPath).then(() => {
 				bootlog("downloaded /"+entryPath);
+				// append to file if necessary
+				if(entry.options.append)
+				{
+					var fileData = syscall('filesystem.readFile', '/'+entryPath);
+					fileData += entry.options.append;
+					syscall('filesystem.writeFile', '/'+entryPath, fileData);
+				}
 				// wait a bit
 				setTimeout(() => {
 					// load next file in structure
@@ -211,7 +218,7 @@ const systemFiles = {
 			},
 			'base64uri.js': new RemoteFile(),
 			'child_process.js': new RemoteFile(),
-			'events.js': new RemoteFile("https://raw.githubusercontent.com/Gozala/events/master/events.js"),
+			'events.js': new RemoteFile({url:"https://raw.githubusercontent.com/Gozala/events/master/events.js"}),
 			'fs.js': new RemoteFile(),
 			'mimetype.js': new RemoteFile(),
 			'path.js': new RemoteFile()
