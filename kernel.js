@@ -1685,31 +1685,32 @@ function Kernel()
 		head.appendChild(styleTag);
 
 		// determine interpreter
+		var cssPromise = null;
 		if(cssPath.endsWith('.scss'))
 		{
 			// parse with SCSS
 			var Sass = kernel.require(context, {}, '/', 'sass');
 			var sass = new Sass();
-			sass.compile(cssData, (result) => {
-				if(styleTag.parentNode == null)
-				{
-					// the style tag has been removed, so don't bother applying compiled scss
-					return;
-				}
-				// check for errors
-				if(result.status !== 0)
-				{
-					console.error("Error compiling scss for "+cssPath+": "+result.message);
-					return;
-				}
-				// apply compiled scss
-				styleTag.textContent = result.text;
+			cssPromise = new Promise((resolve, reject) => {
+				sass.compile(cssData, (result) => {
+					// check for errors
+					if(result.status !== 0)
+					{
+						console.error("Error compiling scss for "+cssPath+": "+result.message);
+						reject(new Error(result.message));
+						return;
+					}
+					// apply compiled scss
+					styleTag.textContent = result.text;
+					resolve(styleTag);
+				});
 			});
 		}
 		else
 		{
 			// apply plain content
 			styleTag.textContent = cssData;
+			cssPromise = Promise.resolve(styleTag);
 		}
 
 		// save injected tag
@@ -1717,6 +1718,8 @@ function Kernel()
 			pids: [context.pid],
 			tag: styleTag
 		};
+
+		return cssPromise;
 	}
 
 
