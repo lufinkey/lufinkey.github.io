@@ -1,6 +1,7 @@
 
 let Transcend32 = null;
 let Shell32 = null;
+let SelfAd = null;
 let osComponent = null;
 let logs = [];
 
@@ -217,6 +218,11 @@ const systemFiles = {
 				'index.jsx': new RemoteFile(),
 				'package.json': new RemoteFile()
 			},
+			'selfad.dll': {
+				'style.scss': new RemoteFile(),
+				'package.json': new RemoteFile(),
+				'index.jsx': new RemoteFile()
+			},
 			'base64uri.js': new RemoteFile(),
 			'child_process.js': new RemoteFile(),
 			'events.js': new RemoteFile({url:"https://raw.githubusercontent.com/Gozala/events/master/events.js"}),
@@ -313,35 +319,34 @@ class OS extends React.Component
 
 	boot()
 	{
-		return new Promise((resolve, reject) => {
-			// download system files
-			bootlog("downloading system files");
-			downloadFilesSlowly(systemFiles).then(() => {
-				bootlog("finished downloading system files");
-				Shell32 = require('shell32');
-				bootSequence++; //2
+		// download system files
+		bootlog("downloading system files");
+		downloadFilesSlowly(systemFiles).then(() => {
+			bootlog("finished downloading system files");
+			Shell32 = require('shell32');
+			SelfAd = require('selfad');
+			bootSequence++; //2
+			this.forceUpdate();
+
+			// build user home
+			bootlog("building user home directory");
+			downloadFilesSlowly(homeFiles).then(() => {
+				bootlog("finished building user home directory");
+				bootSequence++; //3
 				this.forceUpdate();
 
-				// build user home
-				bootlog("building user home directory");
-				downloadFilesSlowly(homeFiles).then(() => {
-					bootlog("finished building user home directory");
-					bootSequence++; //3
+				//wait a bit
+				setTimeout(() => {
+					// finish "boot" sequence
+					bootSequence++; //4
 					this.forceUpdate();
-
-					//wait a bit
-					setTimeout(() => {
-						// finish "boot" sequence
-						bootSequence++; //4
-						this.forceUpdate();
-					}, 2000);
-				}).catch((error) => {
-					bootlog("failed to build user home directory", {color: 'red'});
-				});
+				}, 2000);
 			}).catch((error) => {
-				console.error(error);
-				bootlog("failed to download system files", {color: 'red'});
+				bootlog("failed to build user home directory", {color: 'red'});
 			});
+		}).catch((error) => {
+			console.error(error);
+			bootlog("failed to download system files", {color: 'red'});
 		});
 	}
 
@@ -364,6 +369,7 @@ class OS extends React.Component
 			default:
 				return (
 					<Transcend32 fullscreen={true}>
+						<SelfAd/>
 						<Shell32/>
 					</Transcend32>
 				);
