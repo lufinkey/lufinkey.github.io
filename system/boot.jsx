@@ -187,6 +187,10 @@ const systemFiles = {
 			'package.json': new RemoteFile()
 		},
 		'terminal.exe': {
+			'terminal.js': new RemoteFile({
+				url: 'https://raw.githubusercontent.com/eosterberg/terminaljs/master/terminal.js',
+				append: '\nmodule.exports = Terminal;'
+			}),
 			'style.css': new RemoteFile(),
 			'index.jsx': new RemoteFile(),
 			'package.json': new RemoteFile()

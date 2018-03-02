@@ -1,6 +1,8 @@
 
 requireCSS('./style.css');
 const React = require('react');
+const { spawn } = require('child_process');
+const Terminal = require('./terminal');
 
 var windowManager = process.env['WINDOW_MANAGER'];
 if(!windowManager)
@@ -10,12 +12,67 @@ if(!windowManager)
 }
 
 windowManager.createWindow().then((window) => {
+	// create terminal
+	var terminal = new Terminal();
+
+	// scroll to the bottom of the terminal
+	function scrollToBottom()
+	{
+		if(terminal.html.parentNode)
+		{
+			terminal.html.parentNode.scrollTop = terminal.html.parentNode.scrollHeight;
+		}
+	}
+
+	// handle terminal input loop
+	function terminalInputLoop()
+	{
+		scrollToBottom();
+		terminal.input("~$", (entered) => {
+			scrollToBottom();
+			var cmdParts = entered.split(' ');
+			
+			try
+			{
+				// start subprocess
+				var subprocess = spawn(cmdParts[0], cmdParts.slice(1));
+
+				// handle error
+				subprocess.on('error', (error) => {
+					terminal.print(error.toString());
+					terminalInputLoop();
+				});
+
+				// handle exit
+				subprocess.on('exit', (exitCode) => {
+					terminalInputLoop();
+				});
+			}
+			catch(error)
+			{
+				terminal.print(error.toString());
+				terminalInputLoop();
+			}
+		});
+	}
+
+	// handle DOM element reference
+	let reffed = false;
+	function onRef(element)
+	{
+		if(reffed)
+		{
+			return;
+		}
+		reffed = true;
+		element.appendChild(terminal.html);
+		terminalInputLoop();
+	}
+
 	// window created
 	window.renderContent = () => {
 		return (
-			<div className="terminal-content">
-				<div className="terminal-output"></div>
-				<input type="text" className="terminal-input"/>
+			<div ref={(element) => {onRef(element)}} className="terminal-content">
 			</div>
 		);
 	};
