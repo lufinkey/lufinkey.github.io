@@ -160,6 +160,7 @@
 	top: 0;
 	bottom: 0;
 	pointer-events: none;
+	z-index: 4;
 }
 
 .crt-scanlines {
