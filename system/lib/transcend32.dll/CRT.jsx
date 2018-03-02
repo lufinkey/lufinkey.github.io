@@ -126,6 +126,14 @@ class CRT extends React.Component
 				clearInterval(this.screenExpandInterval);
 				this.screenExpandInterval = null;
 			}
+			this.setState({
+				fullscreen: false,
+				animating: false,
+				offsetX: undefined,
+				offsetY: undefined,
+				scaleX: undefined,
+				scaleY: undefined
+			});
 		}
 	}
 
