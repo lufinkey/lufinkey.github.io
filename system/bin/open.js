@@ -1,7 +1,7 @@
 
 const fs = require('fs');
 const { spawn } = require("child_process");
-const MimeType = require('mimetype');
+const mimetype = require('mimetype');
 
 if(process.argv.length !== 2)
 {
@@ -13,7 +13,7 @@ if(process.argv.length !== 2)
 var filename = process.argv[1];
 
 // determine mime type
-var mimeType = MimeType.determine(filename);
+var mimeType = mimetype(filename);
 
 // load app defaults
 var appdefaults = null;

@@ -115,9 +115,14 @@ function downloadFilesSlowly(structure, path=null)
 				// wait a bit
 				setTimeout(() => {
 					// load next file in structure
-					downloadFilesSlowly(nextStructure, path).then(resolve).catch(reject);
+					downloadFilesSlowly(nextStructure, path).then(() => {
+						resolve();
+					}).catch((error) => {
+						reject(error);
+					});
 				}, 100);
 			}).catch((error) => {
+				// error
 				bootlog("failed to download /"+entryPath, {color: 'red'});
 				bootlog(error.toString(), {color: 'red'});
 				reject(error);
@@ -140,8 +145,14 @@ function downloadFilesSlowly(structure, path=null)
 			// fetch remote files in folder
 			downloadFilesSlowly(entry, entryPath).then(() => {
 				// load next file in structure
-				downloadFilesSlowly(nextStructure, path).then(resolve).catch(reject);
-			}).catch(reject);
+				downloadFilesSlowly(nextStructure, path).then(() => {
+					resolve();
+				}).catch((error) => {
+					reject(error);
+				});
+			}).catch((error) => {
+				reject(error);
+			});
 		}
 	});
 }
@@ -153,8 +164,8 @@ const baseFiles =  {
 		'lib': {
 			'transcend32.dll': {
 				'style.css': new RemoteFile(),
-				'CRT.js': new RemoteFile(),
-				'index.js': new RemoteFile(),
+				'CRT.jsx': new RemoteFile(),
+				'index.jsx': new RemoteFile(),
 				'package.json': new RemoteFile()
 			}
 		}
@@ -165,7 +176,7 @@ const systemFiles = {
 	'apps': {
 		'textedit.exe': {
 			'style.css': new RemoteFile(),
-			'index.js': new RemoteFile(),
+			'index.jsx': new RemoteFile(),
 			'package.json': new RemoteFile()
 		}
 	},
@@ -175,23 +186,22 @@ const systemFiles = {
 		},
 		'lib': {
 			'dwm.dll': {
-				'Window.js': new RemoteFile(),
-				'WindowManager.js': new RemoteFile(),
+				'Window.jsx': new RemoteFile(),
 				'style.css': new RemoteFile(),
-				'index.js': new RemoteFile(),
+				'index.jsx': new RemoteFile(),
 				'package.json': new RemoteFile()
 			},
 			'shell32.dll': {
 				'Desktop.css': new RemoteFile(),
-				'Desktop.js': new RemoteFile(),
-				'FileIcon.js': new RemoteFile(),
+				'Desktop.jsx': new RemoteFile(),
+				'FileIcon.jsx': new RemoteFile(),
 				'FileIconLayout.css': new RemoteFile(),
-				'FileIconLayout.js': new RemoteFile(),
+				'FileIconLayout.jsx': new RemoteFile(),
 				'TaskBar.css': new RemoteFile(),
-				'TaskBar.js': new RemoteFile(),
-				'TaskBarWindowButton.js': new RemoteFile(),
-				'Wallpaper.js': new RemoteFile(),
-				'index.js': new RemoteFile(),
+				'TaskBar.jsx': new RemoteFile(),
+				'TaskBarWindowButton.jsx': new RemoteFile(),
+				'Wallpaper.jsx': new RemoteFile(),
+				'index.jsx': new RemoteFile(),
 				'package.json': new RemoteFile()
 			},
 			'base64uri.js': new RemoteFile(),
@@ -203,7 +213,7 @@ const systemFiles = {
 		},
 		'share': {
 			'appdefaults.json': new RemoteFile(),
-			'magic.json': new RemoteFile()
+			'mimetypes.json': new RemoteFile()
 		}
 	}
 };

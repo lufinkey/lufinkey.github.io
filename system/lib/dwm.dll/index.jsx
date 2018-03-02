@@ -1,4 +1,5 @@
 
+requireCSS('./style.css');
 const React = require('react');
 const Window = require('./Window');
 

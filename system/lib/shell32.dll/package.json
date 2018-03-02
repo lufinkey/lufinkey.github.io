@@ -1,4 +1,4 @@
 {
 	"name": "shell32",
-	"main": "index.js"
+	"main": "index.jsx"
 }

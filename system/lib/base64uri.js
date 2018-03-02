@@ -2,7 +2,8 @@
 const fs = require('fs');
 const MimeType = require('mimetype');
 
-module.exports = (filename) => {
+module.exports = function(filename)
+{
 	var mimeType = MimeType.determine(filename);
 	if(mimeType == null)
 	{

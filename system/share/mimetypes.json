@@ -1,0 +1,25 @@
+{
+	"application/pdf": {
+		"sig": ["25504446"],
+		"ext": ["pdf"]
+	},
+	"application/zip": {
+		"sig": ["504b0304"],
+		"ext": ["zip"]
+	},
+	"image/png": {
+		"sig": ["89504e47"],
+		"ext": ["png"]
+	},
+	"image/gif": {
+		"sig": ["47494638"],
+		"ext": ["gif"]
+	},
+	"image/jpeg": {
+		"sig": ["ffd8ffdb", "ffd8ffe0", "ffd8ffe1"],
+		"ext": ["jpg", "jpeg"]
+	},
+	"text/plain": {
+		"ext": ["txt"]
+	}
+}

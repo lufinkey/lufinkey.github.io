@@ -1,4 +1,4 @@
 {
 	"name": "dwm",
-	"main": "index.js"
+	"main": "index.jsx"
 }

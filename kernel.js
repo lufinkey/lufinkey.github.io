@@ -135,7 +135,7 @@ function runScript(kernel, interpreter, scope, code)
 {
 	switch(interpreter)
 	{
-		case 'react':
+		case 'jsx':
 			const Babel = kernel.require(rootContext, scope, '/', 'babel');
 			code = Babel.transform(code, {presets:['react']}).code;
 			break;
@@ -218,7 +218,11 @@ function Kernel()
 			super((resolve, reject) => {
 				try
 				{
-					callback(resolve, reject);
+					callback((...args) => {
+						resolve(...args);
+					}, (...args) => {
+						reject(...args);
+					});
 				}
 				catch(error)
 				{
@@ -239,7 +243,7 @@ function Kernel()
 			}
 		}
 
-		then(callback)
+		then(callback, ...args)
 		{
 			let exitSignal = null;
 			var retVal = super.then((...args) => {
@@ -262,7 +266,7 @@ function Kernel()
 						throw error;
 					}
 				}
-			});
+			}, ...args);
 			if(exitSignal != null)
 			{
 				throw exitSignal;
@@ -270,7 +274,7 @@ function Kernel()
 			return retVal;
 		}
 
-		catch(callback)
+		catch(callback, ...args)
 		{
 			let exitSignal = null;
 			var retVal = super.catch((...args) => {
@@ -290,7 +294,35 @@ function Kernel()
 						throw error;
 					}
 				}
-			});
+			}, ...args);
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			return retVal;
+		}
+
+		finally(callback, ...args)
+		{
+			let exitSignal = null;
+			var retVal = super.finally((...args) => {
+				try
+				{
+					return callback(...args);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			}, ...args);
 			if(exitSignal != null)
 			{
 				throw exitSignal;
@@ -336,7 +368,7 @@ function Kernel()
 				}).catch((...args) => {
 					try
 					{
-						return resolve(...args);
+						return reject(...args);
 					}
 					catch(error)
 					{
@@ -959,11 +991,11 @@ function Kernel()
 		function getInterpreter(context, path)
 		{
 			path = resolvePath(context, path);
-			if(path.endsWith('.raw.js'))
+			if(path.endsWith('.jsx'))
 			{
-				return undefined;
+				return 'jsx';
 			}
-			return 'react';
+			return undefined;
 		}
 
 
@@ -1370,7 +1402,7 @@ function Kernel()
 		{
 			return mainFile;
 		}
-		return kernel.filesystem.resolvePath(context, path+'/'+mainFile);
+		return kernel.filesystem.concatPaths(context, path, mainFile);
 	}
 
 
@@ -1411,7 +1443,7 @@ function Kernel()
 		{
 			return fullModulePath;
 		}
-		fullModulePath = modulePath + '.raw.js';
+		fullModulePath = modulePath + '.jsx';
 		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
 		{
 			return fullModulePath;
@@ -1766,10 +1798,10 @@ function Kernel()
 
 	// download system files
 	const downloads = [];
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.raw.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.raw.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.raw.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.js?v='+(Math.random()*9999999999), '/system/boot.js'));
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.jsx?v='+(Math.random()*9999999999), '/system/boot.jsx'));
 
 	// wait for files to finish downloading
 	Promise.all(downloads).then(() => {
