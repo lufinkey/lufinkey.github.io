@@ -5,6 +5,8 @@ let SelfAd = null;
 let osComponent = null;
 let logs = [];
 
+const startupAudio = new Audio('system/lib/shell32.dll/audio/startup.mp3');
+
 function bootlog(message, options)
 {
 	logs.push({message: message, options: Object.assign({}, options)});
@@ -337,10 +339,12 @@ class OS extends React.Component
 
 				//wait a bit
 				setTimeout(() => {
+					// play the startup sound
+					startupAudio.play();
 					// finish "boot" sequence
 					bootSequence++; //4
 					this.forceUpdate();
-				}, 2000);
+				}, 1000);
 			}).catch((error) => {
 				bootlog("failed to build user home directory", {color: 'red'});
 			});
@@ -369,8 +373,8 @@ class OS extends React.Component
 			default:
 				return (
 					<Transcend32>
-						<SelfAd/>
 						<Shell32/>
+						<SelfAd/>
 					</Transcend32>
 				);
 		}
