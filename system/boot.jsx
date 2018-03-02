@@ -119,15 +119,12 @@ function downloadFilesSlowly(structure, path=null)
 					fileData += entry.options.append;
 					syscall('filesystem.writeFile', '/'+entryPath, fileData);
 				}
-				// wait a bit
-				setTimeout(() => {
-					// load next file in structure
-					downloadFilesSlowly(nextStructure, path).then(() => {
-						resolve();
-					}).catch((error) => {
-						reject(error);
-					});
-				}, 100);
+				// load next file in structure
+				downloadFilesSlowly(nextStructure, path).then(() => {
+					resolve();
+				}).catch((error) => {
+					reject(error);
+				});
 			}).catch((error) => {
 				// error
 				bootlog("failed to download /"+entryPath, {color: 'red'});
