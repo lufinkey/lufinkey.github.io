@@ -1,10 +1,10 @@
 
 const fs = require('fs');
-const MimeType = require('mimetype');
+const mimetype = require('mimetype');
 
 module.exports = function(filename)
 {
-	var mimeType = MimeType.determine(filename);
+	var mimeType = mimetype(filename);
 	if(mimeType == null)
 	{
 		throw new Error("unable to determine mime type");
