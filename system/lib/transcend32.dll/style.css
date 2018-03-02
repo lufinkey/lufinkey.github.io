@@ -54,9 +54,10 @@
 	}
 }
 
-@media (max-width: 480px) and (max-aspect-ratio: 640/427) {
+@media (max-width: 721px) and (max-aspect-ratio: 640/427) {
 	.crt {
 		width: 150%;
+		margin-left: 8%;
 	}
 }
 
