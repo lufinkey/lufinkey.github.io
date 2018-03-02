@@ -46,7 +46,7 @@ else if(defaultcmd.length === 0)
 }
 
 // replace %@ with the filename
-for(var i=1; i<defaultcmd.length; i++)
+for(var i=0; i<defaultcmd.length; i++)
 {
 	var arg = defaultcmd[i];
 	if(typeof arg !== 'string')

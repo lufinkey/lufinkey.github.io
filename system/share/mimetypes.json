@@ -1,4 +1,7 @@
 {
+	"application/javascript": {
+		"ext": ["js","jsx"]
+	},
 	"application/pdf": {
 		"sig": ["25504446"],
 		"ext": ["pdf"]
