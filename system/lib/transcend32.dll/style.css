@@ -182,8 +182,8 @@
 	right: -500px;
 	top: -500px;
 	bottom: -500px;
-	opacity: 0.6;
-	background: transparent url(/system/lib/transcend32.dll/noise.png) 0 0;
+	opacity: 0.4;
+	background: transparent url(system/lib/transcend32.dll/noise.png) 0 0;
 	animation: crt-noise 1s steps(8,end) infinite both;
 }
 

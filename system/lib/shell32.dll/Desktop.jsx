@@ -11,7 +11,7 @@ const Wallpaper = require('./Wallpaper');
 
 const wallpapers = [
 	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true}, // rainy alley
-	{type: 'youtube', videoId: 'IlKsfV2mRR8', audible: false, start: 6}, // "The Grid" VHS
+	{type: 'youtube', videoId: 'IlKsfV2mRR8', audible: false, start: 8}, // "The Grid" VHS
 	{type: 'youtube', videoId: 'w8ndrYXBXT4', audible: false}, // grid
 	{type: 'image', url: 'system/share/wallpapers/japan-purple-aesthetic.jpg'}
 ];

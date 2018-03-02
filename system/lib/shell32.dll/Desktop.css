@@ -39,7 +39,7 @@ iframe.wallpaper {
 	z-index: -3;
 }
 
-@media (min-aspect-ratio: 640/360), (aspect-ratio: 640/360) {
+@media (min-aspect-ratio: 640/280), (aspect-ratio: 640/280) {
 	.wallpaper-container {
 		display: flex;
 		flex-direction: column;
@@ -51,7 +51,7 @@ iframe.wallpaper {
 	}
 }
 
-@media (max-aspect-ratio: 640/360) {
+@media (max-aspect-ratio: 640/280) {
 	.wallpaper-container {
 		display: flex;
 		flex-direction: row;
