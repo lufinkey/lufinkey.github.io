@@ -1869,7 +1869,7 @@ function Kernel()
 				}
 			}
 		}
-		xhr.open('GET', 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.sync.min.js');
+		xhr.open('GET', 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.worker.min.js');
 		xhr.send();
 	}).catch((error) => {
 		console.error("kernel error: ", error);
