@@ -39,6 +39,7 @@ windowManager.createWindow().then((window) => {
 
 				// handle error
 				subprocess.on('error', (error) => {
+					console.error(error);
 					terminal.print(error.toString());
 					terminalInputLoop();
 				});
