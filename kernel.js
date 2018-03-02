@@ -1652,12 +1652,33 @@ function Kernel()
 
 		// TODO parse out special CSS functions
 
-		// inject CSS into the page
+		// add style tag to page
 		var head = document.querySelector('head');
-		var styleTag = document.createElement("STYLE");
+		let styleTag = document.createElement("STYLE");
 		styleTag.type = "text/css";
-		styleTag.textContent = cssData;
 		head.appendChild(styleTag);
+
+		// determine interpreter
+		if(cssPath.endsWith('.scss'))
+		{
+			// parse with SCSS
+			var Sass = kernel.require(context, {}, '/', 'sass');
+			var sass = new Sass();
+			sass.compile(cssData, (result) => {
+				if(styleTag.parentNode == null)
+				{
+					// the style tag has been removed, so don't bother applying compiled scss
+					return;
+				}
+				// apply compiled sass
+				styleTag.textContent = result;
+			});
+		}
+		else
+		{
+			// apply plain content
+			styleTag.textContent = cssData;
+		}
 
 		// save injected tag
 		loadedCSS[cssPath] = {
@@ -1766,6 +1787,9 @@ function Kernel()
 	this.require = (context, scope, dir, path) => {
 		return require(this, context, scope, dir, path);
 	};
+	this.require.resolve = (context, dir, path) => {
+		return findRequirePath(this, context, dir, path);
+	};
 	this.requireCSS = (context, dir, path) => {
 		return requireCSS(this, context, dir, path);
 	};
@@ -1801,12 +1825,52 @@ function Kernel()
 	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js') );
 	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js') );
 	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.jsx?v='+(Math.random()*9999999999), '/system/boot.jsx'));
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js') );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.jsx?v='+(Math.random()*9999999999), '/system/boot.jsx') );
 
 	// wait for files to finish downloading
 	Promise.all(downloads).then(() => {
-		kernel.log(rootContext, "boot data downloaded; booting...");
-		kernel.execute(rootContext, '/system/boot');
+		kernel.log(rootContext, "boot data downloaded");
+		
+		// download sass.worker.js to give to scss
+		kernel.log(rootContext, "preparing scss...");
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = () => {
+			if(xhr.readyState == 4)
+			{
+				if(xhr.status == 200)
+				{
+					// apply downloaded worker data to Sass
+					var workerData = xhr.responseText;
+					var workerURL = 'data:application/javascript;base64,'+btoa(workerData);
+					const Sass = kernel.require(rootContext, {}, '/', 'sass');
+					Sass.setWorkerUrl(workerURL);
+					kernel.log(rootContext, "done preparing scss");
+
+					// boot
+					kernel.log(rootContext, "booting...");
+					kernel.execute(rootContext, '/system/boot');
+				}
+				else
+				{
+					// error
+					var errorMessage = "sass.worker.js download failed";
+					if(xhr.status !== 0)
+					{
+						errorMessage += " with status "+xhr.status;
+						if(xhr.statusText)
+						{
+							errorMessage += ": "+xhr.statusText;
+						}
+					}
+					console.error(errorMessage);
+					kernel.log(rootContext, "fatal error", {color: 'red'});
+					kernel.log(rootContext, errorMessage, {color: 'red'});
+				}
+			}
+		}
+		xhr.open('GET', 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.sync.min.js');
+		xhr.send();
 	}).catch((error) => {
 		console.error("kernel error: ", error);
 		kernel.log(rootContext, "fatal error", {color: 'red'});
