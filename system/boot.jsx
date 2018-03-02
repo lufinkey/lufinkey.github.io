@@ -368,7 +368,7 @@ class OS extends React.Component
 
 			default:
 				return (
-					<Transcend32 fullscreen={true}>
+					<Transcend32>
 						<SelfAd/>
 						<Shell32/>
 					</Transcend32>
