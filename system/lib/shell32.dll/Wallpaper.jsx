@@ -25,11 +25,15 @@ class Wallpaper extends React.Component
 
 	renderYoutubeWallpaper(wallpaper)
 	{
-		var videoSrc = "//www.youtube.com/embed/"+wallpaper.videoId+"?rel=0&autoplay=1&loop=1&showinfo=0&controls=0&modestbranding=1";
+		var videoSrc = "//www.youtube.com/embed/"+wallpaper.videoId+"?rel=0&autoplay=1&loop=1&disablekb=1&showinfo=0&controls=0&modestbranding=1&playlist="+wallpaper.videoId;
 		var ghostVideoSrc = videoSrc + "&mute=1"
 		if(!wallpaper.audible)
 		{
 			videoSrc += "&mute=1";
+		}
+		if(wallpaper.start)
+		{
+			videoSrc += "&start="+wallpaper.start;
 		}
 		return (
 			<div className="wallpaper-container">

@@ -9,10 +9,10 @@ const FileIconLayout = require('./FileIconLayout');
 const Wallpaper = require('./Wallpaper');
 
 
-const startupAudio = new Audio('system/lib/shell32.dll/audio/startup.mp3');
-
 const wallpapers = [
-	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true},
+	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true}, // rainy alley
+	{type: 'youtube', videoId: 'IlKsfV2mRR8', audible: false, start: 6}, // "The Grid" VHS
+	{type: 'youtube', videoId: 'w8ndrYXBXT4', audible: false}, // grid
 	{type: 'image', url: 'system/share/wallpapers/japan-purple-aesthetic.jpg'}
 ];
 
@@ -32,11 +32,6 @@ class Desktop extends React.Component
 	componentWillMount()
 	{
 		files = fs.readdirSync('/home/Desktop');
-	}
-	
-	componentDidMount()
-	{
-		startupAudio.play();
 	}
 
 	onFileOpen(filename)

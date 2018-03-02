@@ -26,13 +26,17 @@
 
 .wallpaper {
 	position: absolute;
-	z-index: -1;
+	z-index: -4;
 	width: 100%;
 	height: 100%;
 	background-position: center;
 	background-size: cover;
-	background-color: red;
+	background-color: black;
 	text-align: center;
+}
+
+iframe.wallpaper {
+	z-index: -3;
 }
 
 @media (min-aspect-ratio: 640/360), (aspect-ratio: 640/360) {
