@@ -1,6 +1,7 @@
 
 requireCSS('./style.css');
 const React = require('react');
+const ReactDOM = require('react-dom');
 const Window = require('./Window');
 
 class WindowManager extends React.Component
@@ -188,9 +189,30 @@ class WindowManager extends React.Component
 			case 'titlebar':
 				var window = this.state.draggingWindow;
 				var position = Object.assign({}, window.state.position);
+				var size = Object.assign({}, window.state.size);
+
+				var areaRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
 
 				position.x += event.movementX;
 				position.y += event.movementY;
+
+				// ensure we don't go outside the window manager bounds
+				if(position.x < 0)
+				{
+					position.x = 0;
+				}
+				else if((position.x+size.x) > areaRect.width)
+				{
+					position.x = areaRect.width - size.x;
+				}
+				if(position.y < 0)
+				{
+					position.y = 0;
+				}
+				else if((position.y+size.y) > areaRect.height)
+				{
+					position.y = areaRect.height - size.y;
+				}
 
 				window.setState({position: position});
 				break;
@@ -199,14 +221,11 @@ class WindowManager extends React.Component
 
 	onDocumentMouseUp(event)
 	{
-		if(event.button == 0)
+		switch(this.state.dragging)
 		{
-			switch(this.state.dragging)
-			{
-				case 'titlebar':
-					this.setState({dragging: null, draggingWindow: null});
-					break;
-			}
+			case 'titlebar':
+				this.setState({dragging: null, draggingWindow: null});
+				break;
 		}
 	}
 
