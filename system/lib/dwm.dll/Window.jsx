@@ -8,7 +8,7 @@ class Window extends React.Component
 		super(props);
 
 		this.state = {
-			created: false
+			_created: false
 		};
 	}
 
@@ -39,7 +39,7 @@ class Window extends React.Component
 	create(initialState, callback)
 	{
 		var state = Object.assign({}, initialState);
-		state.created = true;
+		state._created = true;
 		this.setState(state, callback);
 	}
 
@@ -107,7 +107,7 @@ class Window extends React.Component
 
 	render()
 	{
-		if(!this.state.created)
+		if(!this.state._created)
 		{
 			return null;
 		}
