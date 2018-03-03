@@ -14,6 +14,11 @@
 	pointer-events: none;
 }
 
+
+
+
+/*========= WINDOW =========*/
+
 .window {
 	position: absolute;
 	display: flex;
@@ -121,9 +126,108 @@
 }
 
 .window-content {
+	position: relative;
 	flex-grow: 1;
 	overflow: auto;
 	background-color: white;
 	width: 100%;
 	height: 100%;
+}
+
+
+
+
+/*========= WINDOW RESIZING =========*/
+
+.window-resize {
+	width: 14px;
+	height: 14px;
+}
+
+
+.window-resize.top {
+	position: absolute;
+	top: 0;
+	left: 14px;
+	right: 14px;
+	width: auto;
+}
+.window-resize.top:hover {
+	cursor: ns-resize;
+}
+
+
+.window-resize.topleft {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+.window-resize.topleft:hover {
+	cursor: nwse-resize;
+}
+
+
+.window-resize.topright {
+	position: absolute;
+	top: 0;
+	right: 0;
+}
+.window-resize.topright:hover {
+	cursor: nesw-resize;
+}
+
+
+.window-resize.left {
+	position: absolute;
+	left: 0;
+	top: 14px;
+	bottom: 14px;
+	height: auto;
+}
+.window-resize.left:hover {
+	cursor: ew-resize;
+}
+
+
+.window-resize.right {
+	position: absolute;
+	right: 0;
+	top: 14px;
+	bottom: 14px;
+	height: auto;
+}
+.window-resize.right:hover {
+	cursor: ew-resize;
+}
+
+
+.window-resize.bottomleft {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+}
+.window-resize.bottomleft:hover {
+	cursor: nwse-resize;
+}
+
+
+.window-resize.bottomright {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+}
+.window-resize.bottomright:hover {
+	cursor: nesw-resize;
+}
+
+
+.window-resize.bottom {
+	position: absolute;
+	bottom: 0;
+	left: 14px;
+	right: 14px;
+	width: auto;
+}
+.window-resize.bottom:hover {
+	cursor: ns-resize;
 }

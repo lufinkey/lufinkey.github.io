@@ -73,14 +73,16 @@ class Window extends React.Component
 
 	renderTitleBar()
 	{
-		return [
-			(<div className="title">{this.state.title}</div>),
-			(<div className="window-buttons">
-				<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
-				<button type="button" className="window-button-maximize" onClick={(event) => {this.onMaximizeButtonClick(event)}}></button>
-				<button type="button" className="window-button-close" onClick={(event) => {this.onCloseButtonClick(event)}}></button>
-			</div>)
-		];
+		return (
+			<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
+				<div className="title">{this.state.title}</div>
+				<div className="window-buttons">
+					<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
+					<button type="button" className="window-button-maximize" onClick={(event) => {this.onMaximizeButtonClick(event)}}></button>
+					<button type="button" className="window-button-close" onClick={(event) => {this.onCloseButtonClick(event)}}></button>
+				</div>
+			</div>
+		);
 	}
 
 	renderMenuBar()
@@ -91,8 +93,11 @@ class Window extends React.Component
 			return null;
 		}
 
-		// TODO render menu bar
-		return null;
+		return (
+			<div className="window-menu-bar">
+				{/* TODO render menu bar */}
+			</div>
+		);
 	}
 
 	renderContent()
@@ -127,12 +132,16 @@ class Window extends React.Component
 		
 		return (
 			<div className={className} style={style}>
-				<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
-					{this.renderTitleBar()}
-				</div>
-				<div className="window-menu-bar">
-					{this.renderMenuBar()}
-				</div>
+				<div className="window-resize top"></div>
+				<div className="window-resize topleft"></div>
+				<div className="window-resize topright"></div>
+				<div className="window-resize left"></div>
+				<div className="window-resize right"></div>
+				<div className="window-resize bottomleft"></div>
+				<div className="window-resize bottomright"></div>
+				<div className="window-resize bottom"></div>
+				{this.renderTitleBar()}
+				{this.renderMenuBar()}
 				<div className="window-content">
 					{this.renderContent()}
 				</div>
