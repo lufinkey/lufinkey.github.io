@@ -64,6 +64,8 @@
 	font-size: 4em;
 
 	position: absolute;
+	z-index: 0;
+	
 	left: 0;
 	top: 0;
 	width: 100%;
@@ -77,8 +79,6 @@
 	overflow: hidden;
 	user-select: none;
 	pointer-events: none;
-
-	z-index: 0;
 }
 
 .selfad > .name-banner {

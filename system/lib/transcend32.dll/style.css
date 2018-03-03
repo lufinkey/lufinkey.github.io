@@ -154,18 +154,17 @@
 
 .crt-effects {
 	position: absolute;
+	z-index: 999998;
 	overflow: hidden;
 	left: 0;
 	right: 0;
 	top: 0;
 	bottom: 0;
 	pointer-events: none;
-	z-index: 4;
 }
 
 .crt-scanlines {
 	position: absolute;
-	z-index: 9998;
 	left: 0;
 	right: 0;
 	top: 0;
@@ -178,7 +177,7 @@
 
 .crt-static-overlay {
 	position: absolute;
-	z-index: 9999;
+	z-index: 999999;
 	left: -500px;
 	right: -500px;
 	top: -500px;
