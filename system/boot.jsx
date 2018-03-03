@@ -181,6 +181,11 @@ const baseFiles =  {
 
 const systemFiles = {
 	'apps': {
+		'aboutme.exe': {
+			'style.css': new RemoteFile(),
+			'index.jsx': new RemoteFile(),
+			'package.json': new RemoteFile()
+		},
 		'textedit.exe': {
 			'style.css': new RemoteFile(),
 			'index.jsx': new RemoteFile(),
@@ -242,6 +247,7 @@ const systemFiles = {
 const homeFiles = {
 	'home': {
 		'Desktop': {
+			'aboutme.js': new RemoteFile()
 		}
 	}
 }

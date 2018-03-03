@@ -1,0 +1,17 @@
+
+.aboutme {
+	flex-grow: 1;
+	overflow: hidden;
+	overflow-y: scroll;
+	text-align: center;
+	background-color: white;
+}
+
+.aboutme > h1 {
+    margin-top: 4px;
+    border-bottom: 1px solid;
+}
+
+.aboutme > .me-img {
+	width: 50%;
+}

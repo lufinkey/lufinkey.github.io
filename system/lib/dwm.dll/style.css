@@ -59,6 +59,9 @@
 	padding: 2px 4px 3px 4px;
 	margin-bottom: 2px;
 	font-size: 13px;
+
+	height: 18px;
+	flex-shrink: 0;
 }
 
 .window-title-bar > .title {
