@@ -1,10 +1,6 @@
 
 .aboutme {
-	flex-grow: 1;
-	overflow: hidden;
-	overflow-y: scroll;
 	text-align: center;
-	background-color: white;
 }
 
 .aboutme > h1 {

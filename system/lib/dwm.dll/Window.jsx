@@ -73,16 +73,14 @@ class Window extends React.Component
 
 	renderTitleBar()
 	{
-		return (
-			<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
-				<div className="title">{this.state.title}</div>
-				<div className="window-buttons">
-					<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
-					<button type="button" className="window-button-maximize" onClick={(event) => {this.onMaximizeButtonClick(event)}}></button>
-					<button type="button" className="window-button-close" onClick={(event) => {this.onCloseButtonClick(event)}}></button>
-				</div>
-			</div>
-		);
+		return [
+			(<div className="title">{this.state.title}</div>),
+			(<div className="window-buttons">
+				<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
+				<button type="button" className="window-button-maximize" onClick={(event) => {this.onMaximizeButtonClick(event)}}></button>
+				<button type="button" className="window-button-close" onClick={(event) => {this.onCloseButtonClick(event)}}></button>
+			</div>)
+		];
 	}
 
 	renderMenuBar()
@@ -93,11 +91,8 @@ class Window extends React.Component
 			return null;
 		}
 
-		return (
-			<div class="app-menu-bar">
-				{ /* TODO render menu bar */ }
-			</div>
-		);
+		// TODO render menu bar
+		return null;
 	}
 
 	renderContent()
@@ -132,9 +127,15 @@ class Window extends React.Component
 		
 		return (
 			<div className={className} style={style}>
-				{this.renderTitleBar()}
-				{this.renderMenuBar()}
-				{this.renderContent()}
+				<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
+					{this.renderTitleBar()}
+				</div>
+				<div className="window-menu-bar">
+					{this.renderMenuBar()}
+				</div>
+				<div className="window-content">
+					{this.renderContent()}
+				</div>
 			</div>
 		);
 	}
