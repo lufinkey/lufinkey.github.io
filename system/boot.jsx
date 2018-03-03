@@ -242,8 +242,6 @@ const systemFiles = {
 const homeFiles = {
 	'home': {
 		'Desktop': {
-			'ayylmao.txt': new RemoteFile(),
-			'terminal.js': new RemoteFile()
 		}
 	}
 }
