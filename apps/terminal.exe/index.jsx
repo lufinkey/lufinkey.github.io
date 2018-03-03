@@ -1,6 +1,7 @@
 
 requireCSS('./style.css');
 const React = require('react');
+const ReactDOM = require('react-dom');
 const { spawn } = require('child_process');
 const Terminal = require('./terminal');
 
@@ -18,9 +19,10 @@ windowManager.createWindow().then((window) => {
 	// scroll to the bottom of the terminal
 	function scrollToBottom()
 	{
-		if(terminal.html.parentNode)
+		var contentElement = ReactDOM.findDOMNode(window).querySelector('window-content');
+		if(contentElement)
 		{
-			terminal.html.parentNode.scrollTop = terminal.html.parentNode.scrollHeight;
+			contentElement.scrollTop = contentElement.scrollHeight;
 		}
 	}
 
