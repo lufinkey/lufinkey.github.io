@@ -139,16 +139,16 @@
 /*========= WINDOW RESIZING =========*/
 
 .window-resize {
-	width: 14px;
-	height: 14px;
+	width: 20px;
+	height: 20px;
 }
 
 
 .window-resize.top {
 	position: absolute;
 	top: 0;
-	left: 14px;
-	right: 14px;
+	left: 20px;
+	right: 20px;
 	width: auto;
 }
 .window-resize.top:hover {
@@ -179,8 +179,8 @@
 .window-resize.left {
 	position: absolute;
 	left: 0;
-	top: 14px;
-	bottom: 14px;
+	top: 20px;
+	bottom: 20px;
 	height: auto;
 }
 .window-resize.left:hover {
@@ -191,8 +191,8 @@
 .window-resize.right {
 	position: absolute;
 	right: 0;
-	top: 14px;
-	bottom: 14px;
+	top: 20px;
+	bottom: 20px;
 	height: auto;
 }
 .window-resize.right:hover {
@@ -206,7 +206,7 @@
 	left: 0;
 }
 .window-resize.bottomleft:hover {
-	cursor: nwse-resize;
+	cursor: nesw-resize;
 }
 
 
@@ -216,15 +216,15 @@
 	right: 0;
 }
 .window-resize.bottomright:hover {
-	cursor: nesw-resize;
+	cursor: nwse-resize;
 }
 
 
 .window-resize.bottom {
 	position: absolute;
 	bottom: 0;
-	left: 14px;
-	right: 14px;
+	left: 20px;
+	right: 20px;
 	width: auto;
 }
 .window-resize.bottom:hover {
