@@ -94,8 +94,7 @@ const rootContext = {
 
 	valid: true,
 	timeouts: [],
-	intervals: [],
-	immediates: []
+	intervals: []
 };
 
 
@@ -1235,12 +1234,6 @@ function Kernel()
 			},
 			clearInterval: (...args) => {
 				return kernel.clearInterval(context, ...args);
-			},
-			setImmediate: (...args) => {
-				return kernel.setImmediate(context, ...args);
-			},
-			clearImmediate: (...args) => {
-				return kernel.clearImmediate(context, ...args);
 			}
 		};
 		scope.require.resolve = (path) => {
@@ -1388,13 +1381,18 @@ function Kernel()
 
 		// start process
 		this.promise = new Promise((resolve, reject) => {
-			setImmediate(() => {
+			setInterval(() => {
+				if(!parentContext.valid)
+				{
+					return;
+				}
+
 				execute().then((...args) => {
 					resolve(...args);
 				}).catch((...args) => {
 					reject(...args);
 				});
-			})
+			}, 0);
 		});
 	}
 
@@ -2052,33 +2050,6 @@ function Kernel()
 			context.intervals.splice(index, 1);
 		}
 		return clearInterval(interval);
-	};
-
-	this.setImmediate = (context, handler, ...args) => {
-		if(typeof handler !== 'function')
-		{
-			throw new TypeError("handler must be a function");
-		}
-
-		const immediate = setImmediate((...args) => {
-			var index = context.immediates.indexOf(immediate);
-			if(index !== -1)
-			{
-				context.immediates.splice(index, 1);
-			}
-			handler(...args);
-		}, ...args);
-
-		context.immediates.push(immediate);
-		return interval;
-	};
-	this.clearImmediate = (context, immediate) => {
-		var index = context.immediates.indexOf(immediate);
-		if(index !== -1)
-		{
-			context.immediates.splice(index, 1);
-		}
-		return clearImmediate(immediate);
 	};
 
 // end kernel class
