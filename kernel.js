@@ -1,7 +1,4 @@
 
-// clear local storage on boot for now
-window.localStorage.clear();
-
 // wait for window load to create kernel
 window.addEventListener('load', () => {
 
@@ -942,9 +939,18 @@ function Kernel()
 
 
 		// download a file to a given path
-		function downloadFile(context, url, path)
+		function downloadFile(context, url, path, options)
 		{
-			const downloadPath = resolvePath(context, path);
+			options = Object.assign({}, options);
+			path = resolvePath(context, path);
+
+			if(options.onlyIfMissing)
+			{
+				if(exists(context, path))
+				{
+					return ProcPromise.resolve();
+				}
+			}
 
 			return new ProcPromise((resolve, reject) => {
 				// create request to retrieve remote file
@@ -959,7 +965,7 @@ function Kernel()
 							try
 							{
 								var content = xhr.responseText;
-								writeFile(context, downloadPath, content);
+								writeFile(context, path, content);
 							}
 							catch(error)
 							{
