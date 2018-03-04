@@ -38,7 +38,7 @@
 	background-size: auto 80%;
 }
 
-.start-button:active {
+.start-button:active, .start-button.opened {
 	border-top-color: #2b2800;
     border-left-color: #2b2800;
     border-bottom-color: #a6a6a6;

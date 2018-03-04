@@ -40,10 +40,16 @@ class TaskBar extends React.Component
 
 	render()
 	{
+		var startButtonClassNames = ["start-button"];
+		if(this.state.startMenuOpen)
+		{
+			startButtonClassNames.push('opened');
+		}
+
 		return (
 			<div className="taskbar">
 				<StartMenu opened={this.state.startMenuOpen}/>
-				<button type="button" className="start-button" onMouseDown={(event)=>{this.onStartButtonMouseDown(event)}}>Start</button>
+				<button type="button" className={startButtonClassNames.join(' ')} onMouseDown={(event)=>{this.onStartButtonMouseDown(event)}}>Start</button>
 				<div className="taskbar-windows">
 					{Object.keys(this.props.windows).map((windowId) => (
 						<TaskBarWindowButton
