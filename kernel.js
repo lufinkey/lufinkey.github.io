@@ -1324,6 +1324,18 @@ function Kernel()
 				exited = true;
 				unloadRequired(kernel, context);
 				context.valid = false;
+
+				// destroy timeouts and intervals
+				for(const interval of context.intervals)
+				{
+					clearInterval(interval);
+				}
+				context.intervals = [];
+				for(const timeout of context.timeouts)
+				{
+					clearTimeout(timeout);
+				}
+				context.timeouts = [];
 			}
 		}
 
