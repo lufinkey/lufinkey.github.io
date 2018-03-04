@@ -90,7 +90,10 @@ const rootContext = {
 			'/apps',
 			'/bin'
 		]
-	}
+	},
+
+	timeouts: [],
+	intervals: []
 };
 
 
@@ -1217,7 +1220,25 @@ function Kernel()
 			__filename: fullPath,
 			exports: {},
 			module: new ScriptGlobalAlias(['exports']),
-			Promise: ProcPromise
+			Promise: ProcPromise,
+			setTimeout: (...args) => {
+				return kernel.setTimeout(context, ...args);
+			},
+			clearTimeout: (...args) => {
+				return kernel.clearTimeout(context, ...args);
+			},
+			setInterval: (...args) => {
+				return kernel.setInterval(context, ...args);
+			},
+			clearInterval: (...args) => {
+				return kernel.clearInterval(context, ...args);
+			},
+			setImmediate: (...args) => {
+				return kernel.setImmediate(context, ...args);
+			},
+			clearImmediate: (...args) => {
+				return kernel.clearImmediate(context, ...args);
+			}
 		};
 		scope.require.resolve = (path) => {
 			return findRequirePath(kernel, context, dir, path);
@@ -1843,7 +1864,7 @@ function Kernel()
 		}
 
 		// wait a little bit and try again
-		setTimeout(() => {
+		kernel.setTimeout(context, () => {
 			waitForCSS(kernel, context, dir, path, callback);
 		}, 100);
 	}
@@ -1959,6 +1980,90 @@ function Kernel()
 	this.log = (context, message, options) => {
 		return log(this, context, message, options);
 	};
+
+	// make polyfills for standard functions
+
+	this.setTimeout = (context, handler, ...args) => {
+		if(typeof handler !== 'function')
+		{
+			throw new TypeError("handler must be a function");
+		}
+
+		const timeout = setTimeout((...args) => {
+			var index = context.timeouts.indexOf(timeout);
+			if(index !== -1)
+			{
+				context.timeouts.splice(index, 1);
+			}
+			handler(...args);
+		}, ...args);
+
+		context.timeouts.push(timeout);
+		return timeout;
+	};
+	this.clearTimeout = (context, timeout) => {
+		var index = context.timeouts.indexOf(timeout);
+		if(index !== -1)
+		{
+			context.timeouts.splice(index, 1);
+		}
+		return clearTimeout(timeout);
+	};
+
+	this.setInterval = (context, handler, ...args) => {
+		if(typeof handler !== 'function')
+		{
+			throw new TypeError("handler must be a function");
+		}
+
+		const interval = setInterval((...args) => {
+			var index = context.intervals.indexOf(interval);
+			if(index !== -1)
+			{
+				context.intervals.splice(index, 1);
+			}
+			handler(...args);
+		}, ...args);
+
+		context.intervals.push(interval);
+		return interval;
+	};
+	this.clearInterval = (context, interval) => {
+		var index = context.intervals.indexOf(interval);
+		if(index !== -1)
+		{
+			context.intervals.splice(index, 1);
+		}
+		return clearInterval(interval);
+	};
+
+	this.setImmediate = (context, handler, ...args) => {
+		if(typeof handler !== 'function')
+		{
+			throw new TypeError("handler must be a function");
+		}
+
+		const immediate = setImmediate((...args) => {
+			var index = context.immediates.indexOf(immediate);
+			if(index !== -1)
+			{
+				context.immediates.splice(index, 1);
+			}
+			handler(...args);
+		}, ...args);
+
+		context.immediates.push(immediate);
+		return interval;
+	};
+	this.clearImmediate = (context, immediate) => {
+		var index = context.immediates.indexOf(immediate);
+		if(index !== -1)
+		{
+			context.immediates.splice(index, 1);
+		}
+		return clearImmediate(immediate);
+	};
+
 // end kernel class
 }
 
