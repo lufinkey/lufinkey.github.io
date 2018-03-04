@@ -143,6 +143,7 @@ class WindowManager extends React.Component
 
 	onWindowUnmount(window)
 	{
+		this.stopDragging();
 		for(var i=0; i<this.windowDestroyCallbacks.length; i++)
 		{
 			var windowCallback = this.windowDestroyCallbacks[i];
@@ -215,10 +216,10 @@ class WindowManager extends React.Component
 		var elements = document.querySelectorAll("body, iframe");
 		for(const element of elements)
 		{
-			element.style.pointerEvents = undefined;
-			element.style.userSelect = undefined;
-			element.style.msUserSelect = undefined;
-			element.style.webkitUserSelect = undefined;
+			element.style.pointerEvents = null;
+			element.style.userSelect = null;
+			element.style.msUserSelect = null;
+			element.style.webkitUserSelect = null;
 		}
 
 		this.setState({
