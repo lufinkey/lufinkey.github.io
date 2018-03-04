@@ -68,6 +68,10 @@
 
 	height: 18px;
 	flex-shrink: 0;
+	user-drag: none;
+	-webkit-user-drag: none;
+	-moz-user-drag: none;
+	-ms-user-drag: none;
 }
 
 .window-title-bar > .title {
