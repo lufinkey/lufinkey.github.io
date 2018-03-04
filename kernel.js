@@ -772,17 +772,12 @@ function Kernel()
 			validatePath(context, path);
 
 			// get info about parent directory
-			let dirPath = null;
-			let dirData = null;
 			if(path !== '/')
 			{
-				dirPath = dirname(context, path);
-				dirData = readDir(context, dirPath);
-			}
+				var dirPath = dirname(context, path);
+				var dirData = readDir(context, dirPath);
+				var dirMeta = readMeta(context, dirPath);
 
-			// remove from parent directory if it exists
-			if(dirData != null && baseName != '')
-			{
 				const baseName = basename(context, path);
 				var index = dirData.indexOf(baseName);
 				if(index !== -1)
@@ -792,11 +787,12 @@ function Kernel()
 					// update parent dir entry meta info
 					dirMeta.dateUpdated = new Date().getTime();
 				}
+
+				// write parent directory meta / data
+				storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
+				storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 			}
 
-			// write parent directory meta / data
-			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
-			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
 			// remove entry meta / data
 			storage.removeItem(fsMetaPrefix+path);
 			storage.removeItem(fsPrefix+path);
