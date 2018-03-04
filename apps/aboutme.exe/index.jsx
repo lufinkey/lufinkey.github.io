@@ -40,9 +40,44 @@ windowManager.createWindow().then((window) => {
 				</p>
 
 
+				<div className="personal-projects">
+					<h2>Personal Projects</h2>
+
+					<hr/>
+
+					<ul className="projects">
+
+						<li className="browser-command">
+							<h3><a href="https://github.com/lufinkey/BrowserCommand">Browser Command</a></h3>
+
+							<p>
+								Browser Command is a node module / CLI to facilitate control of web browsers externally. It uses a
+								web socket server as a medium to allow a browser extension to send messages to a running nodejs instance.
+							</p>
+						</li>
+
+						<li className="react-native-spotify">
+							<h3><a href="https://github.com/lufinkey/react-native-spotify">React Native Spotify</a></h3>
+							
+							<p>
+								This is a module for React Native to allow cross platform mobile development with the Spotify SDK. It is
+								essentially a javascript wrapper around the native SDKs provided by Spotify. While working on this project,
+								I also found the <i>events</i> functionality in react native somewhat lacking, so I also made
+								a <a href="https://github.com/lufinkey/react-native-events">dependency module for event handling</a>.
+								This Spotify module is currently being used by multiple live apps.
+							</p>
+						</li>
+
+					</ul>
+
+				</div>
+
+
 				<div className="work-experience">
 					<h2>Work Experience</h2>
+
 					<hr/>
+
 					<ul className="companies">
 
 						<li className="wehavebecomevikings">

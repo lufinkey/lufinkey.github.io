@@ -1,5 +1,6 @@
 
 @import url('https://fonts.googleapis.com/css?family=Orbitron');
+@import url('https://fonts.googleapis.com/css?family=Mina');
 
 .aboutme {
 	text-align: center;
@@ -20,17 +21,25 @@
 	color: white;
 }
 
+.aboutme p {
+	font-family: Mina;
+}
+
 .aboutme hr {
 	width: 60%;
 }
 
-.aboutme > h1 {
+.aboutme h1 {
 	margin-top: 4px;
 	margin-bottom: 0px;
 }
 
 .aboutme > .me-img {
 	height: 140px;
+}
+
+.aboutme > .info {
+	text-align: center;
 }
 
 .aboutme > .info > .major {
@@ -44,6 +53,7 @@
 .aboutme > .info > .class-year {
 	display: block;
 }
+
 
 
 /*========= LINKS =========*/
@@ -97,6 +107,24 @@
 	text-align: left;
 }
 
-.aboutme .work-experience h2 {
+
+
+/*========= PERSONAL PROJECTS =========*/
+
+.aboutme .personal-projects {
+	text-align: left;
+}
+
+
+
+.aboutme h2 {
 	text-align: center;
+}
+
+.aboutme ul {
+	font-size: 14px;
+}
+
+.aboutme h3 {
+	font-size: 16px;
 }
