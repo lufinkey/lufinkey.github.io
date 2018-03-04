@@ -1392,7 +1392,7 @@ function Kernel()
 		});
 
 		// start process
-		this.promise = new Promise((resolve, reject) => {
+		this.promise = new ProcPromise((resolve, reject) => {
 			setTimeout(() => {
 				if(!parentContext.valid)
 				{
