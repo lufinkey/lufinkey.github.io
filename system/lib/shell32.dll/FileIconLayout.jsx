@@ -89,10 +89,6 @@ class FileIconLayout extends React.Component
 		{
 			this.setState({selectedFiles: []});
 		}
-		if(this.props.onMouseDown)
-		{
-			this.props.onMouseDown(event);
-		}
 	}
 
 	onFileMouseDown(filename, event)
