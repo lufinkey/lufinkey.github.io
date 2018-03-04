@@ -53,6 +53,10 @@ iframe.wallpaper {
 	pointer-events: none;
 }
 
+video.wallpaper {
+	object-fit: fill;
+}
+
 @media (min-aspect-ratio: 640/280), (aspect-ratio: 640/280) {
 	.crt-screen-content.fullscreen .wallpaper-container {
 		display: flex;

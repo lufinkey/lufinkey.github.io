@@ -10,10 +10,10 @@ const Wallpaper = require('./Wallpaper');
 
 
 const wallpapers = [
-	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true}, // rainy alley
-	{type: 'youtube', videoId: 'IlKsfV2mRR8', audible: false, start: 8}, // "The Grid" VHS
-	{type: 'youtube', videoId: 'w8ndrYXBXT4', audible: false}, // grid
-	{type: 'image', url: 'system/share/wallpapers/japan-purple-aesthetic.jpg'}
+	{type: 'video', src: 'system/share/wallpapers/the-grid.mp4', mimeType: 'video/mp4', start: 7, ghost: false}, // "The Grid"
+	{type: 'youtube', videoId: 'w8ndrYXBXT4', audible: false, ghost: true}, // grid
+	{type: 'youtube', videoId: 'WmAoE-ZkoQs', audible: true, ghost: true}, // rainy alley
+	{type: 'image', src: 'system/share/wallpapers/japan-purple-aesthetic.jpg', ghost: true}
 ];
 
 let files = null;
@@ -96,7 +96,7 @@ class Desktop extends React.Component
 
 		return (
 			<div id={this.props.id} className="desktop">
-				<Wallpaper wallpaper={wallpapers[1]}/>
+				<Wallpaper wallpaper={wallpapers[0]}/>
 				<div className="desktop-area" onMouseDown={(event)=>{this.onDesktopMouseDown(event)}}>
 					<FileIconLayout
 						files={files}

@@ -18,6 +18,9 @@ class Wallpaper extends React.Component
 			case 'image':
 				return this.renderImageWallpaper(this.props.wallpaper);
 
+			case 'video':
+				return this.renderVideoWallpaper(this.props.wallpaper);
+
 			default:
 				return null;
 		}
@@ -38,7 +41,9 @@ class Wallpaper extends React.Component
 		return (
 			<div className="wallpaper-container">
 				<iframe className="wallpaper" src={videoSrc} frameBorder={0} allowFullScreen={true}></iframe>
-				<iframe className="wallpaper ghost" src={ghostVideoSrc} frameBorder={0} allowFullScreen={true}></iframe>
+				{ wallpaper.ghost ? (
+					<iframe className="wallpaper ghost" src={ghostVideoSrc} frameBorder={0} allowFullScreen={true}></iframe>
+				) : null}
 			</div>
 		);
 	}
@@ -47,8 +52,32 @@ class Wallpaper extends React.Component
 	{
 		return (
 			<div className="wallpaper-container">
-				<div className="wallpaper" style={{backgroundImage:"url("+wallpaper.url+")"}}></div>
-				<div className="wallpaper ghost" style={{backgroundImage:"url("+wallpaper.url+")"}}></div>
+				<div className="wallpaper" style={{backgroundImage:"url("+wallpaper.src+")"}}></div>
+				{ wallpaper.ghost ? (
+					<div className="wallpaper ghost" style={{backgroundImage:"url("+wallpaper.src+")"}}></div>
+				) : null}
+			</div>
+		);
+	}
+
+	renderVideoWallpaper(wallpaper)
+	{
+		var videoSrc = wallpaper.src;
+		if(wallpaper.start)
+		{
+			videoSrc += '#t='+wallpaper.start;
+		}
+
+		return (
+			<div className="wallpaper-container">
+				<video className="wallpaper" muted={!wallpaper.audible} autoPlay={true} loop={true}>
+					<source src={videoSrc} type={wallpaper.mimeType}/>
+				</video>
+				{ wallpaper.ghost ? (
+					<video className="wallpaper ghost" muted={true} autoPlay={true} loop={true}>
+						<source src={videoSrc} type={wallpaper.mimeType}/>
+					</video>
+				) : null}
 			</div>
 		);
 	}
