@@ -1,12 +1,28 @@
 
+@import url('https://fonts.googleapis.com/css?family=Orbitron');
+
 .aboutme {
 	text-align: center;
 	overflow: auto;
+	flex-grow: 1;
+
+	color: white;
+
+	font-family: Orbitron;
+
+	background-color: #560556;
+	background-image: linear-gradient( rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5) ), url(apps/aboutme.exe/background.jpg);
+	background-position: center;
+	background-size: cover;
+}
+
+.aboutme hr {
+	width: 60%;
 }
 
 .aboutme > h1 {
-    margin-top: 4px;
-    border-bottom: 1px solid;
+	margin-top: 4px;
+	margin-bottom: 0px;
 }
 
 .aboutme > .me-img {
@@ -23,4 +39,60 @@
 
 .aboutme > .info > .class-year {
 	display: block;
+}
+
+
+/*========= LINKS =========*/
+
+.aboutme .links-formal {
+	margin-top: 10px;
+}
+
+.aboutme .links-formal a {
+	margin-left: 1em;
+	margin-right: 1em;
+	color: white;
+	font-weight: bold;
+}
+
+.aboutme .links-general {
+	margin-top: 10px;
+}
+
+.aboutme .links-general a {
+	display: inline-block;
+	color: white;
+
+	width: 40px;
+	height: 40px;
+	margin-left: 10px;
+	margin-right: 10px;
+
+	background-position: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
+.aboutme .links-general .github {
+	background-image: url(apps/aboutme.exe/github.png);
+}
+
+.aboutme .links-general .twitter {
+	background-image: url(apps/aboutme.exe/twitter.png);
+}
+
+.aboutme .links-general .patreon {
+	background-image: url(apps/aboutme.exe/patreon.png);
+}
+
+
+
+/*========= WORK EXPERIENCE =========*/
+
+.aboutme .work-experience {
+	text-align: left;
+}
+
+.aboutme .work-experience h2 {
+	text-align: center;
 }
