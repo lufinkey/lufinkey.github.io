@@ -94,14 +94,16 @@ class Desktop extends React.Component
 		return (
 			<div id={this.props.id} className="desktop">
 				<Wallpaper wallpaper={wallpapers[1]}/>
-				<FileIconLayout files={files} onFileOpen={(fileName) => {this.onFileOpen(fileName)}}/>
-				<WindowManager
-					onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
-					onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
-					onWindowWillUpdate={(window) => {this.onWindowWillUpdate(window)}}
-					onFileOpen={(filename) => {this.onFileOpen(filename)}}
-					onWindowCreate={(window) => {this.onWindowCreate(window)}}
-					onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
+				<div className="desktop-area">
+					<FileIconLayout files={files} onFileOpen={(fileName) => {this.onFileOpen(fileName)}}/>
+					<WindowManager
+						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
+						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
+						onWindowWillUpdate={(window) => {this.onWindowWillUpdate(window)}}
+						onFileOpen={(filename) => {this.onFileOpen(filename)}}
+						onWindowCreate={(window) => {this.onWindowCreate(window)}}
+						onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
+				</div>
 				<TaskBar
 					windows={windows}
 					onMount={(taskbar) => {this.onTaskBarMount(taskbar)}}

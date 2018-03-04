@@ -48,6 +48,16 @@ class Window extends React.Component
 		this.setState({minimized: true});
 	}
 
+	maximize()
+	{
+		this.setState({maximized: true});
+	}
+
+	restoreDown()
+	{
+		this.setState({maximized: false});
+	}
+
 	close()
 	{
 		if(this.props.windowManager)
@@ -63,7 +73,14 @@ class Window extends React.Component
 
 	onMaximizeButtonClick(event)
 	{
-		//
+		if(this.state.maximized)
+		{
+			this.restoreDown();
+		}
+		else
+		{
+			this.maximize();
+		}
 	}
 
 	onCloseButtonClick(event)
@@ -82,7 +99,9 @@ class Window extends React.Component
 	renderTitleBar()
 	{
 		return (
-			<div className="window-title-bar" onMouseDown={this.props.onTitleBarMouseDown}>
+			<div className="window-title-bar"
+					onMouseDown={this.props.onTitleBarMouseDown}
+					onDoubleClick={(event) => {this.onMaximizeButtonClick(event)}}>
 				<div className="title">{this.state.title}</div>
 				<div className="window-buttons">
 					<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
@@ -137,6 +156,12 @@ class Window extends React.Component
 		else if(this.state.maximized)
 		{
 			className += " maximized";
+			style.left = 0;
+			style.top = 0;
+			style.right = 0;
+			style.bottom = 0;
+			delete style.width;
+			delete style.height;
 		}
 		
 		return (

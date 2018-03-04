@@ -8,8 +8,21 @@
 	padding: 0;
 }
 
-.icon-grid {
+.desktop-area {
 	flex-grow: 1;
+	position: relative;
+	width: 100%;
+}
+
+.desktop-area > .icon-grid {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
 }
 
 .wallpaper-container {

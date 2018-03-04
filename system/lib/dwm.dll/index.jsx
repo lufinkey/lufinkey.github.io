@@ -5,7 +5,7 @@ const ReactDOM = require('react-dom');
 const Window = require('./Window');
 
 
-const minWindowSize = {x: 20, y: 20};
+const minWindowSize = {x: 100, y: 60};
 
 
 class WindowManager extends React.Component
