@@ -2096,11 +2096,12 @@ function Kernel()
 
 	// download system files
 	const downloads = [];
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js') );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://raw.githubusercontent.com/Gozala/events/master/events.js', '/system/lib/events.js') );
+	const downloadOptions = {onlyIfMissing: true};
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js', downloadOptions) );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js', downloadOptions) );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js', downloadOptions) );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js', downloadOptions) );
+	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://raw.githubusercontent.com/Gozala/events/master/events.js', '/system/lib/events.js', downloadOptions) );
 	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.jsx?v='+(Math.random()*9999999999), '/system/boot.jsx') );
 
 	// wait for files to finish downloading
