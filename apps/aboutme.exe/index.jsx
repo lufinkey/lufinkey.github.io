@@ -39,7 +39,7 @@ windowManager.createWindow().then((window) => {
 
 	// set initial state
 	window.setState({
-		title: "textedit.exe"
+		title: "aboutme.exe"
 	});
 }).catch((error) => {
 	console.error("unable to create window: ", error);
