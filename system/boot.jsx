@@ -223,6 +223,8 @@ const systemFiles = {
 				'FileIcon.jsx': new RemoteFile(),
 				'FileIconLayout.css': new RemoteFile(),
 				'FileIconLayout.jsx': new RemoteFile(),
+				'StartMenu.jsx': new RemoteFile(),
+				'StartMenu.css': new RemoteFile(),
 				'TaskBar.css': new RemoteFile(),
 				'TaskBar.jsx': new RemoteFile(),
 				'TaskBarWindowButton.jsx': new RemoteFile(),

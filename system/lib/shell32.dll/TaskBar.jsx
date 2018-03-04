@@ -1,10 +1,20 @@
 
 requireCSS('./TaskBar.css');
 const React = require('react');
+const StartMenu = require('./StartMenu');
 const TaskBarWindowButton = require('./TaskBarWindowButton');
 
 class TaskBar extends React.Component
 {
+	constructor(props)
+	{
+		super(props);
+
+		this.state = {
+			startMenuOpen: false,
+		};
+	}
+
 	componentDidMount()
 	{
 		if(this.props.onMount)
@@ -21,11 +31,19 @@ class TaskBar extends React.Component
 		}
 	}
 
+	onStartButtonMouseDown(event)
+	{
+		this.setState({
+			startMenuOpen: !this.state.startMenuOpen
+		});
+	}
+
 	render()
 	{
 		return (
 			<div className="taskbar">
-				<button type="button" className="start-button">Start</button>
+				<StartMenu opened={this.state.startMenuOpen}/>
+				<button type="button" className="start-button" onMouseDown={(event)=>{this.onStartButtonMouseDown(event)}}>Start</button>
 				<div className="taskbar-windows">
 					{Object.keys(this.props.windows).map((windowId) => (
 						<TaskBarWindowButton

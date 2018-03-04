@@ -1,0 +1,83 @@
+
+.start-menu {
+	position: absolute;
+	display: block;
+	z-index: 0;
+
+	font-family: 'MS Reference Sans Serif';
+
+	bottom: 26px;
+	left: 2px;
+	width: 164px;
+
+	background-color: rgb(192,192,192);
+
+	border-top: ridge 3px white;
+	border-left: ridge 3px white;
+	border-bottom: ridge 2px black;
+	border-right: ridge 2px grey;
+}
+
+.start-menu > .left-banner {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	align-items: right;
+	
+    width: 28px;
+    left: 0px;
+    top: 0px;
+	bottom: 0px;
+	
+    background-color: rgb(128,128,128);
+    font-family: Arial;
+    font-weight: bold;
+}
+
+.start-menu .vertical-text {
+	display: inline-block;
+
+	color: rgb(192,192,192);
+	white-space: nowrap;
+
+	font-size: 20px;
+	margin-left: 14px;
+	text-align: left;
+
+	transform: rotatez(-90deg);
+    transform-origin: left;
+}
+
+.start-menu .osWhite {
+	color: white;
+}
+
+.start-menu > ul.items {
+	padding-left: 28px;
+	margin: 0;
+}
+
+.start-menu > ul.items > li {
+	color:black;
+
+	height: 28px;
+	padding-top: 10px;
+	padding-left: 10px;
+
+	list-style-type: none;
+}
+
+.start-menu > ul.items > li:not(.divider):hover {
+	background-color:rgb(0,0,128);
+	color:white;
+	cursor: pointer;
+}
+
+.start-menu > ul.items > li.divider {
+	height: 1px;
+	border-top: ridge 1px white;
+	border-bottom: ridge 1px grey;
+	margin: 2px;
+	padding: 0px;
+}
