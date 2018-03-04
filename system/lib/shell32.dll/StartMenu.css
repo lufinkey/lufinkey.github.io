@@ -2,7 +2,7 @@
 .start-menu {
 	position: absolute;
 	display: block;
-	z-index: 0;
+	z-index: 999998;
 
 	font-family: 'MS Reference Sans Serif';
 

@@ -156,7 +156,7 @@
 .crt-effects {
 	position: fixed;
 	overflow: hidden;
-	z-index: 999998;
+	z-index: 999999;
 	left: 0;
 	right: 0;
 	top: 0;
@@ -183,7 +183,6 @@
 
 .crt-static-overlay {
 	position: fixed;
-	z-index: 999999;
 	left: -500px;
 	right: -500px;
 	top: -500px;
