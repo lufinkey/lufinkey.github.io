@@ -192,6 +192,15 @@ class WindowManager extends React.Component
 		var draggerStartPosition = Object.assign({}, window.state.position);
 		var draggerStartSize = Object.assign({}, window.state.size);
 
+		var elements = document.querySelectorAll("body, iframe");
+		for(const element of elements)
+		{
+			element.style.pointerEvents = "none";
+			element.style.userSelect = "none";
+			element.style.msUserSelect = "none";
+			element.style.webkitUserSelect = "none";
+		}
+
 		this.setState({
 			dragging: what,
 			draggingWindow: window,
@@ -203,6 +212,15 @@ class WindowManager extends React.Component
 
 	stopDragging()
 	{
+		var elements = document.querySelectorAll("body, iframe");
+		for(const element of elements)
+		{
+			element.style.pointerEvents = undefined;
+			element.style.userSelect = undefined;
+			element.style.msUserSelect = undefined;
+			element.style.webkitUserSelect = undefined;
+		}
+
 		this.setState({
 			dragging: null,
 			draggingWindow: null,

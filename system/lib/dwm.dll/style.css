@@ -23,7 +23,6 @@
 	position: absolute;
 	display: flex;
 	flex-direction: column;
-	pointer-events: initial;
 
 	border: 2px solid;
 	padding: 2px;
@@ -33,6 +32,8 @@
 	border-left-color: #dbdbdb;
 	border-top-color: #dbdbdb;
 	background-color: #bfbfbf;
+
+	pointer-events: all;
 }
 
 .window.minimized {
@@ -87,7 +88,8 @@
 	pointer-events: none;
 	user-drag: none;
 	-webkit-user-drag: none;
-	-moz-user-drag: none;
+	-moz-user-focus: none;
+	-moz-user-select: none;
 	-ms-user-drag: none;
 }
 
@@ -139,7 +141,9 @@
 	background-color: white;
 	width: 100%;
 	flex-grow: 1;
-	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 

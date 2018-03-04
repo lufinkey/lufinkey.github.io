@@ -50,6 +50,7 @@
 
 iframe.wallpaper {
 	z-index: -3;
+	pointer-events: none;
 }
 
 @media (min-aspect-ratio: 640/280), (aspect-ratio: 640/280) {

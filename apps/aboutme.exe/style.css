@@ -1,6 +1,7 @@
 
 .aboutme {
 	text-align: center;
+	overflow: auto;
 }
 
 .aboutme > h1 {

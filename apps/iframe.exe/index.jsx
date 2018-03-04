@@ -56,7 +56,7 @@ windowManager.createWindow().then((window) => {
 	// render the window
 	window.renderContent = () => {
 		return (
-			<iframe className="iframe-content" src={url}></iframe>
+			<iframe className="iframe-content" src={url} scrolling='yes'></iframe>
 		);
 	};
 
