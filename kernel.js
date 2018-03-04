@@ -1381,7 +1381,7 @@ function Kernel()
 
 		// start process
 		this.promise = new Promise((resolve, reject) => {
-			setInterval(() => {
+			setTimeout(() => {
 				if(!parentContext.valid)
 				{
 					return;
