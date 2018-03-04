@@ -2084,6 +2084,9 @@ function Kernel()
 	kernel.filesystem.createDir(rootContext, '/system/lib', dirOptions);
 	kernel.filesystem.createDir(rootContext, '/system/slib', dirOptions);
 	kernel.filesystem.createDir(rootContext, '/system/share', dirOptions);
+	// delete and remake tmp
+	kernel.filesystem.deleteDir(rootContext, '/tmp');
+	kernel.filesystem.createDir(rootContext, '/tmp', dirOptions);
 
 	// download system files
 	const downloads = [];
