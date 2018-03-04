@@ -137,6 +137,7 @@ windowManager.createWindow().then((window) => {
 
 								<li className="v1connection">
 									<h4>V1Connection, The App</h4>
+									<div className="experience-timespan">May 2016 - May 2017</div>
 									<p>
 										This iOS app used a custom protocol over bluetooth to communicate with the ValentineOne radar detector.
 										Using the app, you could set custom frequency sweeps, get alerted of incoming radar alerts, and view radar
