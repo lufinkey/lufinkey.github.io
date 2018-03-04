@@ -238,7 +238,6 @@ const systemFiles = {
 			},
 			'base64uri.js': new RemoteFile(),
 			'child_process.js': new RemoteFile(),
-			'events.js': new RemoteFile({url:"https://raw.githubusercontent.com/Gozala/events/master/events.js"}),
 			'fs.js': new RemoteFile(),
 			'mimetype.js': new RemoteFile(),
 			'path.js': new RemoteFile()
