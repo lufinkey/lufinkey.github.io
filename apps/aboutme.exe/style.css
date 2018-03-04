@@ -16,6 +16,10 @@
 	background-size: cover;
 }
 
+.aboutme a {
+	color: white;
+}
+
 .aboutme hr {
 	width: 60%;
 }
