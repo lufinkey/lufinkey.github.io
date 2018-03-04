@@ -34,6 +34,14 @@ class Desktop extends React.Component
 		files = fs.readdirSync('/home/Desktop');
 	}
 
+	onDesktopMouseDown(event)
+	{
+		if(this.taskbar && this.taskbar.state.startMenuOpen)
+		{
+			this.taskbar.setState({startMenuOpen: false});
+		}
+	}
+
 	onFileOpen(filename)
 	{
 		child_process.spawn('open', ['/home/Desktop/'+filename]);
@@ -73,14 +81,9 @@ class Desktop extends React.Component
 		this.taskbar.forceUpdate();
 	}
 
-	onTaskBarMount(taskbar)
+	onTaskBarRef(taskbar)
 	{
 		this.taskbar = taskbar;
-	}
-
-	onTaskBarUnmount(taskbar)
-	{
-		this.taskbar = null;
 	}
 
 	render()
@@ -94,8 +97,10 @@ class Desktop extends React.Component
 		return (
 			<div id={this.props.id} className="desktop">
 				<Wallpaper wallpaper={wallpapers[1]}/>
-				<div className="desktop-area">
-					<FileIconLayout files={files} onFileOpen={(fileName) => {this.onFileOpen(fileName)}}/>
+				<div className="desktop-area" onMouseDown={(event)=>{this.onDesktopMouseDown(event)}}>
+					<FileIconLayout
+						files={files}
+						onFileOpen={(fileName)=>{this.onFileOpen(fileName)}}/>
 					<WindowManager
 						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
 						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
@@ -106,8 +111,7 @@ class Desktop extends React.Component
 				</div>
 				<TaskBar
 					windows={windows}
-					onMount={(taskbar) => {this.onTaskBarMount(taskbar)}}
-					onUnmount={(taskbar) => {this.onTaskBarUnmount(taskbar)}}
+					ref={(taskbar) => {this.onTaskBarRef(taskbar)}}
 					onWindowButtonClick={(window, event) => {this.onTaskBarWindowButtonClick(window, event)}}/>
 			</div>
 		);

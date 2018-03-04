@@ -89,6 +89,10 @@ class FileIconLayout extends React.Component
 		{
 			this.setState({selectedFiles: []});
 		}
+		if(this.props.onMouseDown)
+		{
+			this.props.onMouseDown(event);
+		}
 	}
 
 	onFileMouseDown(filename, event)
@@ -177,7 +181,7 @@ class FileIconLayout extends React.Component
 	render()
 	{
 		return (
-			<div className="icon-grid" onMouseDown={(event) => {this.onMouseDown(event)}}>
+			<div className="icon-grid" onMouseDown={(event)=>{this.onMouseDown(event)}}>
 				{this.props.files.map((fileName) => this.renderFile(fileName))}
 			</div>
 		);

@@ -1,7 +1,8 @@
 
 requireCSS('./TaskBar.css');
+requireCSS('./StartMenu.css');
+const { spawn } = require('child_process');
 const React = require('react');
-const StartMenu = require('./StartMenu');
 const TaskBarWindowButton = require('./TaskBarWindowButton');
 
 class TaskBar extends React.Component
@@ -11,24 +12,8 @@ class TaskBar extends React.Component
 		super(props);
 
 		this.state = {
-			startMenuOpen: false,
+			startMenuOpen: false
 		};
-	}
-
-	componentDidMount()
-	{
-		if(this.props.onMount)
-		{
-			this.props.onMount(this);
-		}
-	}
-
-	componentWillUnmount()
-	{
-		if(this.props.onUnmount)
-		{
-			this.props.onUnmount(this);
-		}
 	}
 
 	onStartButtonMouseDown(event)
@@ -36,6 +21,68 @@ class TaskBar extends React.Component
 		this.setState({
 			startMenuOpen: !this.state.startMenuOpen
 		});
+	}
+
+	onClickTerminal()
+	{
+		this.setState({
+			startMenuOpen: false,
+		});
+		spawn('terminal');
+	}
+
+	onClickAboutMe()
+	{
+		this.setState({
+			startMenuOpen: false,
+		});
+		spawn('aboutme');
+	}
+
+	onClickRun()
+	{
+		this.setState({
+			startMenuOpen: false,
+		});
+		//spawn('run');
+	}
+
+	onClickReboot()
+	{
+		this.setState({
+			startMenuOpen: false,
+		});
+		spawn('/system/boot.jsx');
+	}
+
+	renderStartMenu()
+	{
+		const style = {};
+		if(this.state.startMenuOpen)
+		{
+			style.display = 'block';
+		}
+		else
+		{
+			style.display = 'none';
+		}
+
+		return (
+			<div className="start-menu" style={style}>
+				<div className="left-banner">
+					<div className="vertical-text">
+						Finke<span className="osWhite">OS</span>
+					</div>
+				</div>
+				<ul className="items">
+					<li onClick={()=>{this.onClickTerminal()}}>Terminal</li>
+					<li onClick={()=>{this.onClickAboutMe()}}>About Me</li>
+					<li onClick={()=>{this.onClickRun()}}>Run</li>
+					<li className="divider"></li>
+					<li onClick={()=>{this.onClickReboot()}}>Reboot</li>
+				</ul>
+			</div>
+		);
 	}
 
 	render()
@@ -48,7 +95,7 @@ class TaskBar extends React.Component
 
 		return (
 			<div className="taskbar">
-				<StartMenu opened={this.state.startMenuOpen}/>
+				{this.renderStartMenu()}
 				<button type="button" className={startButtonClassNames.join(' ')} onMouseDown={(event)=>{this.onStartButtonMouseDown(event)}}>Start</button>
 				<div className="taskbar-windows">
 					{Object.keys(this.props.windows).map((windowId) => (
