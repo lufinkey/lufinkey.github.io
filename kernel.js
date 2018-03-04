@@ -92,8 +92,10 @@ const rootContext = {
 		]
 	},
 
+	valid: true,
 	timeouts: [],
-	intervals: []
+	intervals: [],
+	immediates: []
 };
 
 
@@ -1160,6 +1162,7 @@ function Kernel()
 
 		const context = deepCopyObject(parentContext);
 		context.pid = pid;
+		context.valid = true;
 
 		const dir = kernel.filesystem.dirname(parentContext, fullPath);
 
@@ -1327,6 +1330,7 @@ function Kernel()
 			{
 				exited = true;
 				unloadRequired(kernel, context);
+				context.valid = false;
 			}
 		}
 
@@ -1383,7 +1387,15 @@ function Kernel()
 		});
 
 		// start process
-		this.promise = execute();
+		this.promise = new Promise((resolve, reject) => {
+			setImmediate(() => {
+				execute().then((...args) => {
+					resolve(...args);
+				}).catch((...args) => {
+					reject(...args);
+				});
+			})
+		});
 	}
 
 
@@ -1901,6 +1913,11 @@ function Kernel()
 			throw new Error("func must be a string");
 		}
 		func = ''+func;
+
+		if(!context.valid)
+		{
+			throw new Error("calling context is not valid");
+		}
 
 		var funcParts = func.split('.');
 		if(funcParts.length > 2)
