@@ -776,7 +776,7 @@ function Kernel()
 			let dirData = null;
 			if(path !== '/')
 			{
-				dirPath = dirname(path);
+				dirPath = dirname(context, path);
 				dirData = readDir(context, dirPath);
 			}
 
