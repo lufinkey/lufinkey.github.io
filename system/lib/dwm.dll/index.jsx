@@ -62,6 +62,10 @@ class WindowManager extends React.Component
 	{
 		var areaRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
 		var height = areaRect.height * 0.8;
+		if(height > 480)
+		{
+			height = 480;
+		}
 
 		return {
 			title: "",
