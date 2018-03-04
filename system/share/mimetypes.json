@@ -10,6 +10,9 @@
 		"sig": ["504b0304"],
 		"ext": ["zip"]
 	},
+	"application/x-url": {
+		"ext": ["url"]
+	},
 	"image/png": {
 		"sig": ["89504e47"],
 		"ext": ["png"]

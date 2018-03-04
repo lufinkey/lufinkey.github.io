@@ -1,4 +1,5 @@
 {
 	"application/javascript": ["%@"],
-	"text/plain": ["textedit", "%@"]
+	"text/plain": ["textedit", "%@"],
+	"application/x-url": ["iframe", "-f", "%@"]
 }

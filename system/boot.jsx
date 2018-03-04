@@ -186,6 +186,11 @@ const systemFiles = {
 			'index.jsx': new RemoteFile(),
 			'package.json': new RemoteFile()
 		},
+		"iframe.exe": {
+			'style.css': new RemoteFile(),
+			'index.jsx': new RemoteFile(),
+			'package.json': new RemoteFile()
+		},
 		'textedit.exe': {
 			'style.css': new RemoteFile(),
 			'index.jsx': new RemoteFile(),
@@ -249,7 +254,8 @@ const homeFiles = {
 		'Desktop': {
 			'aboutme.js': new RemoteFile(),
 			'ayylmao.txt': new RemoteFile(),
-			'terminal.js': new RemoteFile()
+			'terminal.js': new RemoteFile(),
+			"resume.url": new RemoteFile()
 		}
 	}
 }

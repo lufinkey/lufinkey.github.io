@@ -11,3 +11,15 @@
 .aboutme > .me-img {
 	height: 140px;
 }
+
+.aboutme > .info > .major {
+	display: block;
+}
+
+.aboutme > .info > .school {
+	display: block;
+}
+
+.aboutme > .info > .class-year {
+	display: block;
+}

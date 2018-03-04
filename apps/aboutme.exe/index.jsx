@@ -19,8 +19,7 @@ windowManager.createWindow().then((window) => {
 				<h1>Luis Finke</h1>
 				<img className="me-img" src="/apps/aboutme.exe/me.jpg"/>
 				<div className="info">
-					<span className="major">Studying Computer Science</span>
-					<span className="at">@</span>
+					<span className="major">Computer Science Major</span>
 					<span className="school">University of Cincinnati</span>
 					<span className="class-year">Class of 2019</span>
 				</div>
