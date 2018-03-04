@@ -175,7 +175,7 @@ class CRT extends React.Component
 						<div className="crt-screen">
 						</div>
 					</div>
-					<div className="crt-screen-content" style={style}>
+					<div className="crt-screen-content fullscreen" style={style}>
 						{this.props.children}
 						<div className="crt-effects">
 							<div className="crt-scanlines"></div>
