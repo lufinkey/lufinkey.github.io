@@ -60,6 +60,9 @@ class WindowManager extends React.Component
 
 	createDefaultWindowState()
 	{
+		var areaRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
+		var height = areaRect.height * 0.8;
+
 		return {
 			title: "",
 			position: {
@@ -67,8 +70,8 @@ class WindowManager extends React.Component
 				y: 20
 			},
 			size: {
-				x: 320,
-				y: 240
+				x: height*1.5,
+				y: height
 			}
 		};
 	}
