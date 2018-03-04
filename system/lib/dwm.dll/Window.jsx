@@ -71,6 +71,14 @@ class Window extends React.Component
 		this.close();
 	}
 
+	onCornerMouseDown(event, corner)
+	{
+		if(this.props.onCornerMouseDown)
+		{
+			this.props.onCornerMouseDown(event, corner);
+		}
+	}
+
 	renderTitleBar()
 	{
 		return (
@@ -114,6 +122,7 @@ class Window extends React.Component
 
 		var position = Object.assign({x:0,y:0}, this.state.position);
 		var size = Object.assign({x:320,y:240}, this.state.size);
+		
 		var style = {
 			left: position.x,
 			top: position.y,
@@ -132,14 +141,14 @@ class Window extends React.Component
 		
 		return (
 			<div className={className} style={style}>
-				<div className="window-resize top"></div>
-				<div className="window-resize topleft"></div>
-				<div className="window-resize topright"></div>
-				<div className="window-resize left"></div>
-				<div className="window-resize right"></div>
-				<div className="window-resize bottomleft"></div>
-				<div className="window-resize bottomright"></div>
-				<div className="window-resize bottom"></div>
+				<div className="window-resize top" onMouseDown={(event)=>{this.onCornerMouseDown(event,'top')}}></div>
+				<div className="window-resize topleft" onMouseDown={(event)=>{this.onCornerMouseDown(event,'topleft')}}></div>
+				<div className="window-resize topright" onMouseDown={(event)=>{this.onCornerMouseDown(event,'topright')}}></div>
+				<div className="window-resize left" onMouseDown={(event)=>{this.onCornerMouseDown(event,'left')}}></div>
+				<div className="window-resize right" onMouseDown={(event)=>{this.onCornerMouseDown(event,'right')}}></div>
+				<div className="window-resize bottomleft" onMouseDown={(event)=>{this.onCornerMouseDown(event,'bottomleft')}}></div>
+				<div className="window-resize bottomright" onMouseDown={(event)=>{this.onCornerMouseDown(event,'bottomright')}}></div>
+				<div className="window-resize bottom" onMouseDown={(event)=>{this.onCornerMouseDown(event,'bottom')}}></div>
 				{this.renderTitleBar()}
 				{this.renderMenuBar()}
 				<div className="window-content">

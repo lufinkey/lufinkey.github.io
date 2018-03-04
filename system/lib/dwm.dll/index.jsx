@@ -19,7 +19,9 @@ class WindowManager extends React.Component
 		this.state = {
 			windowIds: [],
 			dragging: null,
-			draggingWindow: null
+			draggingWindow: null,
+			dragStartPosition: null,
+			draggerStartPosition: null
 		};
 
 		// bind methods	
@@ -177,7 +179,12 @@ class WindowManager extends React.Component
 		{
 			if(!this.state.dragging)
 			{
-				this.setState({dragging: 'titlebar', draggingWindow: window});
+				var areaRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
+				var dragStartPosition = {
+					x: (event.clientX-areaRect.left),
+					y: (event.clientY-areaRect.top)
+				};
+				this.setState({dragging: 'titlebar', draggingWindow: window, dragStartPosition: dragStartPosition, draggerStartPosition: Object.assign({}, window.state.position)});
 			}
 		}
 	}
@@ -191,10 +198,14 @@ class WindowManager extends React.Component
 				var position = Object.assign({}, window.state.position);
 				var size = Object.assign({}, window.state.size);
 
+				// find new position
 				var areaRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
-
-				position.x += event.movementX;
-				position.y += event.movementY;
+				var movement = {
+					x: (event.clientX - areaRect.left - this.state.dragStartPosition.x),
+					y: (event.clientY - areaRect.top - this.state.dragStartPosition.y)
+				};
+				position.x = this.state.draggerStartPosition.x + movement.x;
+				position.y = this.state.draggerStartPosition.y + movement.y;
 
 				// ensure we don't go outside the window manager bounds
 				if(position.x < 0)
@@ -224,7 +235,7 @@ class WindowManager extends React.Component
 		switch(this.state.dragging)
 		{
 			case 'titlebar':
-				this.setState({dragging: null, draggingWindow: null});
+				this.setState({dragging: null, draggingWindow: null, dragStartPosition: null, draggerStartPosition: null});
 				break;
 		}
 	}
