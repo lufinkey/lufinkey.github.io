@@ -33,6 +33,19 @@ windowManager.createWindow().then((window) => {
 
 	function appendShellOutput(output, color='white')
 	{
+		var shouldAutoScroll = false;
+		var termContent = getTerminalContent();
+		if(termContent)
+		{
+			var scrollBottom = termContent.scrollHeight - termContent.getBoundingClientRect().height;
+			var scrollDiff = Math.abs(scrollBottom - termContent.scrollTop);
+
+			if(scrollDiff < 18)
+			{
+				shouldAutoScroll = true;
+			}
+		}
+
 		var outputLines = output.split('\n');
 		for(var i=0; i<outputLines.length; i++)
 		{
@@ -49,23 +62,14 @@ windowManager.createWindow().then((window) => {
 			}
 		}
 
-		var shouldAutoScroll = false;
-		var textArea = getTextArea();
-		if(textArea)
-		{
-			if(Math.abs(textArea.parentNode.scrollTop - textArea.parentNode.scrollHeight) < 12)
-			{
-				console.log("should auto scroll");
-				shouldAutoScroll = true;
-			}
-		}
-
 		// update window state
 		window.forceUpdate(() => {
-			if(shouldAutoScroll)
-			{
-				scrollToBottom();
-			}
+			setTimeout(() => {
+				if(shouldAutoScroll)
+				{
+					scrollToBottom();
+				}
+			}, 0);
 		});
 	}
 
@@ -88,6 +92,16 @@ windowManager.createWindow().then((window) => {
 		if(windowNode)
 		{
 			return windowNode.querySelector('.terminal-content textarea.shell-input');
+		}
+		return null;
+	}
+
+	function getTerminalContent()
+	{
+		var windowNode = ReactDOM.findDOMNode(window);
+		if(windowNode)
+		{
+			return windowNode.querySelector('.terminal-content');
 		}
 		return null;
 	}
