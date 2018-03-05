@@ -1137,6 +1137,84 @@ function Kernel()
 
 
 
+	
+	function createTwoWayStream(kernel, context)
+	{
+		const EventEmitter = kernel.require(context, {}, '/', 'events');
+
+		let ended = false;
+
+		let input = new EventEmitter();
+		let output = new EventEmitter();
+
+
+		// input stream
+
+		input.write = (chunk, encoding=null, callback=null) => {
+			if(ended)
+			{
+				throw new Error("tried to write input after writable has finished");
+			}
+			output.emit('data', chunk);
+			if(callback)
+			{
+				callback();
+			}
+		};
+
+		input.end = (chunk, encoding, callback) => {
+			if(ended)
+			{
+				return;
+			}
+
+			if(typeof chunk == 'function')
+			{
+				callback = chunk;
+				chunk = null;
+			}
+			else if(typeof encoding == 'function')
+			{
+				callback = encoding;
+				encoding = null;
+			}
+
+			if(chunk)
+			{
+				input.write(chunk, encoding);
+			}
+			input.destroy();
+			if(callback)
+			{
+				callback();
+			}
+			input.emit('finish');
+		}
+
+		input.destroy = (error=null) => {
+			if(ended)
+			{
+				return;
+			}
+			ended = true;
+
+			if(error)
+			{
+				output.emit('error', error);
+			}
+			output.emit('end');
+			output.emit('close');
+		};
+
+
+		return {
+			input: input,
+			output: output
+		};
+	}
+
+
+
 	let pidCounter = 1;
 	
 	function ChildProcess(kernel, parentContext, path, args, options)
@@ -1157,6 +1235,7 @@ function Kernel()
 			throw new TypeError("args must be an Array");
 		}
 		options = Object.assign({}, options);
+
 
 		const pid = pidCounter;
 		pidCounter++;
@@ -1205,6 +1284,11 @@ function Kernel()
 			argv0 = options.argv0;
 		}
 
+		// build streams
+		const stdin = createTwoWayStream(kernel, context);
+		const stdout = createTwoWayStream(kernel, context);
+		const stderr = createTwoWayStream(kernel, context);
+
 		// apply options
 		context.argv = [argv0].concat(args);
 
@@ -1224,6 +1308,7 @@ function Kernel()
 			__filename: fullPath,
 			exports: {},
 			module: new ScriptGlobalAlias(['exports']),
+
 			Promise: ProcPromise,
 			setTimeout: (...args) => {
 				return kernel.setTimeout(context, ...args);
@@ -1236,7 +1321,56 @@ function Kernel()
 			},
 			clearInterval: (...args) => {
 				return kernel.clearInterval(context, ...args);
-			}
+			},
+			console: Object.assign(Object.assign({}, console), {
+				log: (...args) => {
+					var strings = [];
+					for(const arg of args)
+					{
+						strings.push(''+arg);
+					}
+					var stringVal = strings.join(' ');
+
+					stdout.input.write(stringVal);
+					console.log(...args);
+				},
+				warn: (...args) => {
+					var strings = [];
+					for(const arg of args)
+					{
+						if(arg instanceof Error)
+						{
+							strings.push(error.toString()+'\n'+error.stack);
+						}
+						else
+						{
+							strings.push(''+arg);
+						}
+					}
+					var stringVal = strings.join(' ');
+
+					stderr.input.write(stringVal);
+					console.warn(...args);
+				},
+				error: (...args) => {
+					var strings = [];
+					for(const arg of args)
+					{
+						if(arg instanceof Error)
+						{
+							strings.push(error.toString()+'\n'+error.stack);
+						}
+						else
+						{
+							strings.push(''+arg);
+						}
+					}
+					var stringVal = strings.join(' ');
+
+					stderr.input.write(stringVal);
+					console.error(...args);
+				}
+			})
 		};
 		scope.require.resolve = (path) => {
 			return findRequirePath(kernel, context, dir, path);
@@ -1315,6 +1449,10 @@ function Kernel()
 					return osName;
 				}
 			});
+
+			this.stdin = stdin.output;
+			this.stdout = stdout.input;
+			this.stderr = stderr.input;
 		})();
 
 		// process lifecycle functions
@@ -1324,8 +1462,10 @@ function Kernel()
 			if(!exited)
 			{
 				exited = true;
-				unloadRequired(kernel, context);
 				context.valid = false;
+
+				// unload required modules
+				unloadRequired(kernel, context);
 
 				// destroy timeouts and intervals
 				for(const interval of context.intervals)
@@ -1338,6 +1478,11 @@ function Kernel()
 					clearTimeout(timeout);
 				}
 				context.timeouts = [];
+
+				// close I/O streams
+				stdin.input.end();
+				stdout.input.end();
+				stderr.input.end();
 			}
 		}
 
@@ -1392,6 +1537,11 @@ function Kernel()
 				return pid;
 			}
 		});
+
+		// build properties
+		this.stdin = stdin.input;
+		this.stdout = stdout.output;
+		this.stderr = stderr.output;
 
 		// start process
 		this.promise = new ProcPromise((resolve, reject) => {
