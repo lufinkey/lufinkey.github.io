@@ -39,6 +39,16 @@ windowManager.createWindow().then((window) => {
 				// start subprocess
 				var subprocess = spawn(cmdParts[0], cmdParts.slice(1));
 
+				// handle I/O
+				subprocess.stdout.on('data', (chunk) => {
+					terminal.print(''+chunk);
+				});
+				subprocess.stderr.on('data', (chunk) => {
+					terminal.setTextColor('red');
+					terminal.print(''+chunk);
+					terminal.setTextColor('white');
+				});
+
 				// handle error
 				subprocess.on('error', (error) => {
 					console.error(error);
