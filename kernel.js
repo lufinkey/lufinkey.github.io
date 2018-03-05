@@ -1331,7 +1331,7 @@ function Kernel()
 					}
 					var stringVal = strings.join(' ');
 
-					stdout.input.write(stringVal);
+					stdout.input.write(stringVal+'\n');
 					console.log(...args);
 				},
 				warn: (...args) => {
@@ -1349,7 +1349,7 @@ function Kernel()
 					}
 					var stringVal = strings.join(' ');
 
-					stderr.input.write(stringVal);
+					stderr.input.write(stringVal+'\n');
 					console.warn(...args);
 				},
 				error: (...args) => {
@@ -1367,7 +1367,7 @@ function Kernel()
 					}
 					var stringVal = strings.join(' ');
 
-					stderr.input.write(stringVal);
+					stderr.input.write(stringVal+'\n');
 					console.error(...args);
 				}
 			})

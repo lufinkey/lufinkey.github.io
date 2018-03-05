@@ -75,6 +75,15 @@ class ChildProcess extends EventEmitter
 				return subprocess.pid;
 			}
 		});
+
+		// I/O streams
+		this.stdin = subprocess.stdin;
+		this.stdout = subprocess.stdout;
+		this.stderr = subprocess.stderr;
+		this.stdio = {};
+		this.stdio[0] = subprocess.stdin;
+		this.stdio[1] = subprocess.stdout;
+		this.stdio[2] = subprocess.stderr;
 	}
 }
 
