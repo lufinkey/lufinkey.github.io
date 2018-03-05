@@ -5,6 +5,19 @@ const child_process = {};
 module.exports = child_process;
 
 
+function makeUselessWriteStream()
+{
+	var stream = new EventEmitter();
+	stream.write = (...args) => {};
+	stream.end = (...args) => {};
+	stream.destroy = (...args) => {};
+	setTimeout(() => {
+		stream.emit('finish');
+	}, 0);
+	return stream;
+}
+
+
 class ChildProcess extends EventEmitter
 {
 	constructor(command, subprocess, error)
@@ -77,13 +90,23 @@ class ChildProcess extends EventEmitter
 		});
 
 		// I/O streams
-		this.stdin = subprocess.stdin;
-		this.stdout = subprocess.stdout;
-		this.stderr = subprocess.stderr;
+		if(subprocess)
+		{
+			this.stdin = subprocess.stdin;
+			this.stdout = subprocess.stdout;
+			this.stderr = subprocess.stderr;
+		}
+		else
+		{
+			this.stdin = new EventEmitter();
+			this.stdout = makeUselessWriteStream();
+			this.stderr = makeUselessWriteStream();
+		}
+
 		this.stdio = {};
-		this.stdio[0] = subprocess.stdin;
-		this.stdio[1] = subprocess.stdout;
-		this.stdio[2] = subprocess.stderr;
+		this.stdio[0] = this.stdin;
+		this.stdio[1] = this.stdout;
+		this.stdio[2] = this.stderr;
 	}
 }
 

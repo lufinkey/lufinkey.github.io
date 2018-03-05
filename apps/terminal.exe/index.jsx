@@ -49,8 +49,24 @@ windowManager.createWindow().then((window) => {
 			}
 		}
 
+		var shouldAutoScroll = false;
+		var textArea = getTextArea();
+		if(textArea)
+		{
+			if(Math.abs(textArea.parentNode.scrollTop - textArea.parentNode.scrollHeight) < 12)
+			{
+				console.log("should auto scroll");
+				shouldAutoScroll = true;
+			}
+		}
+
 		// update window state
-		window.forceUpdate();
+		window.forceUpdate(() => {
+			if(shouldAutoScroll)
+			{
+				scrollToBottom();
+			}
+		});
 	}
 
 	shellProcess.stdout.on('data', (chunk) => {
