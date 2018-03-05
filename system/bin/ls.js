@@ -12,7 +12,7 @@ try
 	var contents = fs.readdirSync(dir);
 	for(const entry of contents)
 	{
-		console.log(entry);
+		process.stdout.write(entry+'\n');
 	}
 }
 catch(error)

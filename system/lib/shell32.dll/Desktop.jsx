@@ -68,12 +68,12 @@ class Desktop extends React.Component
 
 	onWindowCreate(window)
 	{
-		this.setState({windowIds: Object.keys(this.windowManager.windows)});
+		this.forceUpdate();
 	}
 
 	onWindowDestroy(window)
 	{
-		this.setState({windowIds: Object.keys(this.windowManager.windows)});
+		this.forceUpdate();
 	}
 
 	onWindowWillUpdate(window)

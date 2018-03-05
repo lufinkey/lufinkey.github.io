@@ -138,8 +138,8 @@ class WindowManager extends React.Component
 				if(windowIds[i] === window.props.windowId)
 				{
 					windowIds.splice(i, 1);
-					this.setState({windowIds: windowIds});
 					this.windowDestroyCallbacks.push({windowId: window.props.windowId, resolve: resolve, reject: reject});
+					this.setState({windowIds: windowIds});
 					return;
 				}
 			}

@@ -62,8 +62,9 @@ class Window extends React.Component
 	{
 		if(this.props.windowManager)
 		{
-			this.props.windowManager.destroyWindow(this);
+			return this.props.windowManager.destroyWindow(this);
 		}
+		return Promise.reject(new Error("no window manager"));
 	}
 
 	onMinimizeButtonClick(event)
