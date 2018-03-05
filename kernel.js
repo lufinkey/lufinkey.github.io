@@ -1314,6 +1314,7 @@ function Kernel()
 			exports: {},
 			module: new ScriptGlobalAlias(['exports']),
 
+			ExitSignal: ExitSignal,
 			Promise: ProcPromise,
 			setTimeout: (...args) => {
 				return kernel.setTimeout(context, ...args);
