@@ -1338,6 +1338,7 @@ function Kernel()
 					var stringVal = strings.join(' ');
 
 					stdout.input.write(stringVal+'\n');
+					console.log(...args);
 				},
 				warn: (...args) => {
 					var strings = [];
