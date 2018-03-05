@@ -208,7 +208,8 @@ const systemFiles = {
 	},
 	'system': {
 		'bin': {
-			'open.js': new RemoteFile()
+			'open.js': new RemoteFile(),
+			'ls.js': new RemoteFile()
 		},
 		'lib': {
 			'dwm.dll': {

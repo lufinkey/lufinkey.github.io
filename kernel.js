@@ -631,6 +631,11 @@ function Kernel()
 		// resolve relative path from current or given cwd
 		function resolvePath(context, path, cwd)
 		{
+			if(typeof path !== 'string')
+			{
+				throw new TypeError("path must be a string");
+			}
+			
 			if(!cwd)
 			{
 				cwd = context.cwd;
@@ -1340,7 +1345,7 @@ function Kernel()
 					{
 						if(arg instanceof Error)
 						{
-							strings.push(error.toString()+'\n'+error.stack);
+							strings.push(arg.toString()+'\n'+arg.stack);
 						}
 						else
 						{
@@ -1358,7 +1363,7 @@ function Kernel()
 					{
 						if(arg instanceof Error)
 						{
-							strings.push(error.toString()+'\n'+error.stack);
+							strings.push(arg.toString()+'\n'+arg.stack);
 						}
 						else
 						{
