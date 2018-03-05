@@ -1449,7 +1449,7 @@ function Kernel()
 						}
 						// call exit event
 						exiting = true;
-						process.emit('exit', exitCode);
+						process.emit('exit', code);
 						// end process
 						if(code != 0)
 						{
