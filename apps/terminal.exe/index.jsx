@@ -66,6 +66,16 @@ windowManager.createWindow().then((window) => {
 	// listen for shell input
 	let shellInput = "";
 
+	function getTextArea()
+	{
+		var windowNode = ReactDOM.findDOMNode(window);
+		if(windowNode)
+		{
+			return windowNode.querySelector('.terminal-content textarea.shell-input');
+		}
+		return null;
+	}
+
 	function onTextAreaUpdate(event)
 	{
 		var textArea = event.currentTarget;
@@ -103,21 +113,19 @@ windowManager.createWindow().then((window) => {
 	function onWindowClick(event)
 	{
 		// focus the input area
-		var windowNode = ReactDOM.findDOMNode(window);
-		if(windowNode)
+		var textArea = getTextArea();
+		if(textArea)
 		{
-			var textInput = windowNode.querySelector('.terminal-content textarea.shell-input');
-			textInput.focus();
+			textArea.focus();
 		}
 	}
 
 	// scroll to the bottom of the terminal
 	function scrollToBottom()
 	{
-		var windowNode = ReactDOM.findDOMNode(window);
-		if(windowNode)
+		var textArea = getTextArea();
+		if(textArea)
 		{
-			var textArea = windowNode.querySelector('.terminal-content textarea.shell-input');
 			textArea.scrollIntoView({behavior: 'smooth'});
 		}
 	}
@@ -149,6 +157,8 @@ windowManager.createWindow().then((window) => {
 	window.setState({
 		title: "terminal.exe"
 	});
+
+	getTextArea().focus();
 }).catch((error) => {
 	console.error("unable to create window: ", error);
 	process.exit(2);
