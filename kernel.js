@@ -959,6 +959,12 @@ function Kernel()
 				// create request to retrieve remote file
 				var xhr = new XMLHttpRequest();
 				xhr.onreadystatechange = () => {
+					// ensure calling context is still alive
+					if(!context.valid)
+					{
+						return;
+					}
+					// handle ready state
 					if(xhr.readyState == 4)
 					{
 						// handle result
