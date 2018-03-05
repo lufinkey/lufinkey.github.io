@@ -1393,65 +1393,72 @@ function Kernel()
 		scope.process = new (function(){
 
 			let procArgv = context.argv.slice(0);
-			Object.defineProperty(this, 'argv', {
-				value: procArgv
-			});
-			
-			Object.defineProperty(this, 'cwd', {
-				value: () => {
-					return context.cwd;
-				}
-			});
-
-			Object.defineProperty(this, 'env', {
-				get: () => {
-					return context.env;
+			Object.defineProperties(this, {
+				'argv': {
+					value: procArgv
 				},
-				set: (value) => {
-					context.env = value;
-				}
-			});
-
-			Object.defineProperty(this, 'exit', {
-				value: (code) => {
-					if(code == null)
-					{
-						code = 0;
+				'chdir': {
+					value: (path) => {
+						path = kernel.filesystem.resolvePath(context, path);
+						var meta = kernel.filesystem.readMeta(context, path);
+						if(meta.type !== 'dir')
+						{
+							throw new Error("path is not a directory");
+						}
+						context.cwd = path;
+					},
+				},
+				'cwd': {
+					value: () => {
+						return context.cwd;
 					}
-					if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
-					{
-						throw new Error("invalid exit code");
+				},
+				'env': {
+					get: () => {
+						return context.env;
+					},
+					set: (value) => {
+						context.env = value;
 					}
-					if(code != 0)
-					{
-						var error = new Error("process exited with code "+code);
-						error.exitCode = code;
-						context.reject(error);
+				},
+				'exit': {
+					value: (code) => {
+						if(code == null)
+						{
+							code = 0;
+						}
+						if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
+						{
+							throw new Error("invalid exit code");
+						}
+						if(code != 0)
+						{
+							var error = new Error("process exited with code "+code);
+							error.exitCode = code;
+							context.reject(error);
+						}
+						else
+						{
+							context.resolve();
+						}
+						var exitSignal = new ExitSignal(code);
+						throw exitSignal;
 					}
-					else
-					{
-						context.resolve();
+				},
+				'pid': {
+					get: () => {
+						return context.pid;
 					}
-					var exitSignal = new ExitSignal(code);
-					throw exitSignal;
-				}
-			});
-
-			Object.defineProperty(this, 'pid', {
-				get: () => {
-					return context.pid;
-				}
-			});
-
-			Object.defineProperty(this, 'ppid', {
-				get: () => {
-					return parentContext.pid;
-				}
-			});
-
-			Object.defineProperty(this, 'platform', {
-				get: () => {
-					return osName;
+				},
+				'ppid': {
+					get: () => {
+						return parentContext.pid;
+					}
+				},
+				'platform': {
+					get: () => {
+						return osName;
+					}
 				}
 			});
 
