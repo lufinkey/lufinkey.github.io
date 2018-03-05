@@ -1243,7 +1243,7 @@ function Kernel()
 		}
 		options = Object.assign({}, options);
 
-
+		// get new process PID
 		const pid = pidCounter;
 		pidCounter++;
 
@@ -1255,6 +1255,7 @@ function Kernel()
 
 		let executed = false;
 		let exited = false;
+		let exiting = false;
 		var argv0 = path;
 
 		// validate options
@@ -1392,9 +1393,11 @@ function Kernel()
 		scope.requireCSS.ready = (path) => {
 			return isCSSReady(kernel, context, dir, path);
 		};
-		// define Process object
-		scope.process = new (function(){
 
+		// define Process object
+		const EventEmitter = kernel.require(context, {}, '/', 'events');
+		let process = new EventEmitter();
+		(function(){
 			let procArgv = context.argv.slice(0);
 			Object.defineProperties(this, {
 				'argv': {
@@ -1434,6 +1437,14 @@ function Kernel()
 						{
 							throw new Error("invalid exit code");
 						}
+						if(exited || exiting)
+						{
+							throw new Error("cannot exit process more than once");
+						}
+						// call exit event
+						exiting = true;
+						process.emit('exit', exitCode);
+						// end process
 						if(code != 0)
 						{
 							var error = new Error("process exited with code "+code);
@@ -1444,6 +1455,7 @@ function Kernel()
 						{
 							context.resolve();
 						}
+						// throw exit signal
 						var exitSignal = new ExitSignal(code);
 						throw exitSignal;
 					}
@@ -1468,7 +1480,8 @@ function Kernel()
 			this.stdin = stdin.output;
 			this.stdout = stdout.input;
 			this.stderr = stderr.input;
-		})();
+		}).bind(process)();
+		scope.process = process;
 
 		// process lifecycle functions
 
@@ -1511,7 +1524,7 @@ function Kernel()
 
 			return new ProcPromise((resolve, reject) => {
 				context.resolve = (...args) => {
-					endProcess();
+					endProcess(0);
 					resolve(...args);
 				};
 
@@ -1543,6 +1556,7 @@ function Kernel()
 							// just ignore...
 						}
 					}
+					return;
 				}
 			});
 		}
