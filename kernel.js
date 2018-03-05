@@ -213,145 +213,197 @@ function Kernel()
 	}
 
 	// promise to handle exit signals
-	class ProcPromise extends Promise
+	function ProcPromise(context, callback)
 	{
-		constructor(callback)
+		if(!context.cwd)
 		{
+			console.log("context, ", context);
+			throw new Error("why we getting bad contexts here");
+		}
+
+		// then
+		this.then = (callback, ...args) => {
+			if(typeof callback !== 'function')
+			{
+				return promise.then(callback, ...args);
+			}
 			let exitSignal = null;
-			super((resolve, reject) => {
+			var retVal = promise.then((...args) => {
 				try
 				{
-					callback((...args) => {
+					return callback(...args);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			}, ...args);
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			// wrap return value if necessary
+			if(retVal === promise)
+			{
+				return this;
+			}
+			else if(retVal instanceof Promise)
+			{
+				return new ProcPromise(context, (resolve, reject) => {
+					return retVal.then(resolve).catch(reject);
+				});
+			}
+			return retVal;
+		};
+
+		// catch
+		this.catch = (callback, ...args) => {
+			if(typeof callback !== 'function')
+			{
+				return promise.catch(callback, ...args);
+			}
+			let exitSignal = null;
+			var retVal = promise.catch((...args) => {
+				try
+				{
+					return callback(...args);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			}, ...args);
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			// wrap return value if necessary
+			if(retVal === promise)
+			{
+				return this;
+			}
+			else if(retVal instanceof Promise)
+			{
+				return new ProcPromise(context, (resolve, reject) => {
+					return retVal.then(resolve).catch(reject);
+				});
+			}
+			return retVal;
+		};
+
+		// finally
+		this.finally = (callback, ...args) => {
+			if(!callback)
+			{
+				return promise.finally(callback, ...args);
+			}
+			let exitSignal = null;
+			var retVal = promise.finally((...args) => {
+				try
+				{
+					return callback(...args);
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			}, ...args);
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+			// wrap return value if necessary
+			if(retVal === promise)
+			{
+				return this;
+			}
+			else if(retVal instanceof Promise)
+			{
+				return new ProcPromise(context, (resolve, reject) => {
+					return retVal.then(resolve).catch(reject);
+				});
+			}
+			return retVal;
+		};
+
+		// perform promise
+		let exitSignal = null;
+		let promise = new Promise((resolve, reject) => {
+			try
+			{
+				callback((...args) => {
+					// ensure calling context is valid
+					if(!context.valid)
+					{
+						return;
+					}
+					// resolve
+					if(resolve)
+					{
 						resolve(...args);
-					}, (...args) => {
+					}
+				}, (...args) => {
+					// ensure calling context is valid
+					if(!context.valid)
+					{
+						return;
+					}
+					// reject
+					if(reject)
+					{
 						reject(...args);
-					});
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
 					}
-					else
-					{
-						throw error;
-					}
-				}
-			});
-			if(exitSignal != null)
-			{
-				throw exitSignal;
+				});
 			}
-		}
-
-		then(callback, ...args)
-		{
-			let exitSignal = null;
-			var retVal = super.then((...args) => {
-				try
-				{
-					if(callback !== undefined)
-					{
-						return callback(...args);
-					}
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
-					}
-					else
-					{
-						throw error;
-					}
-				}
-			}, ...args);
-			if(exitSignal != null)
+			catch(error)
 			{
-				throw exitSignal;
+				if(error instanceof ExitSignal)
+				{
+					exitSignal = error;
+					return;
+				}
+				else
+				{
+					throw error;
+				}
 			}
-			return retVal;
-		}
-
-		catch(callback, ...args)
+		});
+		if(exitSignal != null)
 		{
-			let exitSignal = null;
-			var retVal = super.catch((...args) => {
-				try
-				{
-					return callback(...args);
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
-					}
-					else
-					{
-						throw error;
-					}
-				}
-			}, ...args);
-			if(exitSignal != null)
+			throw exitSignal;
+		}
+	}
+
+	function wrapPromiseFunc(context, callback)
+	{
+		return new ProcPromise(context, (resolve, reject) => {
+			try
 			{
-				throw exitSignal;
-			}
-			return retVal;
-		}
-
-		finally(callback, ...args)
-		{
-			let exitSignal = null;
-			var retVal = super.finally((...args) => {
-				try
-				{
-					return callback(...args);
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
-					}
-					else
-					{
-						throw error;
-					}
-				}
-			}, ...args);
-			if(exitSignal != null)
-			{
-				throw exitSignal;
-			}
-			return retVal;
-		}
-
-		static resolve(...args)
-		{
-			return new ProcPromise((resolve, reject) => {
-				resolve(...args);
-			});
-		}
-
-		static reject(...args)
-		{
-			return new ProcPromise((resolve, reject) => {
-				reject(...args);
-			});
-		}
-
-		static all(promises)
-		{
-			let exitSignal = null;
-			var promise = new ProcPromise((resolve, reject) => {
-				Promise.all(promises).then((...args) => {
+				return callback((...args) => {
 					try
 					{
 						return resolve(...args);
@@ -368,7 +420,7 @@ function Kernel()
 							throw error;
 						}
 					}
-				}).catch((...args) => {
+				}, (...args) => {
 					try
 					{
 						return reject(...args);
@@ -386,14 +438,83 @@ function Kernel()
 						}
 					}
 				});
-			});
-			if(exitSignal != null)
-			{
-				throw exitSignal;
 			}
-			return promise;
-		}
+			catch(error)
+			{
+				if(error instanceof ExitSignal)
+				{
+					exitSignal = error;
+					return;
+				}
+				else
+				{
+					throw error;
+				}
+			}
+		})
 	}
+
+	ProcPromise.resolve = function(context, ...args) {
+		return wrapPromiseFunc(context, (resolve, reject) => {
+			resolve(...args);
+		});
+	}
+
+	ProcPromise.reject = function(context, ...args) {
+		return wrapPromiseFunc(context, (resolve, reject) => {
+			reject(...args);
+		});
+	}
+
+	ProcPromise.all = function(context, promises, ...args) {
+		// wrap promises
+		if(promises instanceof Array)
+		{
+			promises = promises.slice(0);
+			for(var i=0; i<promises.length; i++)
+			{
+				let tmpPromise = promises[i];
+				promises[i] = new Promise((resolve, reject) => {
+					tmpPromise.then(resolve).catch(reject);
+				});
+			}
+		}
+		// perform promises
+		return wrapPromiseFunc(context, (resolve, reject) => {
+			Promise.all(promises, ...args).then(resolve).catch(reject);
+		});
+	}
+
+	ProcPromise.race = function(context, promises, ...args) {
+		// wrap promises
+		if(promises instanceof Array)
+		{
+			promises = promises.slice(0);
+			for(var i=0; i<promises.length; i++)
+			{
+				let tmpPromise = promises[i];
+				promises[i] = new Promise((resolve, reject) => {
+					tmpPromise.then(resolve).catch(reject);
+				});
+			}
+		}
+		// perform promises
+		return wrapPromiseFunc(context, (resolve, reject) => {
+			Promise.race(promises, ...args).then(resolve).catch(reject);
+		});
+	}
+
+	// create a ProcPromise bound to a context
+	function createProcPromiseClass(context)
+	{
+		const PromiseClass = ProcPromise.bind(ProcPromise, context);
+		PromiseClass.resolve = ProcPromise.resolve.bind(PromiseClass, context);
+		PromiseClass.reject = ProcPromise.reject.bind(PromiseClass, context);
+		PromiseClass.all = ProcPromise.all.bind(PromiseClass, context);
+		PromiseClass.race = ProcPromise.race.bind(PromiseClass, context);
+		return PromiseClass;
+	}
+	
 
 
 	// Filesystem class
@@ -951,11 +1072,11 @@ function Kernel()
 			{
 				if(exists(context, path))
 				{
-					return ProcPromise.resolve();
+					return ProcPromise.resolve(context);
 				}
 			}
 
-			return new ProcPromise((resolve, reject) => {
+			return new ProcPromise(context, (resolve, reject) => {
 				// create request to retrieve remote file
 				var xhr = new XMLHttpRequest();
 				xhr.onreadystatechange = () => {
@@ -1324,7 +1445,7 @@ function Kernel()
 			module: new ScriptGlobalAlias(['exports']),
 
 			ExitSignal: ExitSignal,
-			Promise: ProcPromise,
+			Promise: createProcPromiseClass(context),
 			setTimeout: (...args) => {
 				return kernel.setTimeout(context, ...args);
 			},
@@ -1528,7 +1649,7 @@ function Kernel()
 			}
 			executed = true;
 
-			return new ProcPromise((resolve, reject) => {
+			return new ProcPromise(parentContext, (resolve, reject) => {
 				context.resolve = (...args) => {
 					endProcess(0);
 					resolve(...args);
@@ -1579,13 +1700,8 @@ function Kernel()
 		this.stderr = stderr.output;
 
 		// start process
-		this.promise = new ProcPromise((resolve, reject) => {
+		this.promise = new ProcPromise(parentContext, (resolve, reject) => {
 			setTimeout(() => {
-				if(!parentContext.valid)
-				{
-					return;
-				}
-
 				execute().then((...args) => {
 					resolve(...args);
 				}).catch((...args) => {
@@ -2194,6 +2310,8 @@ function Kernel()
 	this.log = (context, message, options) => {
 		return log(this, context, message, options);
 	};
+	this.ProcPromise = ProcPromise;
+	this.createProcPromiseClass = createProcPromiseClass;
 
 	// make polyfills for standard functions
 
@@ -2286,7 +2404,8 @@ function Kernel()
 	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.jsx?v='+(Math.random()*9999999999), '/system/boot.jsx') );
 
 	// wait for files to finish downloading
-	Promise.all(downloads).then(() => {
+	const ProcPromise = kernel.ProcPromise;
+	ProcPromise.all(rootContext, downloads).then(() => {
 		kernel.log(rootContext, "boot data downloaded");
 		
 		// download sass.worker.js to give to scss
