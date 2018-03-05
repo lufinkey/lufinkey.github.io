@@ -1366,7 +1366,7 @@ function Kernel()
 					{
 						if(arg instanceof Error)
 						{
-							strings.push(arg.toString()+'\n'+arg.stack);
+							strings.push(''+arg.stack);
 						}
 						else
 						{
