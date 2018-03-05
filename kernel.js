@@ -182,7 +182,7 @@ function runScript(kernel, interpreter, scope, code)
 		}
 	}
 	// evaluate the script
-	return evalScript(scope, prefixString+'\n'+code+'\n'+suffixString);
+	return evalScript(scope, prefixString+'\n(() => {\n'+code+'\n})();\n'+suffixString);
 }
 
 
