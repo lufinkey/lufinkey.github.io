@@ -273,6 +273,7 @@ downloadFiles(baseFiles).then(() => {
 		osComponent.forceUpdate();
 	}
 }).catch((error) => {
+	console.error(error);
 	bootlog("failed to download transcend32.dll", {color: 'red'});
 	bootlog(error.toString(), {color: 'red'});
 });

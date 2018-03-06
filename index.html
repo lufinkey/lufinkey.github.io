@@ -11,7 +11,59 @@
 
 	<!-- FinkeOS -->
 	<link href="kernel.css" type="text/css" rel="stylesheet"/>
-	<script src="kernel.js" type="text/javascript"></script>
+	<script src="kernel.js" type="application/javascript"></script>
+	<script type="application/javascript">
+		(function(){
+			const kernel = new Kernel({
+				interpreters: [
+					{
+						// React
+						type: 'script',
+						check: (path) => {
+							if(path.endsWith('.jsx'))
+							{
+								return true;
+							}
+							return false;
+						},
+						transform: (code, context) => {
+							const Babel = kernel.require(context, {}, '/', '/system/slib/babel.js');
+							return Babel.transform(code, {presets:['react']}).code;
+						}
+					},
+					{
+						// SCSS
+						type: 'style',
+						check: (path) => {
+							if(path.endsWith('.scss'))
+							{
+								return true;
+							}
+							return false;
+						},
+						transform: (code, context) => {
+							return new Promise((resolve, reject) => {
+								const Sass = kernel.require(context, {}, '/', '/system/slib/sass.js');
+								var sass = new Sass();
+								sass.compile(code, (result) => {
+									// check for errors
+									if(result.status !== 0)
+									{
+										reject(new Error(result.message));
+										return;
+									}
+									resolve(result.text);
+								});
+							});
+						}
+					}
+				]
+			});
+			
+			
+			kernel.boot('/system/boot.js', 'system/boot.js?v='+(Math.random()*999999999));
+		})();
+	</script>
 </head>
 <body>
 	<div id="root"></div>

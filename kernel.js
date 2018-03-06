@@ -1,13 +1,16 @@
 
 window.localStorage.clear();
 
-// wait for window load to create kernel
-window.addEventListener('load', () => {
+// sandbox evalScript
+const Kernel = (function(){
 
 // function to evaluate a given script
-function evalScript(__scope, __code) {
+function evalJavaScript(__scope, __code) {
+	// make sure Kernel and evalScript aren't defined
+	const Kernel = undefined;
+	const evalJavaScript = undefined;
+	// sandbox script
 	return (function(){
-		const evalScript = undefined;
 		return eval(__code);
 	}).bind({})();
 }
@@ -15,7 +18,7 @@ function evalScript(__scope, __code) {
 
 
 // sandbox kernel data
-(function(){
+return (function(){
 
 function randomString(length = 32)
 {
@@ -134,21 +137,16 @@ function validateVariableName(varName)
 
 // run a script with a given interpreter
 const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
-function runScript(kernel, interpreter, scope, code)
+function runScript(kernel, context, interpreter, scope, code)
 {
-	switch(interpreter)
+	// transform code if necessary
+	if(interpreter)
 	{
-		case 'jsx':
-			const Babel = kernel.require(rootContext, scope, '/', 'babel');
-			code = Babel.transform(code, {presets:['react']}).code;
-			break;
-
-		case null:
-		case undefined:
-			break;
-
-		default:
-			throw new Error("invalid interpreter");
+		if(typeof interpreter.transform !== 'function')
+		{
+			throw new TypeError("interpreter.transform must be a function");
+		}
+		code = interpreter.transform(code, context);
 	}
 	// TODO parse a little bit to check if strict mode is enabled
 	// create strings for global scope variables
@@ -182,12 +180,16 @@ function runScript(kernel, interpreter, scope, code)
 		}
 	}
 	// evaluate the script
-	return evalScript(scope, prefixString+'\n(() => {\n'+code+'\n})();\n'+suffixString);
+	return evalJavaScript(scope, prefixString+'\n(() => {\n'+code+'\n})();\n'+suffixString);
 }
 
 
+
+
+
+
 // Kernel class
-function Kernel()
+function Kernel(kernelOptions)
 {
 	const osName = 'finkeos';
 
@@ -212,7 +214,9 @@ function Kernel()
 		}
 	}
 
+
 	// promise to handle exit signals
+	// TODO simplify this class
 	function ProcPromise(context, callback)
 	{
 		if(!context.cwd)
@@ -1127,18 +1131,6 @@ function Kernel()
 		}
 
 
-		// determine the interpreter for the file
-		function getInterpreter(context, path)
-		{
-			path = resolvePath(context, path);
-			if(path.endsWith('.jsx'))
-			{
-				return 'jsx';
-			}
-			return undefined;
-		}
-
-
 		// execute a js script at a given path
 		function executeFile(context, path, args=[], options=null)
 		{
@@ -1151,8 +1143,8 @@ function Kernel()
 		{
 			path = resolvePath(context, path);
 			const data = kernel.filesystem.readFile(context, path);
-			const interpreter = getInterpreter(context, path);
-			return runScript(kernel, interpreter, scope, data);
+			const interpreter = getInterpreter(kernel, context, 'script', path);
+			return runScript(kernel, context, interpreter, scope, data);
 		}
 
 
@@ -1429,7 +1421,7 @@ function Kernel()
 
 		// build process scope
 		let exports = null;
-		let scope = {
+		let scope = Object.assign(Object.assign({}, options.scope), {
 			syscall: (func, ...args) => {
 				return kernel.syscall(context, func, ...args);
 			},
@@ -1458,56 +1450,70 @@ function Kernel()
 			clearInterval: (...args) => {
 				return kernel.clearInterval(context, ...args);
 			},
-			console: Object.assign(Object.assign({}, console), {
-				log: (...args) => {
-					var strings = [];
-					for(const arg of args)
-					{
-						strings.push(''+arg);
-					}
-					var stringVal = strings.join(' ');
-
-					stdout.input.write(stringVal+'\n');
-					console.log(...args);
-				},
-				warn: (...args) => {
-					var strings = [];
-					for(const arg of args)
-					{
-						if(arg instanceof Error)
-						{
-							strings.push(''+arg.stack);
-						}
-						else
+			console: Object.defineProperties(Object.assign({}, console), {
+				log: {
+					value: (...args) => {
+						var strings = [];
+						for(const arg of args)
 						{
 							strings.push(''+arg);
 						}
-					}
-					var stringVal = strings.join(' ');
+						var stringVal = strings.join(' ');
 
-					stderr.input.write(stringVal+'\n');
-					console.warn(...args);
+						stdout.input.write(stringVal+'\n');
+						console.log(...args);
+					},
+					enumerable: true
 				},
-				error: (...args) => {
-					var strings = [];
-					for(const arg of args)
-					{
-						if(arg instanceof Error)
+				warn: {
+					value: (...args) => {
+						var strings = [];
+						for(const arg of args)
 						{
-							strings.push(''+arg.stack);
+							if(arg instanceof Error)
+							{
+								strings.push(''+arg.stack);
+							}
+							else
+							{
+								strings.push(''+arg);
+							}
 						}
-						else
-						{
-							strings.push(''+arg);
-						}
-					}
-					var stringVal = strings.join(' ');
+						var stringVal = strings.join(' ');
 
-					stderr.input.write(stringVal+'\n');
-					console.error(...args);
+						stderr.input.write(stringVal+'\n');
+						console.warn(...args);
+					},
+					enumerable: true
+				},
+				error: {
+					value: (...args) => {
+						var strings = [];
+						for(const arg of args)
+						{
+							if(arg instanceof Error)
+							{
+								strings.push(''+arg.stack);
+							}
+							else
+							{
+								strings.push(''+arg);
+							}
+						}
+						var stringVal = strings.join(' ');
+
+						stderr.input.write(stringVal+'\n');
+						console.error(...args);
+					},
+					enumerable: true
+				},
+				memory: {
+					get: () => {
+						return console.memory;
+					}
 				}
 			})
-		};
+		});
 		scope.require.resolve = (path) => {
 			return findRequirePath(kernel, context, dir, path);
 		};
@@ -1711,6 +1717,24 @@ function Kernel()
 		});
 	}
 
+
+
+	// determine the interpreter for the file
+	function getInterpreter(kernel, context, type, path)
+	{
+		path = kernel.filesystem.resolvePath(context, path);
+		if(kernelOptions.interpreters)
+		{
+			for(const interpreter of kernelOptions.interpreters)
+			{
+				if(interpreter.type === type && interpreter.check(path))
+				{
+					return interpreter;
+				}
+			}
+		}
+		return undefined;
+	}
 
 
 
@@ -2057,58 +2081,50 @@ function Kernel()
 		styleTag.type = "text/css";
 		head.appendChild(styleTag);
 
-		// determine interpreter
+		// save tag
+		loadedCSS[cssPath] = {
+			pids: [context.pid],
+			tag: styleTag,
+			ready: false
+		};
+
+		// interpret css
 		var cssPromise = null;
-		var ready = false;
-		if(cssPath.endsWith('.scss'))
+		var interpreter = getInterpreter(kernel, context, 'style', cssPath);
+		if(interpreter)
 		{
-			// parse with SCSS
-			var Sass = kernel.require(context, {}, '/', 'sass');
-			var sass = new Sass();
-			cssPromise = new Promise((resolve, reject) => {
-				sass.compile(cssData, (result) => {
-					// check for errors
-					if(result.status !== 0)
-					{
-						if(styleTag.parentNode != null)
-						{
-							loadedCSS[cssPath].error = new Error(result.message);
-							loadedCSS[cssPath].ready = true;
-						}
-						console.error("Error compiling scss for "+cssPath+": "+result.message);
-						reject(new Error(result.message));
-						return;
-					}
-					// apply compiled scss
-					styleTag.textContent = result.text;
-					// inform that we are ready
-					if(styleTag.parentNode != null)
-					{
-						loadedCSS[cssPath].ready = true;
-					}
-					resolve(styleTag);
-				});
-			});
+			cssPromise = interpreter.transform(cssData, context);
 		}
 		else
 		{
 			// apply plain content
-			styleTag.textContent = cssData;
-			ready = true;
-			cssPromise = Promise.resolve(styleTag);
+			cssPromise = Promise.resolve(cssData);
 		}
 
-		// save injected tag
-		loadedCSS[cssPath] = {
-			pids: [context.pid],
-			tag: styleTag,
-			ready: ready
-		};
-
-		return cssPromise;
+		// add CSS to page when finished parsing
+		return new ProcPromise(context, (resolve, reject) => {
+			cssPromise.then((cssData) => {
+				if(!loadedCSS[cssPath])
+				{
+					return;
+				}
+				styleTag.textContent = cssData;
+				loadedCSS[cssPath].ready = true;
+				resolve();
+			}).catch((error) => {
+				if(!loadedCSS[cssPath])
+				{
+					return;
+				}
+				console.error("failed to parse "+path+": "+error.message);
+				loadedCSS[cssPath].error = error;
+				loadedCSS[cssPath].ready = true;
+				reject(error);
+			});
+		});
 	}
 
-	
+
 	// check if CSS for this context is ready
 	function isCSSReady(kernel, context, dir, path=null)
 	{
@@ -2261,13 +2277,6 @@ function Kernel()
 				}
 				return kernel.log(context, ...args);
 
-			case 'logs':
-				if(funcParts[1] != null)
-				{
-					throw new Error("invalid system call");
-				}
-				return kernel.logs(context);
-
 			default:
 				throw new Error("invalid system call");
 		}
@@ -2291,6 +2300,7 @@ function Kernel()
 
 
 	// build kernel object
+	this.rootContext = rootContext;
 	this.filesystem = new Filesystem(this, window.localStorage);
 	this.execute = (context, path, args=[], options=null) => {
 		return execute(this, context, path, args, options);
@@ -2311,7 +2321,6 @@ function Kernel()
 		return log(this, context, message, options);
 	};
 	this.ProcPromise = ProcPromise;
-	this.createProcPromiseClass = createProcPromiseClass;
 
 	// make polyfills for standard functions
 
@@ -2369,94 +2378,26 @@ function Kernel()
 		return clearInterval(interval);
 	};
 
-// end kernel class
+
+	this.boot = (path, url) => {
+		this.filesystem.createDir(rootContext, '/system', {ignoreIfExists: true});
+		this.filesystem.createDir(rootContext, '/system/lib', {ignoreIfExists: true});
+		// download dependencies
+		this.filesystem.downloadFile(rootContext, 'https://raw.githubusercontent.com/Gozala/events/master/events.js', '/system/lib/events.js').then(() => {
+			return this.filesystem.downloadFile(rootContext, url, path);
+		}).then(() => {
+			this.filesystem.executeFile(rootContext, path, [], {scope: {kernel: this}});
+		}).catch((error) => {
+			this.log(rootContext, 'unable to boot', {error:'red'});
+			this.log(rootContext, error.toString(), {color: 'red'});
+			console.error(error);
+		});
+	};
 }
 
-
-
-
-// create boot sandbox
-(function(){
-	// start kernel
-	var kernel = new Kernel();
-
-	kernel.log(rootContext, "downloading boot data...");
-
-	// create system folders
-	const dirOptions = {ignoreIfExists: true};
-	kernel.filesystem.createDir(rootContext, '/system', dirOptions);
-	kernel.filesystem.createDir(rootContext, '/system/bin', dirOptions);
-	kernel.filesystem.createDir(rootContext, '/system/lib', dirOptions);
-	kernel.filesystem.createDir(rootContext, '/system/slib', dirOptions);
-	kernel.filesystem.createDir(rootContext, '/system/share', dirOptions);
-	// delete and remake tmp
-	kernel.filesystem.deleteDir(rootContext, '/tmp');
-	kernel.filesystem.createDir(rootContext, '/tmp', dirOptions);
-
-	// download system files
-	const downloads = [];
-	const downloadOptions = {onlyIfMissing: true};
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js', downloadOptions) );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js', downloadOptions) );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js', downloadOptions) );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js', downloadOptions) );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://raw.githubusercontent.com/Gozala/events/master/events.js', '/system/lib/events.js', downloadOptions) );
-	downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/boot.jsx?v='+(Math.random()*9999999999), '/system/boot.jsx') );
-
-	// wait for files to finish downloading
-	const ProcPromise = kernel.ProcPromise;
-	ProcPromise.all(rootContext, downloads).then(() => {
-		kernel.log(rootContext, "boot data downloaded");
-		
-		// download sass.worker.js to give to scss
-		kernel.log(rootContext, "preparing scss...");
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = () => {
-			if(xhr.readyState == 4)
-			{
-				if(xhr.status == 200)
-				{
-					// apply downloaded worker data to Sass
-					var workerData = xhr.responseText;
-					var workerURL = 'data:application/javascript;base64,'+btoa(workerData);
-					const Sass = kernel.require(rootContext, {}, '/', 'sass');
-					Sass.setWorkerUrl(workerURL);
-					kernel.log(rootContext, "done preparing scss");
-
-					// boot
-					kernel.log(rootContext, "booting...");
-					kernel.execute(rootContext, '/system/boot');
-				}
-				else
-				{
-					// error
-					var errorMessage = "sass.worker.js download failed";
-					if(xhr.status !== 0)
-					{
-						errorMessage += " with status "+xhr.status;
-						if(xhr.statusText)
-						{
-							errorMessage += ": "+xhr.statusText;
-						}
-					}
-					console.error(errorMessage);
-					kernel.log(rootContext, "fatal error", {color: 'red'});
-					kernel.log(rootContext, errorMessage, {color: 'red'});
-				}
-			}
-		}
-		xhr.open('GET', 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.worker.min.js');
-		xhr.send();
-	}).catch((error) => {
-		console.error("kernel error: ", error);
-		kernel.log(rootContext, "fatal error", {color: 'red'});
-		kernel.log(rootContext, error.toString(), {color: 'red'});
-	});
-// end boot sandbox
+return Kernel;
+// end kernel class
 })();
 
-// end kernel sandbox
+// end evalScript sandbox
 })();
-
-// end window 'load' event listener
-});
