@@ -677,6 +677,7 @@ return (function(){
 			'fs': (context) => {
 				const FS = {};
 
+				const Buffer = builtIns.modules.buffer.Buffer;
 				const inodePrefix = '__inode:';
 				const entryPrefix = '__entry:';
 
@@ -778,16 +779,31 @@ return (function(){
 					switch(inode.type)
 					{
 						case 'FILE':
-							return storage.getItem(entryPrefix+id);
+							var content = storage.getItem(entryPrefix+id);
+							if(content == null)
+							{
+								return null;
+							}
+							return Buffer.from(content, 'base64');
 
 						case 'DIR':
-							return JSON.parse(storage.getItem(entryPrefix+id));
+							var content = storage.getItem(entryPrefix+id);
+							if(content == null)
+							{
+								return null;
+							}
+							return JSON.parse(content);
 
 						case 'LINK':
-							return storage.getItem(entryPrefix+id);
+							var content = storage.getItem(entryPrefix+id);
+							if(content == null)
+							{
+								return null;
+							}
+							return Buffer.from(content, 'base64');
 
 						case 'REMOTE':
-							return tmpStorage[id];
+							return Buffer.from(tmpStorage[id]);
 
 						default:
 							throw new Error("invalid inode type");
@@ -808,7 +824,11 @@ return (function(){
 							}
 							else
 							{
-								storage.setItem(entryPrefix+id, content);
+								if(!(content instanceof Buffer))
+								{
+									throw new TypeError("inode file content must be a buffer");
+								}
+								storage.setItem(entryPrefix+id, content.toString('base64'));
 							}
 							break;
 
@@ -819,6 +839,10 @@ return (function(){
 							}
 							else
 							{
+								if(typeof content !== 'object')
+								{
+									throw new TypeError("inode dir content must be an object");
+								}
 								storage.setItem(entryPrefix+id, JSON.stringify(content));
 							}
 							break;
@@ -830,7 +854,11 @@ return (function(){
 							}
 							else
 							{
-								storage.setItem(entryPrefix+id, content);
+								if(!(content instanceof Buffer))
+								{
+									throw new TypeError("inode file content must be a buffer");
+								}
+								storage.setItem(entryPrefix+id, content.toString('base64'));
 							}
 							break;
 
@@ -841,7 +869,11 @@ return (function(){
 							}
 							else
 							{
-								tmpStorage[id] = content;
+								if(!(content instanceof Buffer))
+								{
+									throw new TypeError("inode remote content must be a buffer");
+								}
+								tmpStorage[id] = Buffer.from(content);
 							}
 							break;
 
@@ -902,7 +934,7 @@ return (function(){
 						throw new TypeError("callback function is required");
 					}
 
-					makeAsyncPromise(() => {
+					makeAsyncPromise(context, () => {
 						return readFileSync(path, options);
 					}).then((content) => {
 						callback(null, content);
@@ -920,7 +952,16 @@ return (function(){
 					{
 						throw new Error("file does not exist");
 					}
+					var content = readINodeContent(id);
+					if(options.encoding)
+					{
+						content = content.toString(options.encoding);
+					}
+					return content;
 				}
+
+				FS.readFile = readFile;
+				FS.readFileSync = readFileSync;
 			}
 		};
 
