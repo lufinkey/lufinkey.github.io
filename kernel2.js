@@ -715,7 +715,21 @@ return (function(){
 						'mode': info.mode
 					};
 					// store inode
-					storage.setItem(inodePrefix+i, JSON.stringify(inode));
+					storage.setItem(inodePrefix+id, JSON.stringify(inode));
+					var data = '';
+					switch(type)
+					{
+						case 'FILE':
+						case 'LINK':
+						case 'REMOTE':
+							data = Buffer.from('', 'utf8');
+							break;
+
+						case 'DIR':
+							data = {};
+							break;
+					}
+					writeINodeContent(id, data);
 					return id;
 				}
 
@@ -813,6 +827,10 @@ return (function(){
 
 				function writeINodeContent(id, content)
 				{
+					if(id === 0)
+					{
+						throw new Error("cannot overwrite root directory");
+					}
 					var inode = getINode(id);
 
 					switch(inode.type)
@@ -883,7 +901,7 @@ return (function(){
 				}
 
 
-				function findINode(path)
+				function validatePath(path)
 				{
 					if(path instanceof Buffer)
 					{
@@ -893,6 +911,15 @@ return (function(){
 					{
 						throw new TypeError("path must be a string");
 					}
+					return resolveRelativePath(context, path);
+				}
+
+
+				function findINode(path)
+				{
+					// validate path
+					path = validatePath(path);
+					// ensure absolute path
 					if(!path.startsWith('/'))
 					{
 						throw new Error("path must be absolute");
@@ -913,10 +940,19 @@ return (function(){
 					var id = 0;
 					for(const pathPart of pathParts)
 					{
+						var inode = getINode(id);
+						// TODO, while entry is a link, set the link destination as the current entry
+						// make sure the entry is a directory
+						if(inode.type !== 'DIR')
+						{
+							throw new Error("part of path is not a directory");
+						}
+						// make sure next part of path exists
 						if(entry[pathPart] == null)
 						{
 							return null;
 						}
+						// TODO check permissions
 						id = entry[pathPart];
 						entry = readINodeContent(id);
 					}
@@ -924,7 +960,116 @@ return (function(){
 				}
 
 
+				function createPathEntry(path, type, info)
+				{
+					// validate path
+					path = validatePath(path);
+					// ensure absolute path
+					if(!path.startsWith('/'))
+					{
+						throw new Error("path must be absolute");
+					}
+					else if(path == '/')
+					{
+						throw new Error("cannot create entry at root");
+					}
+
+					// get info about parent directory
+					var pathName = builtIns.modules.path.basename(dest);
+					var pathDir = builtIns.modules.path.dirname(dest);
+					var parentId = findINode(pathDir);
+					if(parentId == null)
+					{
+						throw new Error("parent directory does not exist");
+					}
+					var parentINode = getINode(parentId);
+					if(parentINode.type != 'DIR')
+					{
+						throw new Error("parent entry is not a directory");
+					}
+					var parentData = readINodeContent(parentId);
+
+					// ensure path doesn't already exist
+					if(parentData[pathName] != null)
+					{
+						throw new Error("entry already exists");
+					}
+					
+					// add entry to parent dir
+					var id = createINode(type, info);
+					parentData[pathName] = id;
+					writeINodeContent(parentId, parentData);
+
+					// done
+					return id;
+				}
+
+				function destroyPathEntry(path)
+				{
+					// validate path
+					path = validatePath(path);
+					// ensure absolute path
+					if(!path.startsWith('/'))
+					{
+						throw new Error("path must be absolute");
+					}
+					else if(path == '/')
+					{
+						throw new Error("cannot destroy root entry");
+					}
+
+					// get info about the parent directory
+					var pathName = builtIns.modules.path.basename(dest);
+					var pathDir = builtIns.modules.path.dirname(dest);
+					var parentId = findINode(pathDir);
+					if(parentId == null)
+					{
+						throw new Error("parent directory does not exist");
+					}
+					var parentINode = getINode(parentId);
+					if(parentINode.type !== 'DIR')
+					{
+						throw new Error("parent entry is not a directory");
+					}
+					var parentData = readINodeContent(parentId);
+
+					// ensure entry exists
+					var id = parentData[pathName];
+					if(id == null)
+					{
+						throw new Error("entry does not exist");
+					}
+
+					// remove entry from parent dir
+					var inode = getINode(id);
+					if(inode.type === 'DIR')
+					{
+						// make sure directory is empty
+						var data = readINodeContent(id);
+						if(Object.keys(data).length > 0)
+						{
+							throw new Error("directory is not empty");
+						}
+					}
+					delete parentData[pathName];
+					writeINodeContent(parentId, parentData);
+					destroyINode(id);
+				}
+
+
+
 				//========= FS =========//
+
+				const constants = {
+					COPYFILE_EXCL: 0b00000000000000000000000000000001
+				};
+				
+				Object.defineProperty(FS, 'constants', {
+					value: Object.assign({}, constants),
+					writable: false
+				});
+
+				
 
 				function readFile(path, options, callback)
 				{
@@ -950,7 +1095,7 @@ return (function(){
 				function readFileSync(path, options)
 				{
 					options = Object.assign({}, options);
-					path = resolveRelativePath(context, path);
+					path = validatePath(path);
 					var id = findINode(path);
 					if(id == null)
 					{
@@ -966,6 +1111,78 @@ return (function(){
 
 				FS.readFile = readFile;
 				FS.readFileSync = readFileSync;
+
+
+
+				function copyFile(src, dest, flags, callback)
+				{
+					if(typeof flags === 'function')
+					{
+						callback = flags;
+						flags = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return copyFileSync(src, dest, flags);
+					}).then((content) => {
+						callback(null, content);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function copyFileSync(src, dest, flags)
+				{
+					if(flags == null)
+					{
+						flags = 0;
+					}
+					if(typeof flags !== 'number' || !Number.isInteger(flags))
+					{
+						throw new TypeError("flags must be an integer");
+					}
+
+					src = validatePath(src);
+					dest = validatePath(dest);
+
+					var srcId = findINode(src);
+					var destId = findINode(dest);
+
+					if(srcId == null)
+					{
+						throw new Error("source file does not exist");
+					}
+					var srcINode = getINode(srcId);
+					if(srcINode.type === 'DIR')
+					{
+						throw new Error("source path is a directory");
+					}
+
+					// copy content
+					var data = readINodeContent(srcId);
+					if(destId == null)
+					{
+						// create destination
+						destId = createPathEntry(dest, 'DIR', {});
+					}
+					else
+					{
+						if((flags & constants.COPYFILE_EXCL) === constants.COPYFILE_EXCL)
+						{
+							throw new Error("destination already exists");
+						}
+						var destINode = getINode(destId);
+						if(destINode.type !== 'DIR')
+						{
+							throw new Error("destination is a directory");
+						}
+					}
+					writeINodeContent(destId, data);
+				}
 			}
 		};
 
