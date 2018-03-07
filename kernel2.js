@@ -885,6 +885,10 @@ return (function(){
 
 				function findINode(path)
 				{
+					if(path instanceof Buffer)
+					{
+						path = path.toString('utf8');
+					}
 					if(typeof path !== 'string')
 					{
 						throw new TypeError("path must be a string");
