@@ -95,11 +95,12 @@ return (function(){
 		const tmpStorage = {};
 		const storage = window.localStorage;
 
-		let builtInModules = null;
+		let builtIns = null;
+		let browserWrappers = null;
 		let generatedModules = null;
 		let loadedSharedModules = {};
 
-		let builtInModulesPromise = null;
+		let builtInsPromise = null;
 
 
 
@@ -109,6 +110,54 @@ return (function(){
 			this.aliases = aliases;
 		}
 
+		// define contextual browser functions
+		browserWrappers = {
+			setTimeout: (context, handler, ...args) => {
+				if(typeof handler !== 'function')
+				{
+					throw new TypeError("handler must be a function");
+				}
+				const timeout = setTimeout((...args) => {
+					var index = context.timeouts.indexOf(timeout);
+					if(index !== -1)
+					{
+						context.timeouts.splice(index, 1);
+					}
+					handler(...args);
+				}, ...args);
+				context.timeouts.push(timeout);
+				return timeout;
+			},
+			clearTimeout: (context, timeout) => {
+				var index = context.timeouts.indexOf(timeout);
+				if(index !== -1)
+				{
+					context.timeouts.splice(index, 1);
+				}
+				return clearTimeout(timeout);
+			},
+			// intervals
+			setInterval: (context, handler, ...args) => {
+				if(typeof handler !== 'function')
+				{
+					throw new TypeError("handler must be a function");
+				}
+				const interval = setInterval((...args) => {
+					handler(...args);
+				}, ...args);
+				context.intervals.push(interval);
+				return interval;
+			},
+			clearInterval: (context, interval) => {
+				var index = context.intervals.indexOf(interval);
+				if(index !== -1)
+				{
+					context.intervals.splice(index, 1);
+				}
+				return clearInterval(interval);
+			}
+		};
+		
 
 		// function to create context scope
 		function createContextScope(context, dirname, filename)
@@ -117,49 +166,18 @@ return (function(){
 				'const': {
 					// browser built-ins
 					// timeouts
-					setTimeout: (handler, ...args) => {
-						if(typeof handler !== 'function')
-						{
-							throw new TypeError("handler must be a function");
-						}
-						const timeout = setTimeout((...args) => {
-							var index = context.timeouts.indexOf(timeout);
-							if(index !== -1)
-							{
-								context.timeouts.splice(index, 1);
-							}
-							handler(...args);
-						}, ...args);
-						context.timeouts.push(timeout);
-						return timeout;
+					setTimeout: (...args) => {
+						return browserWrappers.setTimeout(context, ...args);
 					},
-					clearTimeout: (timeout) => {
-						var index = context.timeouts.indexOf(timeout);
-						if(index !== -1)
-						{
-							context.timeouts.splice(index, 1);
-						}
-						return clearTimeout(timeout);
+					clearTimeout: (...args) => {
+						return browserWrappers.clearTimeout(context, ...args);
 					},
 					// intervals
-					setInterval: (handler, ...args) => {
-						if(typeof handler !== 'function')
-						{
-							throw new TypeError("handler must be a function");
-						}
-						const interval = setInterval((...args) => {
-							handler(...args);
-						}, ...args);
-						context.intervals.push(interval);
-						return interval;
+					setInterval: (...args) => {
+						return browserWrappers.setInterval(context, ...args);
 					},
-					clearInterval: (interval) => {
-						var index = context.intervals.indexOf(interval);
-						if(index !== -1)
-						{
-							context.intervals.splice(index, 1);
-						}
-						return clearInterval(interval);
+					clearInterval: (...args) => {
+						return browserWrappers.clearInterval(context, ...args);
 					},
 					// console
 					console: Object.defineProperties(Object.assign({}, console), {
@@ -290,11 +308,11 @@ return (function(){
 			// return normalized path if it's absolute
 			if(path.startsWith('/'))
 			{
-				return builtInModules.path.normalize(path);
+				return builtIns.modules.path.normalize(path);
 			}
 
 			// concatenate path with cwd
-			return builtInModules.path.join(cwd, path);
+			return builtIns.modules.path.join(cwd, path);
 		}
 
 
@@ -323,7 +341,7 @@ return (function(){
 			{
 				return mainFile;
 			}
-			return builtInModules.path.join(path, mainFile);
+			return builtIns.modules.path.join(path, mainFile);
 		}
 
 
@@ -550,9 +568,9 @@ return (function(){
 			{
 				return context.modules[path];
 			}
-			if(builtInModules[path])
+			if(builtIns.modules[path])
 			{
-				return builtInModules[path];
+				return builtIns.modules[path];
 			}
 			// get full module path
 			var basePaths = kernelOptions.libPaths || [];
@@ -598,7 +616,7 @@ return (function(){
 			}, {
 				resolve: {
 					value: (path) => {
-						if(context.modules[path] || builtInModules[path])
+						if(context.modules[path] || builtIns.modules[path])
 						{
 							return path;
 						}
@@ -633,64 +651,95 @@ return (function(){
 		}
 
 
+		function makeAsyncPromise(context, task)
+		{
+			return new Promise((resolve, reject) => {
+				browserWrappers.setTimeout(context, () => {
+					var retVal = null;
+					try
+					{
+						retVal = task();
+					}
+					catch(error)
+					{
+						reject(error);
+						return;
+					}
+					resolve(retVal);
+				}, 0);
+			});
+		}
+
+
 
 		// define kernel modules
 		generatedModules = {
 			'fs': (context) => {
 				const FS = {};
 
+				const inodePrefix = '__inode:';
+				const entryPrefix = '__entry:';
 
 				// use inodes to handle creating filesystem entries
 				// valid inode types: FILE, DIR, LINK, REMOTE
 
-				function createINode(name, type, info)
+				function createINode(type, info)
 				{
-					var i = 0;
+					// validate type
+					if(typeof type !== 'string')
+					{
+						throw new TypeError("inode type must be a string");
+					}
+					if(['FILE', 'DIR', 'LINK', 'REMOTE'].indexOf(type) === -1)
+					{
+						throw new Error("invalid inode type "+type);
+					}
+					// find available inode ID
+					var id = 1;
 					while(true)
 					{
-						var item = storage.getItem('__inode:'+i);
+						var item = storage.getItem(inodePrefix+i);
 						if(!item)
 						{
 							break;
 						}
-						i++;
+						id++;
 					}
-
-					info = Object.assign({uid: -1, gid: -1, mode: -1}, info);
-
+					// create inode
+					info = Object.assign({uid: 0, gid: 0, mode: 777}, info);
 					var inode = {
-						'name': name,
 						'type': type,
 						'uid': info.uid,
 						'gid': info.gid,
 						'mode': info.mode
 					};
-
-					storage.setItem('__inode:'+i, JSON.stringify(inode));
-					return i;
+					// store inode
+					storage.setItem(inodePrefix+i, JSON.stringify(inode));
+					return id;
 				}
 
 
-				function getINode(i)
+				function getINode(id)
 				{
-					var inode = storage.getItem('__inode:'+i);
+					var inode = storage.getItem(inodePrefix+id);
 					if(!inode)
 					{
-						throw new Error("cannot access nonexistant inode "+i);
+						throw new Error("cannot access nonexistant inode "+id);
 					}
 					return JSON.parse(inode);
 				}
 
 
-				function destroyINode(i)
+				function destroyINode(id)
 				{
-					storage.removeItem('__inode:'+i);
+					storage.removeItem(inodePrefix+id);
+					writeINodeContent(id, null);
 				}
 
 
-				function doesINodeExist(i)
+				function doesINodeExist(id)
 				{
-					if(storage.getItem('__inode:'+i))
+					if(storage.getItem(inodePrefix+id))
 					{
 						return true;
 					}
@@ -698,9 +747,13 @@ return (function(){
 				}
 
 
-				function getINodeModePart(accessor, mode)
+				function getModePart(accessor, mode)
 				{
-					var mode = (''+mode).padStart(4,'0');
+					mode = ''+mode;
+					while(mode.length < 4)
+					{
+						mode = '0'+mode;
+					}
 					switch(accessor)
 					{
 						case 'sticky':
@@ -718,28 +771,23 @@ return (function(){
 				}
 
 
-				function readINodeContent(i)
+				function readINodeContent(id)
 				{
-					var inode = getINode(i);
+					var inode = getINode(id);
 
 					switch(inode.type)
 					{
 						case 'FILE':
-							return storage.getItem('__entry:'+i);
+							return storage.getItem(entryPrefix+id);
 
 						case 'DIR':
-							return JSON.parse(storage.getItem('__entry:'+i));
+							return JSON.parse(storage.getItem(entryPrefix+id));
 
 						case 'LINK':
-							return storage.getItem('__entry:'+i);
+							return storage.getItem(entryPrefix+id);
 
 						case 'REMOTE':
-							var content = tmpStorage[i];
-							if(!content)
-							{
-								throw new Error("cannot access remote file which has not been retrieved");
-							}
-							return content;
+							return tmpStorage[id];
 
 						default:
 							throw new Error("invalid inode type");
@@ -747,30 +795,130 @@ return (function(){
 				}
 
 
-				function writeINodeContent(i, content)
+				function writeINodeContent(id, content)
 				{
-					var inode = getINode(i);
+					var inode = getINode(id);
 
 					switch(inode.type)
 					{
 						case 'FILE':
-							storage.setItem('__entry:'+i, content);
+							if(content == null)
+							{
+								storage.removeItem(entryPrefix+id);
+							}
+							else
+							{
+								storage.setItem(entryPrefix+id, content);
+							}
 							break;
 
 						case 'DIR':
-							storage.setItem('__entry:'+i, JSON.stringify(content));
+							if(content == null)
+							{
+								storage.removeItem(entryPrefix+id);
+							}
+							else
+							{
+								storage.setItem(entryPrefix+id, JSON.stringify(content));
+							}
 							break;
 
 						case 'LINK':
-							storage.setItem('__entry:'+i, content);
+							if(content == null)
+							{
+								storage.removeItem(entryPrefix+id);
+							}
+							else
+							{
+								storage.setItem(entryPrefix+id, content);
+							}
 							break;
 
 						case 'REMOTE':
-							tmpStorage[i] = content;
+							if(content == null)
+							{
+								delete tmpStorage[id];
+							}
+							else
+							{
+								tmpStorage[id] = content;
+							}
 							break;
 
 						default:
 							throw new Error("invalid inode type");
+					}
+				}
+
+
+				function findINode(path)
+				{
+					if(typeof path !== 'string')
+					{
+						throw new TypeError("path must be a string");
+					}
+					if(!path.startsWith('/'))
+					{
+						throw new Error("path must be absolute");
+					}
+					// get all path parts
+					var pathParts = path.split('/');
+					for(const i=0; i<pathParts.length; i++)
+					{
+						if(pathParts[i] == '')
+						{
+							pathParts.splice(i, 1);
+							i--;
+						}
+					}
+					// traverse directories to find path
+					var rootEntry = readINodeContent(0);
+					var entry = rootEntry;
+					var id = 0;
+					for(const pathPart of pathParts)
+					{
+						if(entry[pathPart] == null)
+						{
+							return null;
+						}
+						id = entry[pathPart];
+						entry = readINodeContent(id);
+					}
+					return id;
+				}
+
+
+				//========= FS =========//
+
+				function readFile(path, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(() => {
+						return readFileSync(path, options);
+					}).then((content) => {
+						callback(null, content);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function readFileSync(path, options)
+				{
+					options = Object.assign({}, options);
+					path = resolveRelativePath(context, path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
 					}
 				}
 			}
@@ -778,8 +926,8 @@ return (function(){
 
 
 
-		// download built-in node modules
-		builtInModulesPromise = new Promise((resolve, reject) => {
+		// download built-in node modules / classes
+		builtInsPromise = new Promise((resolve, reject) => {
 			var xhr = new XMLHttpRequest();
 			xhr.onreadystatechange = () => {
 				if(xhr.readyState === 4)
@@ -809,7 +957,20 @@ return (function(){
 		});
 
 
+
 		// TODO everything else
+
+
+
+		// bootup method
+		this.boot = (path) => {
+			builtInsPromise.then(() => {
+				// TODO execute boot file
+			}).catch((error) => {
+				console.error("unable to boot from kernel:");
+				console.error(error);
+			});
+		};
 	// end kernel class
 	}
 
