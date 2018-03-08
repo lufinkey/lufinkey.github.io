@@ -1037,7 +1037,6 @@ return (function(){
 
 				function getModePart(accessor, mode)
 				{
-					// TODO fix this
 					mode = mode.toString(8);
 					while(mode.length < 4)
 					{
@@ -1386,6 +1385,94 @@ return (function(){
 
 
 
+				class Stats
+				{
+					constructor(id)
+					{
+						var inode = getINode(id);
+
+						Object.defineProperties(this, {
+							// attributes
+							ino: {
+								value: id,
+								writable: false
+							},
+							mode: {
+								value: inode.mode,
+								writable: false
+							},
+							uid: {
+								value: inode.uid,
+								writable: false
+							},
+							gid: {
+								value: inode.gid,
+								writable: false
+							},
+
+							// functions
+							isBlockDevice: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isCharacterDevice: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isDirectory: {
+								value: () => {
+									if(inode.type === 'DIR')
+									{
+										return true;
+									}
+									return false;
+								},
+								writable: false
+							},
+							isFIFO: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isFile: {
+								value: () => {
+									if(inode.type === 'FILE' || inode.type === 'REMOTE')
+									{
+										return true;
+									}
+									return false;
+								},
+								writable: false
+							},
+							isSocket: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isSymbolicLink: {
+								value: () => {
+									if(inode.type === 'LINK')
+									{
+										return true;
+									}
+									return false;
+								},
+								writable: false
+							}
+						});
+					}
+				}
+
+				FS.Stats = Stats;
+
+
+
 				function copyFile(src, dest, flags, callback)
 				{
 					if(typeof flags === 'function')
@@ -1642,6 +1729,35 @@ return (function(){
 
 				FS.rmdir = rmdir;
 				FS.rmdirSync = rmdirSync;
+
+
+
+				function stat(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return statSync(path);
+					}).then((stats) => {
+						callback(null, stats);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function statSync(path)
+				{
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
+					}
+					return new Stats(id);
+				}
 
 
 				
@@ -2151,6 +2267,9 @@ return (function(){
 						}
 					}
 				}
+
+				child_process.ChildProcess = ChildProcess;
+
 
 
 				function spawn(command, args=[], options=null)
