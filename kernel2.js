@@ -68,6 +68,7 @@ return (function(){
 		window.localStorage.clear();
 
 		const osName = 'finkeos';
+		const fsPrefix = ''+(kernelOptions.fsPrefix || '');
 
 		const tmpStorage = {};
 		const storage = window.localStorage;
@@ -950,8 +951,8 @@ return (function(){
 				const FS = {};
 
 				const Buffer = context.builtIns.modules.buffer.Buffer;
-				const inodePrefix = '__inode:';
-				const entryPrefix = '__entry:';
+				const inodePrefix = fsPrefix+'__inode:';
+				const entryPrefix = fsPrefix+'__entry:';
 
 				// use inodes to handle creating filesystem entries
 				// valid inode types: FILE, DIR, LINK, REMOTE
@@ -1959,10 +1960,10 @@ return (function(){
 		// bootup method
 		this.boot = (path) => {
 			// ensure the root filesystem has been created
-			if(!storage.getItem('__inode:0'))
+			if(!storage.getItem(fsPrefix+'__inode:0'))
 			{
-				storage.setItem('__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:777}));
-				storage.setItem('__entry:0', JSON.stringify({}));
+				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:777}));
+				storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
 			}
 
 			// wait for builtins to download
