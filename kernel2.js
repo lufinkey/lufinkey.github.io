@@ -1791,10 +1791,11 @@ return (function(){
 					// ensure context is valid
 					if(!context.valid)
 					{
-						return;
+						this.removeAllListeners();
+						return false;
 					}
 					// send event
-					superEmit.apply(this, eventName, ...args);
+					return superEmit.apply(this, eventName, ...args);
 				}
 
 				return EventEmitter;
