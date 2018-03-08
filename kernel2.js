@@ -779,17 +779,11 @@ return (function(){
 				'var': Object.assign({}, parentScope.var)
 			};
 			scope.const.require = Object.defineProperties((path) => {
-				return require(kernel, moduleContext, scope, moduleDir, path);
+				return require(moduleContext, scope, moduleDir, path);
 			}, {
 				resolve: {
 					value: (path) => {
-						if(context.modules[path] || context.builtIns.modules[path])
-						{
-							return path;
-						}
-						// get full module path
-						var basePaths = kernelOptions.libPaths || [];
-						return findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
+						return require.resolve(moduleContext, moduleDir, path);
 					},
 					writable: false
 				}
@@ -815,6 +809,24 @@ return (function(){
 
 			// return exported module
 			return scope.exports;
+		}
+
+
+		// resolves the path to a given module
+		require.resolve = function(context, dirname, path)
+		{
+			// check if built-in module
+			if(context.modules[path])
+			{
+				return path;
+			}
+			if(context.builtIns.modules[path])
+			{
+				return path;
+			}
+			// get full module path
+			var basePaths = kernelOptions.libPaths || [];
+			return findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
 		}
 
 
@@ -1710,7 +1722,8 @@ return (function(){
 							}
 
 							// create process scope
-							var scope = {
+							let scope = null;
+							scope = {
 								'const': {
 									// browser built-ins
 									// timeouts
@@ -1801,11 +1814,11 @@ return (function(){
 									__dirname: dirname,
 									__filename, filename,
 									require: Object.defineProperties((path) => {
-										// TODO add actual require functionality
+										return require(context, scope, dirname, path);
 									}, {
 										resolve: {
 											value: (path) => {
-												// TODO add actual require.resolve functionality
+												return require.resolve(context, dirname, path);
 											},
 											enumerable: true,
 											writable: false
