@@ -1184,7 +1184,12 @@ return (function(){
 					{
 						throw new TypeError("path must be a string");
 					}
-					return resolveRelativePath(context, path);
+					path = resolveRelativePath(context, path);
+					if(!path.startsWith('/'))
+					{
+						throw new Error("internal inconsistency: resolved path is not absolute");
+					}
+					return path;
 				}
 
 
@@ -1192,13 +1197,9 @@ return (function(){
 				{
 					// validate path
 					path = validatePath(path);
-					// ensure absolute path
-					if(!path.startsWith('/'))
-					{
-						throw new Error("path must be absolute");
-					}
 					// get all path parts
 					var pathParts = path.split('/');
+					// remove empty path parts
 					for(const i=0; i<pathParts.length; i++)
 					{
 						if(pathParts[i] == '')
@@ -1237,19 +1238,10 @@ return (function(){
 				{
 					// validate path
 					path = validatePath(path);
-					// ensure absolute path
-					if(!path.startsWith('/'))
-					{
-						throw new Error("path must be absolute");
-					}
-					else if(path == '/')
-					{
-						throw new Error("cannot create entry at root");
-					}
 
 					// get info about parent directory
-					var pathName = context.builtIns.modules.path.basename(dest);
-					var pathDir = context.builtIns.modules.path.dirname(dest);
+					var pathName = context.builtIns.modules.path.basename(path);
+					var pathDir = context.builtIns.modules.path.dirname(path);
 					var parentId = findINode(pathDir);
 					if(parentId == null)
 					{
@@ -1278,23 +1270,66 @@ return (function(){
 				}
 
 
+				function movePathEntry(oldPath, newPath)
+				{
+					// validate paths
+					oldPath = validatePath(oldPath);
+					newPath = validatePath(newPath);
+
+					// get info about parent directory
+					function getPathInfo(path)
+					{
+						var pathName = context.builtIns.modules.path.basename(path);
+						var pathDir = context.builtIns.modules.path.dirname(path);
+						var parentId = findINode(oldPathDir);
+						if(parentId == null)
+						{
+							throw new Error("parent directory does not exist");
+						}
+						var parentINode = getINode(parentId);
+						if(parentINode.type != 'DIR')
+						{
+							throw new Error("parent entry is not a directory");
+						}
+						var parentData = readINodeContent(parentId);
+						return {
+							name: pathName,
+							dirname: pathDir,
+							parentId: parentId,
+							parentINode: parentINode,
+							parentData: parentData
+						};
+					}
+					var oldInfo = getPathInfo(oldPath);
+					var newInfo = getPathInfo(newPath);
+
+					// move from old dir to new dir
+					if(oldInfo.parentData[oldInfo.name] == null)
+					{
+						throw new Error("entry does not exist");
+					}
+					if(newInfo.parentData[newInfo.name] != null)
+					{
+						throw new Error("destination entry already exists");
+					}
+					var id = oldInfo.parentData[oldInfo.name];
+					delete oldInfo.parentData[oldInfo.name];
+					newInfo.parentData[newInfo.name] = id;
+					
+					// flush updated data
+					writeINodeContent(oldInfo.parentId, oldInfo.parentData);
+					writeINodeContent(newInfo.parentId, newInfo.parentData);
+				}
+
+
 				function destroyPathEntry(path)
 				{
 					// validate path
 					path = validatePath(path);
-					// ensure absolute path
-					if(!path.startsWith('/'))
-					{
-						throw new Error("path must be absolute");
-					}
-					else if(path == '/')
-					{
-						throw new Error("cannot destroy root entry");
-					}
 
 					// get info about the parent directory
-					var pathName = context.builtIns.modules.path.basename(dest);
-					var pathDir = context.builtIns.modules.path.dirname(dest);
+					var pathName = context.builtIns.modules.path.basename(path);
+					var pathDir = context.builtIns.modules.path.dirname(path);
 					var parentId = findINode(pathDir);
 					if(parentId == null)
 					{
@@ -1450,6 +1485,9 @@ return (function(){
 					createPathEntry(path, 'DIR', {mode: mode});
 				}
 
+				FS.mkdir = mkdir;
+				FS.mkdirSync = mkdirSync;
+
 
 
 				function readdir(path, options, callback)
@@ -1489,6 +1527,9 @@ return (function(){
 					}
 					return data;
 				}
+
+				FS.readdir = readdir;
+				FS.readdirSync = readdirSync;
 
 				
 
@@ -1532,6 +1573,34 @@ return (function(){
 
 				FS.readFile = readFile;
 				FS.readFileSync = readFileSync;
+
+
+
+				function rename(oldPath, newPath, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return renameSync(oldPath, newPath);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function renameSync(oldPath, newPath)
+				{
+					movePathEntry(oldPath, newPath);
+				}
+
+				FS.rename = rename;
+				FS.renameSync = renameSync;
+
+
 
 				return FS;
 			},
