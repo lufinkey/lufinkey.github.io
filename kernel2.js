@@ -1741,8 +1741,6 @@ return (function(){
 									clearInterval: (...args) => {
 										return browserWrappers.clearInterval(childContext, ...args);
 									},
-									// promise
-									Promise: createProcPromiseClass(context),
 									// console
 									console: Object.defineProperties(Object.assign({}, console), {
 										log: {
@@ -1812,14 +1810,16 @@ return (function(){
 									}),
 				
 									// node built-ins
+									Promise: createProcPromiseClass(childContext),
+									Buffer: childContext.builtIns.modules.buffer.Buffer,
 									__dirname: dirname,
 									__filename, filename,
 									require: Object.defineProperties((path) => {
-										return require(context, scope, dirname, path);
+										return require(childContext, scope, dirname, path);
 									}, {
 										resolve: {
 											value: (path) => {
-												return require.resolve(context, dirname, path);
+												return require.resolve(childContext, dirname, path);
 											},
 											enumerable: true,
 											writable: false
