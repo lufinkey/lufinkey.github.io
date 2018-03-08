@@ -390,7 +390,7 @@ return (function(){
 					Promise: createProcPromiseClass(context)
 				},
 				'let': {
-					'require': {}
+					require: {}
 				}
 			};
 			runScript(context, builtInsCode, scope);
@@ -2036,7 +2036,7 @@ return (function(){
 						childContext.pid = pidCounter;
 						pidCounter++;
 
-						// define general process info=
+						// define general process info
 						var argv0 = path;
 						path = resolveRelativePath(context, path);
 						const dirname = context.builtIns.modules.path.dirname(path);
@@ -2315,32 +2315,41 @@ return (function(){
 
 
 
+
+		// function to download a file
+		function download(url)
+		{
+			return new Promise((resolve, reject) => {
+				var xhr = new XMLHttpRequest();
+				xhr.responseType = 'arraybuffer';
+				xhr.onreadystatechange = () => {
+					if(xhr.readyState === 4)
+					{
+						if(xhr.status === 200)
+						{
+							resolve(Buffer.from(xhr.response));
+						}
+						else
+						{
+							reject(new Error(xhr.status+": "+xhr.statusText));
+						}
+					}
+				};
+
+				xhr.open('GET', url);
+				xhr.send();
+			});
+		}
+
+
 		// download built-in node modules / classes
 		builtInsPromise = new Promise((resolve, reject) => {
-			var xhr = new XMLHttpRequest();
-			xhr.onreadystatechange = () => {
-				if(xhr.readyState === 4)
-				{
-					if(xhr.status === 200)
-					{
-						// save the built in modules code
-						builtInsCode = xhr.responseText;
-						resolve();
-					}
-					else
-					{
-						var errorMessage = "failed to download built-in modules";
-						if(xhr.status > 0)
-						{
-							errorMessage += " with status "+xhr.status+": "+xhr.statusText;
-						}
-						reject(new Error(errorMessage));
-					}
-				}
-			};
-
-			xhr.open('GET', 'https://wzrd.in/bundle/node-builtin-map');
-			xhr.send();
+			download('https://wzrd.in/bundle/node-builtin-map').then((data) => {
+				builtInsCode = data.toString('utf8');
+				resolve();
+			}).catch((error) => {
+				reject(error);
+			});
 		});
 
 
@@ -2348,18 +2357,30 @@ return (function(){
 
 
 		// bootup method
-		this.boot = (path) => {
+		let booted = false;
+		this.boot = (url, path) => {
+			if(booted)
+			{
+				throw new Error("system is already booted");
+			}
+			booted = true;
 			// ensure the root filesystem has been created
 			if(!storage.getItem(fsPrefix+'__inode:0'))
 			{
-				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o777}));
+				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o754}));
 				storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
 			}
-
+			// create promise for boot data
+			var bootDataPromise = download(url);
 			// wait for builtins to download
 			builtInsPromise.then(() => {
 				// create root context
 				rootContext = createContext(null);
+				// wait for boot data to download
+				return bootDataPromise;
+			}).then((data) => {
+				// write boot data to path
+				fs.writeFileSync(path, data);
 				// execute boot file
 				rootContext.modules.child_process.spawn(path);
 			}).catch((error) => {
