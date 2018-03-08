@@ -1163,6 +1163,60 @@ return (function(){
 
 
 
+		// append information to the system log
+		function log(context, message, options)
+		{
+			options = Object.assign({}, options);
+
+			var kernelElement = document.getElementById("kernel");
+			if(kernelElement != null)
+			{
+				const logElement = document.createElement("DIV");
+				logElement.textContent = message;
+				logElement.style.color = options.color;
+
+				kernelElement.appendChild(logElement);
+				kernelElement.scrollTop = kernelElement.scrollHeight;
+			}
+		}
+
+
+
+		// call special kernel functions
+		function syscall(context, func, ...args)
+		{
+			if(typeof func != 'string')
+			{
+				throw new Error("func must be a string");
+			}
+			func = ''+func;
+
+			if(!context.valid)
+			{
+				throw new Error("calling context is not valid");
+			}
+
+			var funcParts = func.split('.');
+			if(funcParts.length > 2)
+			{
+				throw new Error("invalid system call");
+			}
+			switch(funcParts[0])
+			{
+				case 'log':
+					if(funcParts[1] != null)
+					{
+						throw new Error("invalid system call");
+					}
+					return log(context, ...args);
+
+				default:
+					throw new Error("invalid system call");
+			}
+		}
+
+
+
 		// define kernel modules
 		generatedModules = {
 			'fs': (context) => {
@@ -2461,7 +2515,10 @@ return (function(){
 									process: new Process(childContext, context),
 
 									// addons
-									ExitSignal: ExitSignal
+									ExitSignal: ExitSignal,
+									syscall: (func, ...args) => {
+										return syscall(context, func, ...args);
+									}
 								},
 								'let': {
 									exports: {}
