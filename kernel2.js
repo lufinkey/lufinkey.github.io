@@ -1,6 +1,6 @@
 
 
-// sandbox evalScript + kernel
+// sandbox evalJavaScript + Kernel
 const Kernel = (function(){
 
 // function to evaluate a given script
@@ -770,7 +770,7 @@ return (function(){
 			}
 
 			// get parent directory of module path
-			const moduleDir = kernel.filesystem.dirname(context, modulePath);
+			const moduleDir = context.builtIns.path.dirname(modulePath);
 
 			// create slightly modified module scope
 			var scope = {
@@ -1979,6 +1979,7 @@ return (function(){
 	// end kernel class
 	}
 
+	return Kernel;
 // end kernel sandbox
 })();
 
