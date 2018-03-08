@@ -1631,9 +1631,20 @@ return (function(){
 				{
 					constructor(path, args=[], options={})
 					{
+						if(typeof path !== 'string')
+						{
+							throw new TypeError("path must be a string");
+						}
 						if(!(args instanceof Array))
 						{
 							throw new TypeError("args must be an Array");
+						}
+						for(const arg of args)
+						{
+							if(typeof arg !== 'string')
+							{
+								throw new TypeError("args must be an array of strings");
+							}
 						}
 						options = Object.assign({}, options);
 
@@ -1888,11 +1899,6 @@ return (function(){
 					{
 						throw new TypeError("command must be a string");
 					}
-					if(!(args instanceof Array))
-					{
-						throw new TypeError("args must be an array");
-					}
-
 					return new ChildProcess(command, args, options);
 				}
 
