@@ -1907,7 +1907,7 @@ return (function(){
 				const EventEmitter = context.builtIns.modules.events;
 
 				const superEmit = EventEmitter.prototype.emit;
-				EventEmitter.emit = function(eventName, ...args)
+				EventEmitter.prototype.emit = function(eventName, ...args)
 				{
 					// ensure context is valid
 					if(!context.valid)
