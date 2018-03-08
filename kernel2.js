@@ -980,7 +980,7 @@ return (function(){
 						id++;
 					}
 					// create inode
-					info = Object.assign({uid: 0, gid: 0, mode: 777}, info);
+					info = Object.assign({uid: 0, gid: 0, mode: 0o777}, info);
 					var inode = {
 						'type': type,
 						'uid': info.uid,
@@ -1037,7 +1037,8 @@ return (function(){
 
 				function getModePart(accessor, mode)
 				{
-					mode = ''+mode;
+					// TODO fix this
+					mode = mode.toString(8);
 					while(mode.length < 4)
 					{
 						mode = '0'+mode;
@@ -1234,8 +1235,9 @@ return (function(){
 				}
 
 
-				function createPathEntry(path, type, info)
+				function createPathEntry(path, type, info, options)
 				{
+					options = Object.assign({}, options);
 					// validate path
 					path = validatePath(path);
 
@@ -1257,6 +1259,10 @@ return (function(){
 					// ensure path doesn't already exist
 					if(parentData[pathName] != null)
 					{
+						if(options.onlyIfMissing)
+						{
+							return parentData[pathName];
+						}
 						throw new Error("entry already exists");
 					}
 					
@@ -1673,6 +1679,49 @@ return (function(){
 
 				FS.unlink = unlink;
 				FS.unlinkSync = unlinkSync;
+
+
+
+				function writeFile(path, data, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return writeFileSync(path, data, options);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function writeFileSync(path, data, options)
+				{
+					options = Object.assign({}, options);
+					path = validatePath(path);
+					var id = createPathEntry(path, 'FILE', {mode:0o666}, {onlyIfMissing: true});
+					if(typeof data === 'string')
+					{
+						var encoding = options.encoding;
+						if(!encoding)
+						{
+							encoding = 'utf8';
+						}
+						data = Buffer.from(data, encoding);
+					}
+					writeINodeContent(id, data);
+				}
+
+				FS.writeFile = writeFile;
+				FS.writeFileSync = writeFileSync;
 
 
 
@@ -2184,7 +2233,7 @@ return (function(){
 			// ensure the root filesystem has been created
 			if(!storage.getItem(fsPrefix+'__inode:0'))
 			{
-				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:777}));
+				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o777}));
 				storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
 			}
 
