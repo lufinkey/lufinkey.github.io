@@ -1586,7 +1586,7 @@ return (function(){
 									context.exiting = true;
 									this.emit('exit', code);
 									// end process
-									context.invalidate();
+									context.invalidate(code, null);
 									// throw exit signal
 									var exitSignal = new ExitSignal(code);
 									throw exitSignal;
@@ -1631,10 +1631,7 @@ return (function(){
 						childContext.pid = pidCounter;
 						pidCounter++;
 
-						// define general process info
-						let executed = false;
-						let exited = false;
-						let exiting = false;
+						// define general process info=
 						var argv0 = path;
 						path = resolveRelativePath(context, path);
 						const dirname = context.builtIns.modules.path.dirname(path);
@@ -1677,6 +1674,21 @@ return (function(){
 						childContext.stdout = stdout.output;
 						childContext.stderr = stderr.output;
 
+						// add invalidation hook
+						const childContextInvalidate = childContext.invalidate;
+						childContext.invalidate = (exitCode, killSignal) => {
+							var wasValid = childContext.valid;
+							// invalidate
+							childContextInvalidate();
+							if(wasValid)
+							{
+								// wait for next queue to emit event
+								setTimeout(() => {
+									this.emit('exit', exitCode, killSignal);
+								}, 0);
+							}
+						}
+
 						// TODO apply properties
 
 						// try to start the process
@@ -1689,6 +1701,13 @@ return (function(){
 								paths = context.env.paths;
 							}
 							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binFolderExtensions});
+
+							// ensure that the cwd is enterable by the calling context
+							var cwdStats = childContext.modules.fs.statSync(path);
+							if(cwdStats.type !== 'DIR')
+							{
+								throw new Error("cwd is not a directory");
+							}
 
 							// create process scope
 							var scope = {
@@ -1818,10 +1837,10 @@ return (function(){
 									}
 									else
 									{
-										if(!exited)
+										if(childContext.valid)
 										{
 											console.error("unhandled process error:", error);
-											context.reject(error);
+											childContext.invalidate(1, null);
 										}
 										else
 										{
@@ -1834,8 +1853,9 @@ return (function(){
 						}
 						catch(error)
 						{
+							// send error in the next queue
 							browserWrappers.setTimeout(context, () => {
-								//TODO send error event
+								// send error
 								this.emit('error', error);
 							}, 0);
 						}
