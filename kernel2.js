@@ -1778,6 +1778,26 @@ return (function(){
 				child_process.spawn = spawn;
 
 				return child_process;
+			},
+
+
+
+			'events': (context) => {
+				const EventEmitter = builtIns.modules.events;
+
+				const superEmit = EventEmitter.prototype.emit;
+				EventEmitter.emit = function(eventName, ...args)
+				{
+					// ensure context is valid
+					if(!context.valid)
+					{
+						return;
+					}
+					// send event
+					superEmit.apply(this, eventName, ...args);
+				}
+
+				return EventEmitter;
 			}
 		};
 
