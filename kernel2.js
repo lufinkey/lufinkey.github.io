@@ -1953,17 +1953,24 @@ return (function(){
 		});
 
 
-
 		// TODO everything else
-
 
 
 		// bootup method
 		this.boot = (path) => {
+			// ensure the root filesystem has been created
+			if(!storage.getItem('__inode:0'))
+			{
+				storage.setItem('__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:777}));
+				storage.setItem('__entry:0', JSON.stringify({}));
+			}
+
+			// wait for builtins to download
 			builtInsPromise.then(() => {
 				// create root context
 				rootContext = createContext(null);
-				// TODO execute boot file
+				// execute boot file
+				rootContext.modules.child_process.spawn(path);
 			}).catch((error) => {
 				console.error("unable to boot from kernel:");
 				console.error(error);
