@@ -72,7 +72,7 @@ return (function(){
 		const tmpStorage = {};
 		const storage = window.localStorage;
 
-		let builtIns = null;
+		let builtInsCode = null;
 		let browserWrappers = null;
 		let generatedModules = null;
 		let loadedSharedModules = {};
@@ -306,6 +306,19 @@ return (function(){
 
 
 
+		// create a ProcPromise bound to a context
+		function createProcPromiseClass(context)
+		{
+			const PromiseClass = ProcPromise.bind(ProcPromise, context);
+			PromiseClass.resolve = ProcPromise.resolve.bind(PromiseClass, context);
+			PromiseClass.reject = ProcPromise.reject.bind(PromiseClass, context);
+			PromiseClass.all = ProcPromise.all.bind(PromiseClass, context);
+			PromiseClass.race = ProcPromise.race.bind(PromiseClass, context);
+			return PromiseClass;
+		}
+
+
+
 		// define contextual browser functions
 		browserWrappers = {
 			setTimeout: (context, handler, ...args) => {
@@ -356,6 +369,39 @@ return (function(){
 
 
 
+		// create built in modules for a given context
+		function createBuiltIns(context)
+		{
+			var scope = {
+				'const': {
+					setTimeout: (...args) => {
+						return browserWrappers.setTimeout(context, ...args);
+					},
+					clearTimeout: (...args) => {
+						return browserWrappers.clearTimeout(context, ...args);
+					},
+					setInterval: (...args) => {
+						return browserWrappers.setInterval(context, ...args);
+					},
+					clearInterval: (...args) => {
+						return browserWrappers.clearInterval(context, ...args);
+					},
+					Promise: createProcPromiseClass(context)
+				},
+				'let': {
+					'require': {}
+				}
+			};
+			runScript(context, builtInsCode, scope);
+			if(typeof scope.let.require !== 'function')
+			{
+				throw new Error("missing require function for builtins");
+			}
+			return scope.let.require('node-builtin-map');
+		}
+
+
+
 		// check if a given path is a folder
 		function checkIfDir(context, path)
 		{
@@ -392,11 +438,11 @@ return (function(){
 			// return normalized path if it's absolute
 			if(path.startsWith('/'))
 			{
-				return builtIns.modules.path.normalize(path);
+				return context.builtIns.modules.path.normalize(path);
 			}
 
 			// concatenate path with cwd
-			return builtIns.modules.path.join(cwd, path);
+			return context.builtIns.modules.path.join(cwd, path);
 		}
 
 
@@ -425,7 +471,7 @@ return (function(){
 			{
 				return mainFile;
 			}
-			return builtIns.modules.path.join(path, mainFile);
+			return context.builtIns.modules.path.join(path, mainFile);
 		}
 
 
@@ -587,13 +633,8 @@ return (function(){
 		}
 
 
-		// run a script with the specified scope
-		function requireFile(context, path, scope={})
+		function runScript(context, code, scope={}, interpreter=null)
 		{
-			path = resolveRelativePath(context, path);
-			const data = context.modules.fs.readFileSync(path, {encoding:'utf8'});
-			const interpreter = getInterpreter(context, 'script', path);
-
 			// transform code if necessary
 			if(interpreter)
 			{
@@ -647,6 +688,16 @@ return (function(){
 		}
 
 
+		// run a script with the specified scope
+		function requireFile(context, path, scope={})
+		{
+			path = resolveRelativePath(context, path);
+			const data = context.modules.fs.readFileSync(path, {encoding:'utf8'});
+			const interpreter = getInterpreter(context, 'script', path);
+			return runScript(context, data, scope, interpreter);
+		}
+
+
 		// handle node's 'require' function
 		function require(context, parentScope, dirname, path)
 		{
@@ -655,9 +706,9 @@ return (function(){
 			{
 				return context.modules[path];
 			}
-			if(builtIns.modules[path])
+			if(context.builtIns.modules[path])
 			{
-				return builtIns.modules[path];
+				return context.builtIns.modules[path];
 			}
 			// get full module path
 			var basePaths = kernelOptions.libPaths || [];
@@ -703,7 +754,7 @@ return (function(){
 			}, {
 				resolve: {
 					value: (path) => {
-						if(context.modules[path] || builtIns.modules[path])
+						if(context.modules[path] || context.builtIns.modules[path])
 						{
 							return path;
 						}
@@ -824,6 +875,8 @@ return (function(){
 				}
 			};
 
+			context.builtIns = createBuiltIns(context);
+
 			return context;
 		}
 
@@ -855,7 +908,7 @@ return (function(){
 			'fs': (context) => {
 				const FS = {};
 
-				const Buffer = builtIns.modules.buffer.Buffer;
+				const Buffer = context.builtIns.modules.buffer.Buffer;
 				const inodePrefix = '__inode:';
 				const entryPrefix = '__entry:';
 
@@ -1153,8 +1206,8 @@ return (function(){
 					}
 
 					// get info about parent directory
-					var pathName = builtIns.modules.path.basename(dest);
-					var pathDir = builtIns.modules.path.dirname(dest);
+					var pathName = context.builtIns.modules.path.basename(dest);
+					var pathDir = context.builtIns.modules.path.dirname(dest);
 					var parentId = findINode(pathDir);
 					if(parentId == null)
 					{
@@ -1197,8 +1250,8 @@ return (function(){
 					}
 
 					// get info about the parent directory
-					var pathName = builtIns.modules.path.basename(dest);
-					var pathDir = builtIns.modules.path.dirname(dest);
+					var pathName = context.builtIns.modules.path.basename(dest);
+					var pathDir = context.builtIns.modules.path.dirname(dest);
 					var parentId = findINode(pathDir);
 					if(parentId == null)
 					{
@@ -1555,7 +1608,7 @@ return (function(){
 						let exiting = false;
 						var argv0 = path;
 						path = resolveRelativePath(context, path);
-						const dirname = builtIns.modules.path.dirname(path);
+						const dirname = context.builtIns.modules.path.dirname(path);
 
 						// validate options
 						if(options.cwd)
@@ -1626,6 +1679,8 @@ return (function(){
 									clearInterval: (...args) => {
 										return browserWrappers.clearInterval(childContext, ...args);
 									},
+									// promise
+									Promise: createProcPromiseClass(context),
 									// console
 									console: Object.defineProperties(Object.assign({}, console), {
 										log: {
@@ -1709,7 +1764,10 @@ return (function(){
 										}
 									}),
 									module: new ScriptGlobalAlias('exports'),
-									process: new Process(childContext, context)
+									process: new Process(childContext, context),
+
+									// addons
+									ExitSignal: ExitSignal
 								},
 								'let': {
 									exports: {}
@@ -1783,7 +1841,7 @@ return (function(){
 
 
 			'events': (context) => {
-				const EventEmitter = builtIns.modules.events;
+				const EventEmitter = context.builtIns.modules.events;
 
 				const superEmit = EventEmitter.prototype.emit;
 				EventEmitter.emit = function(eventName, ...args)
@@ -1804,11 +1862,6 @@ return (function(){
 
 
 
-		// create root context
-		rootContext = createContext(null);
-
-
-
 		// download built-in node modules / classes
 		builtInsPromise = new Promise((resolve, reject) => {
 			var xhr = new XMLHttpRequest();
@@ -1817,11 +1870,9 @@ return (function(){
 				{
 					if(xhr.status === 200)
 					{
-						var code = xhr.responseText;
-						// TODO evaluate the code
-						// TODO store the new built-in modules
-						// TODO resolve
-						reject(new Error("finish programming the built-ins ya ding dong"));
+						// save the built in modules code
+						builtInsCode = xhr.responseText;
+						resolve();
 					}
 					else
 					{
@@ -1848,6 +1899,8 @@ return (function(){
 		// bootup method
 		this.boot = (path) => {
 			builtInsPromise.then(() => {
+				// create root context
+				rootContext = createContext(null);
 				// TODO execute boot file
 			}).catch((error) => {
 				console.error("unable to boot from kernel:");
