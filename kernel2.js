@@ -405,10 +405,36 @@ return (function(){
 		// check if a given path is a folder
 		function checkIfDir(context, path)
 		{
-			var stats = context.modules.fs.statSync(path);
-			if(stats.isDirectory())
+			try
 			{
-				return true;
+				var stats = context.modules.fs.statSync(path);
+				if(stats.isDirectory())
+				{
+					return true;
+				}
+			}
+			catch(error)
+			{
+				return false;
+			}
+			return false;
+		}
+
+
+		// check if a given path is a file
+		function checkIfFile(context, path)
+		{
+			try
+			{
+				var stats = context.modules.fs.statSync(path);
+				if(stats.isFile())
+				{
+					return true;
+				}
+			}
+			catch(error)
+			{
+				return false;
 			}
 			return false;
 		}
@@ -450,7 +476,7 @@ return (function(){
 		function resolveModuleFolder(context, path)
 		{
 			var packagePath = path+'/package.json';
-			if(!context.modules.fs.existsSync(packagePath))
+			if(!checkIfFile(packagePath))
 			{
 				return null;
 			}
@@ -479,7 +505,6 @@ return (function(){
 		function resolveModulePath(context, basePath, path, options=null)
 		{
 			options = Object.assign({}, options);
-
 			var modulePath = null;
 			try
 			{
@@ -489,27 +514,23 @@ return (function(){
 			{
 				throw new Error("unable to resolve module path");
 			}
-			
 			// find full module path
 			var fullModulePath = modulePath;
-			if(context.modules.fs.existsSync(fullModulePath))
+			if(checkIfDir(context, fullModulePath))
 			{
-				if(checkIfDir(context, fullModulePath))
-				{
-					fullModulePath = resolveModuleFolder(context, fullModulePath);
-					if(fullModulePath != null)
-					{
-						return fullModulePath;
-					}
-				}
-				else
+				fullModulePath = resolveModuleFolder(context, fullModulePath);
+				if(fullModulePath != null)
 				{
 					return fullModulePath;
 				}
 			}
+			else if(checkIfFile(context, fullModulePath))
+			{
+				return fullModulePath;
+			}
 			// check if file exists with a js extension
 			fullModulePath = modulePath + '.js';
-			if(context.modules.fs.existsSync(fullModulePath) && !checkIfDir(context, fullModulePath))
+			if(checkIfFile(context, fullModulePath))
 			{
 				return fullModulePath;
 			}
@@ -519,7 +540,7 @@ return (function(){
 				for(const scriptExt of kernelOptions.scriptExtensions)
 				{
 					fullModulePath = modulePath + '.' + scriptExt;
-					if(context.modules.fs.existsSync(fullModulePath) && !checkIfDir(context, fullModulePath))
+					if(checkIfFile(context, fullModulePath))
 					{
 						return fullModulePath;
 					}
@@ -531,12 +552,19 @@ return (function(){
 				for(const extension of options.dirExtensions)
 				{
 					fullModulePath = modulePath + '.' + extension;
-					if(context.modules.fs.existsSync(context, fullModulePath) && checkIfDir(context, fullModulePath))
+					if(checkIfDir(context, fullModulePath))
 					{
-						fullModulePath = resolveModuleFolder(context, fullModulePath);
-						if(fullModulePath != null)
+						try
 						{
-							return fullModulePath;
+							fullModulePath = resolveModuleFolder(context, fullModulePath);
+							if(fullModulePath != null)
+							{
+								return fullModulePath;
+							}
+						}
+						catch(error)
+						{
+							// try the next one
 						}
 					}
 				}
@@ -633,6 +661,7 @@ return (function(){
 		}
 
 
+		// run code with a given scope and interpreter
 		function runScript(context, code, scope={}, interpreter=null)
 		{
 			// transform code if necessary
@@ -683,7 +712,7 @@ return (function(){
 				}
 			}
 
-			// evaluate the script
+			// evaluate the code
 			return evalJavaScript(scope, prefixString+'\n(() => {\n'+code+'\n})();\n'+suffixString);
 		}
 
