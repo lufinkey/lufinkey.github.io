@@ -1277,6 +1277,7 @@ return (function(){
 					return id;
 				}
 
+
 				function destroyPathEntry(path)
 				{
 					// validate path
@@ -1416,6 +1417,78 @@ return (function(){
 
 				FS.copyFile = copyFile;
 				FS.copyFileSync = copyFileSync;
+
+
+
+				function mkdir(path, mode, callback)
+				{
+					if(typeof mode === 'function')
+					{
+						callback = mode;
+						mode = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return mkdirSync(path, mode);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function mkdirSync(path, mode)
+				{
+					if(mode == null)
+					{
+						mode = 0o777;
+					}
+					createPathEntry(path, 'DIR', {mode: mode});
+				}
+
+
+
+				function readdir(path, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return readdirSync(path, options);
+					}).then((data) => {
+						callback(null, data);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function readdirSync(path, options)
+				{
+					options = Object.assign({}, options);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("directory does not exist");
+					}
+					var content = readINodeContent(id);
+					var data = [];
+					for(const fileName in content)
+					{
+						data.push(fileName);
+					}
+					return data;
+				}
 
 				
 
