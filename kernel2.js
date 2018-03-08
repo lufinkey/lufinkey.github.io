@@ -77,6 +77,7 @@ return (function(){
 		let browserWrappers = null;
 		let generatedModules = null;
 		let loadedSharedModules = {};
+		let loadedCSS = {};
 
 		let builtInsPromise = null;
 
@@ -789,6 +790,28 @@ return (function(){
 					writable: false
 				}
 			});
+			scope.const.requireCSS = Object.defineProperties((path) => {
+				return requireCSS(context, moduleDir, path);
+			}, {
+				resolve: {
+					value: (path) => {
+						return resolveCSSPath(context, moduleDir, path);
+					},
+					writable: false
+				},
+				wait: {
+					value: (path, callback) => {
+						return waitForCSS(context, moduleDir, path, callback);
+					},
+					writable: false
+				},
+				ready: {
+					value: (path) => {
+						return isCSSReady(context, moduleDir, path);
+					},
+					writable: false
+				}
+			});
 			scope.const.__dirname = moduleDir;
 			scope.const.__filename = modulePath;
 			scope.const.module = new ScriptGlobalAlias(['exports']);
@@ -828,6 +851,201 @@ return (function(){
 			// get full module path
 			var basePaths = kernelOptions.libPaths || [];
 			return findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
+		}
+
+
+		// resolve a required CSS file
+		function resolveCSSPath(context, dirname, path)
+		{
+			// resolve full path
+			var cssPath = resolveRelativePath(context, path, dirname);
+
+			// resolve actual css file path
+			var testExtensions = ['', '.css'];
+			if(kernelOptions.styleExtensions)
+			{
+				for(const extension of kernelOptions.styleExtensions)
+				{
+					testExtensions.push('.'+extension);
+				}
+			}
+			for(const extension of testExtensions)
+			{
+				var testPath = cssPath+extension;
+				if(checkIfFile(context, testPath))
+				{
+					return cssPath;
+				}
+			}
+			throw new Error("unable to resolve css path "+path);
+		}
+
+
+		// inject a CSS file into the current page
+		function requireCSS(context, dirname, path)
+		{
+			var cssPath = resolveCSSPath(context, dirname, path);
+
+			// check if css already loaded
+			if(loadedCSS[cssPath])
+			{
+				// add process PID if necessary
+				var info = loadedCSS[cssPath];
+				if(info.pids.indexOf(context.pid) === -1)
+				{
+					info.pids.push(context.pid);
+				}
+				loadedCSS[cssPath] = info;
+				return new ProcPromise(context, (resolve, reject) => {
+					waitForCSS(context, dirname, cssPath, () => {
+						if(loadedCSS[cssPath].error)
+						{
+							reject(loadedCSS[cssPath].error);
+							return;
+						}
+						resolve();
+					})
+				});
+			}
+
+			// read css data
+			var cssData = context.modules.fs.readFileSync(cssPath);
+
+			// TODO parse out special CSS functions
+
+			// add style tag to page
+			var head = document.querySelector('head');
+			let styleTag = document.createElement("STYLE");
+			styleTag.type = "text/css";
+			head.appendChild(styleTag);
+
+			// save tag
+			loadedCSS[cssPath] = {
+				pids: [context.pid],
+				tag: styleTag,
+				ready: false
+			};
+
+			// interpret css
+			var cssPromise = null;
+			var interpreter = getInterpreter(context, 'style', cssPath);
+			if(interpreter)
+			{
+				cssPromise = interpreter.transform(cssData, context);
+			}
+			else
+			{
+				// apply plain content
+				cssPromise = Promise.resolve(cssData);
+			}
+
+			// add CSS to page when finished parsing
+			return new ProcPromise(context, (resolve, reject) => {
+				cssPromise.then((cssData) => {
+					if(!loadedCSS[cssPath])
+					{
+						return;
+					}
+					styleTag.textContent = cssData;
+					loadedCSS[cssPath].ready = true;
+					resolve();
+				}).catch((error) => {
+					if(!loadedCSS[cssPath])
+					{
+						return;
+					}
+					console.error("failed to parse "+path+": "+error.message);
+					loadedCSS[cssPath].error = error;
+					loadedCSS[cssPath].ready = true;
+					reject(error);
+				});
+			});
+		}
+
+
+		// check if CSS for this context is ready
+		function isCSSReady(context, dirname, path=null)
+		{
+			if(path != null)
+			{
+				// check for specific CSS file
+				var cssPath = null;
+				try
+				{
+					cssPath = resolveCSSPath(context, dirname, path);
+				}
+				catch(error)
+				{
+					return false;
+				}
+
+				return loadedCSS[cssPath].ready;
+			}
+			else
+			{
+				// check for all CSS files used by this context
+				for(const cssPath in loadedCSS)
+				{
+					var info = loadedCSS[cssPath];
+					if(!info.ready)
+					{
+						if(info.pids.indexOf(context.pid) !== -1)
+						{
+							return false
+						}
+					}
+				}
+
+				return true;
+			}
+		}
+
+		
+		// wait for CSS file(s) to be ready
+		function waitForCSS(context, dirname, path, callback)
+		{
+			if(typeof path == 'function')
+			{
+				callback = path;
+				path = null;
+			}
+
+			// check if file(s) ready
+			var ready = true;
+			if(path instanceof Array)
+			{
+				for(const cssPath of path)
+				{
+					if(!isCSSReady(context, dirname, cssPath))
+					{
+						ready = false;
+						break;
+					}
+				}
+			}
+			else if(typeof path == 'string')
+			{
+				if(!isCSSReady(context, dirname, path))
+				{
+					ready = false;
+				}
+			}
+			else if(path != null)
+			{
+				throw new TypeError("path must be a string or an Array");
+			}
+
+			// finish if ready ;)
+			if(ready)
+			{
+				callback();
+				return;
+			}
+
+			// wait a little bit and try again
+			browserWrappers.setTimeout(context, () => {
+				waitForCSS(context, dirname, path, callback);
+			}, 100);
 		}
 
 
@@ -2214,6 +2432,28 @@ return (function(){
 												return require.resolve(childContext, dirname, path);
 											},
 											enumerable: true,
+											writable: false
+										}
+									}),
+									requireCSS: Object.defineProperties((path) => {
+										return requireCSS(context, dirname, path);
+									}, {
+										resolve: {
+											value: (path) => {
+												return resolveCSSPath(context, dirname, path);
+											},
+											writable: false
+										},
+										wait: {
+											value: (path, callback) => {
+												return waitForCSS(context, dirname, path, callback);
+											},
+											writable: false
+										},
+										ready: {
+											value: (path) => {
+												return isCSSReady(context, dirname, path);
+											},
 											writable: false
 										}
 									}),

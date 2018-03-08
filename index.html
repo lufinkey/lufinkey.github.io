@@ -65,12 +65,13 @@
 				sharedLibPaths: ['/system/slib'],
 
 				scriptExtensions: [ 'jsx' ],
+				styleExtensions: [ 'scss' ],
 				libFolderExtensions: [ 'dll' ],
 				binFolderExtensions: [ 'exe' ],
 			});
 			
 			
-			kernel.boot('system/boot.js?v='+(Math.random()*999999999), '/system/boot.js');
+			kernel.boot('boot2.js?v='+(Math.random()*999999999), 'boot2.js');
 		})();
 	</script>
 </head>
