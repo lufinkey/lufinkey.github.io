@@ -1342,49 +1342,6 @@ return (function(){
 					writable: false
 				});
 
-				
-
-				function readFile(path, options, callback)
-				{
-					if(typeof options === 'function')
-					{
-						callback = options;
-						options = null;
-					}
-					if(typeof callback !== 'function')
-					{
-						throw new TypeError("callback function is required");
-					}
-
-					makeAsyncPromise(context, () => {
-						return readFileSync(path, options);
-					}).then((content) => {
-						callback(null, content);
-					}).catch((error) => {
-						callback(error, null);
-					});
-				}
-
-				function readFileSync(path, options)
-				{
-					options = Object.assign({}, options);
-					path = validatePath(path);
-					var id = findINode(path);
-					if(id == null)
-					{
-						throw new Error("file does not exist");
-					}
-					var content = readINodeContent(id);
-					if(options.encoding)
-					{
-						content = content.toString(options.encoding);
-					}
-					return content;
-				}
-
-				FS.readFile = readFile;
-				FS.readFileSync = readFileSync;
-
 
 
 				function copyFile(src, dest, flags, callback)
@@ -1459,6 +1416,49 @@ return (function(){
 
 				FS.copyFile = copyFile;
 				FS.copyFileSync = copyFileSync;
+
+				
+
+				function readFile(path, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return readFileSync(path, options);
+					}).then((content) => {
+						callback(null, content);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function readFileSync(path, options)
+				{
+					options = Object.assign({}, options);
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
+					}
+					var content = readINodeContent(id);
+					if(options.encoding)
+					{
+						content = content.toString(options.encoding);
+					}
+					return content;
+				}
+
+				FS.readFile = readFile;
+				FS.readFileSync = readFileSync;
 
 				return FS;
 			},
