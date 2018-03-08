@@ -67,30 +67,7 @@ return (function(){
 		// clear localStorage for now
 		window.localStorage.clear();
 
-
-		const rootContext = {
-			cwd: '/',
-			pid: 0,
-			uid: 0,
-			gid: 0,
-			stdin: null,
-			stdout: null,
-			stderr: null,
-			argv: ['[kernel]'],
-			env: {
-				libpaths: [],
-				paths: []
-			},
-		
-			valid: true,
-			timeouts: [],
-			intervals: [],
-
-			modules: {},
-			loadedModules: {}
-		};
-
-
+		const osName = 'finkeos';
 
 		const tmpStorage = {};
 		const storage = window.localStorage;
@@ -102,6 +79,9 @@ return (function(){
 
 		let builtInsPromise = null;
 
+		let rootContext = null;
+		let pidCounter = 1;
+
 
 
 		// class to allow aliasing select globals to itself when evaluating a script
@@ -109,6 +89,222 @@ return (function(){
 		{
 			this.aliases = aliases;
 		}
+
+
+
+		// exception for process exit signal
+		class ExitSignal extends Error
+		{
+			constructor(exitCode, message)
+			{
+				if(typeof exitCode === 'string')
+				{
+					message = exitCode;
+					exitCode = null;
+				}
+				
+				if(!message && exitCode)
+				{
+					message = "process exited with signal "+exitCode;
+				}
+				super(message);
+				this.exitCode = exitCode;
+			}
+		}
+
+
+
+		// promise to handle exit signals
+		function ProcPromise(context, callback)
+		{
+			let promise = null;
+
+			function wrapPromiseMethod(method, callback)
+			{
+				let exitSignal = null;
+				var retVal = method((...args) => {
+					if(!context.valid)
+					{
+						return;
+					}
+					try
+					{
+						return callback(...args);
+					}
+					catch(error)
+					{
+						if(error instanceof ExitSignal)
+						{
+							exitSignal = error;
+							return;
+						}
+						else
+						{
+							throw error;
+						}
+					}
+				});
+				// rethrow exit signal if there was one
+				if(exitSignal != null)
+				{
+					throw exitSignal;
+				}
+				// wrap return value if necessary
+				if(retVal === promise)
+				{
+					return this;
+				}
+				else if(retVal instanceof Promise)
+				{
+					return new ProcPromise(context, (resolve, reject) => {
+						return retVal.then(resolve).catch(reject);
+					});
+				}
+				return retVal;
+			}
+
+			// then
+			this.then = (callback, ...args) => {
+				if(typeof callback !== 'function')
+				{
+					return promise.then(callback, ...args);
+				}
+				wrapPromiseMethod((callback) => {
+					return promise.then((...args) => {
+						return callback(...args);
+					});
+				}, callback);
+			};
+
+			// catch
+			this.catch = (callback, ...args) => {
+				if(typeof callback !== 'function')
+				{
+					return promise.catch(callback, ...args);
+				}
+				wrapPromiseMethod((callback) => {
+					return promise.catch((...args) => {
+						return callback(...args);
+					});
+				}, callback);
+			};
+
+			// finally
+			this.finally = (callback, ...args) => {
+				if(typeof callback !== 'function')
+				{
+					return promise.finally(callback, ...args);
+				}
+				wrapPromiseMethod((callback) => {
+					return promise.finally((...args) => {
+						return callback(...args);
+					});
+				}, callback);
+			};
+
+			// perform promise
+			let exitSignal = null;
+			let promise = new Promise((resolve, reject) => {
+				try
+				{
+					callback((...args) => {
+						// ensure calling context is valid
+						if(!context.valid)
+						{
+							return;
+						}
+						// resolve
+						if(resolve)
+						{
+							resolve(...args);
+						}
+					}, (...args) => {
+						// ensure calling context is valid
+						if(!context.valid)
+						{
+							return;
+						}
+						// reject
+						if(reject)
+						{
+							reject(...args);
+						}
+					});
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			});
+			if(exitSignal != null)
+			{
+				throw exitSignal;
+			}
+		}
+
+		ProcPromise.resolve = function(context, ...args)
+		{
+			return new ProcPromise(context, (resolve, reject) => {
+				resolve(...args);
+			});
+		}
+	
+		ProcPromise.reject = function(context, ...args)
+		{
+			return new ProcPromise(context, (resolve, reject) => {
+				reject(...args);
+			});
+		}
+	
+		ProcPromise.all = function(context, promises, ...args)
+		{
+			// wrap promises
+			if(promises instanceof Array)
+			{
+				promises = promises.slice(0);
+				for(var i=0; i<promises.length; i++)
+				{
+					let tmpPromise = promises[i];
+					promises[i] = new Promise((resolve, reject) => {
+						tmpPromise.then(resolve).catch(reject);
+					});
+				}
+			}
+			// perform promises
+			return new ProcPromise(context, (resolve, reject) => {
+				Promise.all(promises, ...args).then(resolve).catch(reject);
+			});
+		}
+	
+		ProcPromise.race = function(context, promises, ...args)
+		{
+			// wrap promises
+			if(promises instanceof Array)
+			{
+				promises = promises.slice(0);
+				for(var i=0; i<promises.length; i++)
+				{
+					let tmpPromise = promises[i];
+					promises[i] = new Promise((resolve, reject) => {
+						tmpPromise.then(resolve).catch(reject);
+					});
+				}
+			}
+			// perform promises
+			return new ProcPromise(context, (resolve, reject) => {
+				Promise.race(promises, ...args).then(resolve).catch(reject);
+			});
+		}
+
+
 
 		// define contextual browser functions
 		browserWrappers = {
@@ -157,118 +353,6 @@ return (function(){
 				return clearInterval(interval);
 			}
 		};
-		
-
-		// function to create context scope
-		function createContextScope(context, dirname, filename)
-		{
-			return {
-				'const': {
-					// browser built-ins
-					// timeouts
-					setTimeout: (...args) => {
-						return browserWrappers.setTimeout(context, ...args);
-					},
-					clearTimeout: (...args) => {
-						return browserWrappers.clearTimeout(context, ...args);
-					},
-					// intervals
-					setInterval: (...args) => {
-						return browserWrappers.setInterval(context, ...args);
-					},
-					clearInterval: (...args) => {
-						return browserWrappers.clearInterval(context, ...args);
-					},
-					// console
-					console: Object.defineProperties(Object.assign({}, console), {
-						log: {
-							value: (...args) => {
-								var strings = [];
-								for(const arg of args)
-								{
-									strings.push(''+arg);
-								}
-								var stringVal = strings.join(' ');
-		
-								stdout.input.write(stringVal+'\n');
-								console.log(...args);
-							},
-							enumerable: true,
-							writable: false
-						},
-						warn: {
-							value: (...args) => {
-								var strings = [];
-								for(const arg of args)
-								{
-									if(arg instanceof Error)
-									{
-										strings.push(''+arg.stack);
-									}
-									else
-									{
-										strings.push(''+arg);
-									}
-								}
-								var stringVal = strings.join(' ');
-		
-								stderr.input.write(stringVal+'\n');
-								console.warn(...args);
-							},
-							enumerable: true,
-							writable: false
-						},
-						error: {
-							value: (...args) => {
-								var strings = [];
-								for(const arg of args)
-								{
-									if(arg instanceof Error)
-									{
-										strings.push(''+arg.stack);
-									}
-									else
-									{
-										strings.push(''+arg);
-									}
-								}
-								var stringVal = strings.join(' ');
-		
-								stderr.input.write(stringVal+'\n');
-								console.error(...args);
-							},
-							enumerable: true,
-							writable: false
-						},
-						memory: {
-							get: () => {
-								return console.memory;
-							}
-						}
-					}),
-
-					// node built-ins
-					__dirname: dirname,
-					__filename, filename,
-					require: Object.defineProperties((path) => {
-						// TODO add actual require functionality
-					}, {
-						resolve: {
-							value: (path) => {
-								// TODO add actual require.resolve functionality
-							},
-							enumerable: true,
-							writable: false
-						}
-					}),
-					module: new ScriptGlobalAlias('exports')
-					// TODO add process
-				},
-				'let': {
-					exports: {}
-				}
-			}
-		}
 
 
 
@@ -549,8 +633,11 @@ return (function(){
 					}
 					else
 					{
-						prefixString += 'let '+varName+' = __scope.'+varName+';\n';
-						suffixString += '__scope.'+varName+' = '+varName+';\n';
+						prefixString += decType+' '+varName+' = __scope.'+varName+';\n';
+						if(decType !== 'const')
+						{
+							suffixString += '__scope.'+varName+' = '+varName+';\n';
+						}
 					}
 				}
 			}
@@ -651,6 +738,97 @@ return (function(){
 		}
 
 
+		// give a default value if the given value is null
+		function toNonNull(value, defaultValue)
+		{
+			if(value == null)
+			{
+				return defaultValue;
+			}
+			return value;
+		}
+
+
+		// create a new context from a given context
+		function createContext(parentContext = null)
+		{
+			parentContext = Object.assign({}, parentContext);
+			let context = null;
+
+			let moduleGenerator = {};
+			let modules = {};
+			for(let moduleName in generatedModules)
+			{
+				Object.defineProperty(moduleGenerator, moduleName, {
+					get: () => {
+						if(modules[moduleName] === undefined)
+						{
+							modules[moduleName] = generatedModules[moduleName](context);
+						}
+						return modules[moduleName];
+					}
+				});
+			}
+
+			context = {
+				cwd: toNonNull(parentContext.cwd, '/'),
+				pid: toNonNull(parentContext.pid, 0),
+				uid: toNonNull(parentContext.uid, 0),
+				gid: toNonNull(parentContext.uid, 0),
+				stdin: null,
+				stdout: null,
+				stderr: null,
+				argv: toNonNull(parentContext.argv, []).slice(0),
+				env: deepCopyObject(toNonNull(parentContext.env, {})),
+
+				timeouts: [],
+				intervals: [],
+				modules: moduleGenerator,
+				loadedModules: {},
+
+				valid: true,
+				exiting: false,
+				invalidate: () => {
+					if(context.valid)
+					{
+						context.valid = false;
+
+						// TODO unload CSS
+
+						// destroy timeouts and intervals
+						for(const interval of context.intervals)
+						{
+							clearInterval(interval);
+						}
+						context.intervals = [];
+						for(const timeout of context.timeouts)
+						{
+							clearTimeout(timeout);
+						}
+						context.timeouts = [];
+
+						// close I/O streams
+						if(context.stdin)
+						{
+							stdin.input.end();
+						}
+						if(context.stdout)
+						{
+							stdout.input.end();
+						}
+						if(context.stderr)
+						{
+							stderr.input.end();
+						}
+					}
+				}
+			};
+
+			return context;
+		}
+
+
+		// take a normal function and make it an asyncronous promise
 		function makeAsyncPromise(context, task)
 		{
 			return new Promise((resolve, reject) => {
@@ -1183,8 +1361,430 @@ return (function(){
 					}
 					writeINodeContent(destId, data);
 				}
+
+				FS.copyFile = copyFile;
+				FS.copyFileSync = copyFileSync;
+
+				return FS;
+			},
+
+
+
+
+			'child_process': (context) => {
+				const child_process = {};
+
+				const EventEmitter = context.modules.events;
+
+				function createTwoWayStream(contextIn, contextOut)
+				{
+					let ended = false;
+
+					const InEventEmitter = contextIn.modules.events;
+					const OutEventEmitter = contextOut.modules.events;
+
+					let input = new InEventEmitter();
+					let output = new OutEventEmitter();
+
+					// input stream
+
+					input.write = (chunk, encoding=null, callback=null) => {
+						if(ended)
+						{
+							throw new Error("tried to write input after writable has finished");
+						}
+						output.emit('data', chunk);
+						if(callback)
+						{
+							callback();
+						}
+					};
+
+					input.end = (chunk, encoding, callback) => {
+						if(ended)
+						{
+							return;
+						}
+
+						if(typeof chunk == 'function')
+						{
+							callback = chunk;
+							chunk = null;
+						}
+						else if(typeof encoding == 'function')
+						{
+							callback = encoding;
+							encoding = null;
+						}
+
+						if(chunk)
+						{
+							input.write(chunk, encoding);
+						}
+						input.destroy();
+						if(callback)
+						{
+							callback();
+						}
+						input.emit('finish');
+					}
+
+					input.destroy = (error=null) => {
+						if(ended)
+						{
+							return;
+						}
+						ended = true;
+
+						if(error)
+						{
+							output.emit('error', error);
+						}
+						output.emit('end');
+						output.emit('close');
+					};
+
+					return {
+						input: input,
+						output: output
+					};
+				}
+
+
+
+				class Process extends EventEmitter
+				{
+					constructor(context, parentContext)
+					{
+						Object.defineProperties(this, {
+							'argv': {
+								value: procArgv
+							},
+							'chdir': {
+								value: (path) => {
+									path = resolveRelativePath(context, path);
+									var stats = context.modules.fs.statSync(path);
+									if(stats.type !== 'DIR')
+									{
+										throw new Error("path is not a directory");
+									}
+									context.cwd = path;
+								},
+								writable: false
+							},
+							'cwd': {
+								value: () => {
+									return context.cwd;
+								},
+								writable: false
+							},
+							'env': {
+								get: () => {
+									return context.env;
+								},
+								set: (value) => {
+									context.env = value;
+								}
+							},
+							'exit': {
+								value: (code) => {
+									if(code == null)
+									{
+										code = 0;
+									}
+									if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
+									{
+										throw new Error("invalid exit code");
+									}
+									if(!context.valid || context.exiting)
+									{
+										throw new Error("cannot exit process more than once");
+									}
+									// call exit event
+									context.exiting = true;
+									this.emit('exit', code);
+									// end process
+									context.invalidate();
+									// throw exit signal
+									var exitSignal = new ExitSignal(code);
+									throw exitSignal;
+								},
+								writable: false
+							},
+							'pid': {
+								get: () => {
+									return context.pid;
+								}
+							},
+							'ppid': {
+								get: () => {
+									return parentContext.pid;
+								}
+							},
+							'platform': {
+								get: () => {
+									return kernelOptions.platform || osName;
+								}
+							}
+						});
+					}
+				}
+
+
+
+				class ChildProcess extends EventEmitter
+				{
+					constructor(path, args=[], options={})
+					{
+						if(!(args instanceof Array))
+						{
+							throw new TypeError("args must be an Array");
+						}
+						options = Object.assign({}, options);
+
+						// create new context
+						const childContext = createContext(context);
+
+						// get new process PID
+						childContext.pid = pidCounter;
+						pidCounter++;
+
+						// define general process info
+						let executed = false;
+						let exited = false;
+						let exiting = false;
+						var argv0 = path;
+						path = resolveRelativePath(context, path);
+						const dirname = builtIns.modules.path.dirname(path);
+
+						// validate options
+						if(options.cwd)
+						{
+							if(typeof options.cwd !== 'string')
+							{
+								throw new TypeError("options.cwd must be a string");
+							}
+							// TODO check permissions and check if dir exists
+							childContext.cwd = options.cwd;
+						}
+						if(options.env)
+						{
+							if(typeof options.env !== 'object')
+							{
+								throw new TypeError("options.env must be an object")
+							}
+							childContext.env = Object.assign(childContext.env, deepCopyObject(options.env));
+						}
+						if(options.argv0)
+						{
+							if(typeof options.argv0 !== 'string')
+							{
+								throw new TypeError("options.argv0 must be a string");
+							}
+							argv0 = options.argv0;
+						}
+
+						// apply options
+						childContext.argv = [argv0].concat(args);
+
+						// build I/O streams
+						const stdin = createTwoWayStream(context, childContext);
+						const stdout = createTwoWayStream(childContext, context);
+						const stderr = createTwoWayStream(childContext, context);
+						childContext.stdin = stdin.input;
+						childContext.stdout = stdout.output;
+						childContext.stderr = stderr.output;
+
+						// TODO apply properties
+
+						// try to start the process
+						try
+						{
+							// get full module path
+							var paths = [];
+							if(context.env && context.env.paths)
+							{
+								paths = context.env.paths;
+							}
+							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binFolderExtensions});
+
+							// create process scope
+							var scope = {
+								'const': {
+									// browser built-ins
+									// timeouts
+									setTimeout: (...args) => {
+										return browserWrappers.setTimeout(childContext, ...args);
+									},
+									clearTimeout: (...args) => {
+										return browserWrappers.clearTimeout(childContext, ...args);
+									},
+									// intervals
+									setInterval: (...args) => {
+										return browserWrappers.setInterval(childContext, ...args);
+									},
+									clearInterval: (...args) => {
+										return browserWrappers.clearInterval(childContext, ...args);
+									},
+									// console
+									console: Object.defineProperties(Object.assign({}, console), {
+										log: {
+											value: (...args) => {
+												var strings = [];
+												for(const arg of args)
+												{
+													strings.push(''+arg);
+												}
+												var stringVal = strings.join(' ');
+						
+												stdout.input.write(stringVal+'\n');
+												console.log(...args);
+											},
+											enumerable: true,
+											writable: false
+										},
+										warn: {
+											value: (...args) => {
+												var strings = [];
+												for(const arg of args)
+												{
+													if(arg instanceof Error)
+													{
+														strings.push(''+arg.stack);
+													}
+													else
+													{
+														strings.push(''+arg);
+													}
+												}
+												var stringVal = strings.join(' ');
+						
+												stderr.input.write(stringVal+'\n');
+												console.warn(...args);
+											},
+											enumerable: true,
+											writable: false
+										},
+										error: {
+											value: (...args) => {
+												var strings = [];
+												for(const arg of args)
+												{
+													if(arg instanceof Error)
+													{
+														strings.push(''+arg.stack);
+													}
+													else
+													{
+														strings.push(''+arg);
+													}
+												}
+												var stringVal = strings.join(' ');
+						
+												stderr.input.write(stringVal+'\n');
+												console.error(...args);
+											},
+											enumerable: true,
+											writable: false
+										},
+										memory: {
+											get: () => {
+												return console.memory;
+											}
+										}
+									}),
+				
+									// node built-ins
+									__dirname: dirname,
+									__filename, filename,
+									require: Object.defineProperties((path) => {
+										// TODO add actual require functionality
+									}, {
+										resolve: {
+											value: (path) => {
+												// TODO add actual require.resolve functionality
+											},
+											enumerable: true,
+											writable: false
+										}
+									}),
+									module: new ScriptGlobalAlias('exports'),
+									process: new Process(childContext, context)
+								},
+								'let': {
+									exports: {}
+								}
+							};
+
+							// start process in the next queue
+							browserWrappers.setTimeout(context, () => {
+								// start process
+								try
+								{
+									requireFile(childContext, filename, scope);
+								}
+								catch(error)
+								{
+									if(error instanceof ExitSignal)
+									{
+										// process has ended
+									}
+									else
+									{
+										if(!exited)
+										{
+											console.error("unhandled process error:", error);
+											context.reject(error);
+										}
+										else
+										{
+											// just ignore...
+										}
+									}
+									return;
+								}
+							}, 0);
+						}
+						catch(error)
+						{
+							browserWrappers.setTimeout(context, () => {
+								//TODO send error event
+								this.emit('error', error);
+							}, 0);
+						}
+					}
+				}
+
+
+				function spawn(command, args=[], options=null)
+				{
+					if(args != null && typeof args === 'object' && !(args instanceof Array))
+					{
+						options = args;
+						args = [];
+					}
+					if(typeof command !== 'string')
+					{
+						throw new TypeError("command must be a string");
+					}
+					if(!(args instanceof Array))
+					{
+						throw new TypeError("args must be an array");
+					}
+
+					return new ChildProcess(command, args, options);
+				}
+
+				child_process.spawn = spawn;
+
+				return child_process;
 			}
 		};
+
+
+
+		// create root context
+		rootContext = createContext(null);
 
 
 
