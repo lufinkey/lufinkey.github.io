@@ -1602,6 +1602,80 @@ return (function(){
 
 
 
+				function rmdir(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return rmdirSync(path);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function rmdirSync(path)
+				{
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("directory does not exist");
+					}
+					var inode = getINode(id);
+					if(inode.type !== 'DIR')
+					{
+						throw new Error("path is not a directory");
+					}
+					destroyPathEntry(path);
+				}
+
+				FS.rmdir = rmdir;
+				FS.rmdirSync = rmdirSync;
+
+
+				
+				function unlink(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return unlinkSync(path);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function unlinkSync(path)
+				{
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
+					}
+					var inode = getINode(id);
+					if(inode.type === 'DIR')
+					{
+						throw new Error("path cannot be a directory");
+					}
+					destroyPathEntry(path);
+				}
+
+				FS.unlink = unlink;
+				FS.unlinkSync = unlinkSync;
+
+
+
 				return FS;
 			},
 
