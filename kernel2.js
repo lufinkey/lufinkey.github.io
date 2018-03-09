@@ -2639,6 +2639,46 @@ return (function(){
 		}
 
 
+		// make the path leading up to the given file
+		function makeLeadingDirs(context, path)
+		{
+			// resolve path
+			path = resolveRelativePath(context, path);
+			// split and remove empty path parts
+			var pathParts = path.split('/');
+			for(var i=0; i<pathParts.length; i++)
+			{
+				if(pathParts[i]=='')
+				{
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+			
+			// make sure each leading path part exists and is a directory
+			for(var i=0; i<(pathParts.length-1); i++)
+			{
+				var leadingPath = '/'+pathParts.slice(0, i+1).join('/');
+				// ensure path is a directory or doesn't exist
+				try
+				{
+					var stats = context.modules.fs.statSync(leadingPath);
+					if(stats.isDirectory())
+					{
+						continue;
+					}
+					else
+					{
+						context.modules.fs.unlinkSync(leadingPath);
+					}
+				}
+				catch(error) {}
+				// create the directory
+				context.modules.mkdirSync(leadingPath);
+			}
+		}
+
+
 		// download built-in node modules / classes
 		builtInsPromise = new Promise((resolve, reject) => {
 			download('https://wzrd.in/bundle/node-builtin-map').then((data) => {
@@ -2677,6 +2717,7 @@ return (function(){
 				return bootDataPromise;
 			}).then((data) => {
 				// write boot data to path
+				makeLeadingDirs(rootContext, path);
 				fs.writeFileSync(path, data);
 				// execute boot file
 				rootContext.modules.child_process.spawn(path);
