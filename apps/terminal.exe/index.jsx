@@ -176,9 +176,9 @@ windowManager.createWindow().then((window) => {
 					className="shell-input"
 					onKeyDown={onTextAreaUpdate}
 					onChange={onTextAreaUpdate}
-					autoComplete={false}
-					autoCorrect={false}
-					autoCapitalize={false}
+					autoComplete="off"
+					autoCorrect="off"
+					autoCapitalize="none"
 					spellCheck={false}></textarea>
 			</div>
 		);
