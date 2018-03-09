@@ -244,6 +244,7 @@ const systemFiles = {
 	},
 	'system': {
 		'bin': {
+			'cat.js': new RemoteFile(),
 			'jsh.js': new RemoteFile(),
 			'ls.js': new RemoteFile(),
 			'open.js': new RemoteFile()
