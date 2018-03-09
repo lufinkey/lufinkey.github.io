@@ -171,7 +171,7 @@ return (function(){
 				{
 					return promise.then(callback, ...args);
 				}
-				wrapPromiseMethod((callback) => {
+				return wrapPromiseMethod((callback) => {
 					return promise.then((...args) => {
 						return callback(...args);
 					});
@@ -184,7 +184,7 @@ return (function(){
 				{
 					return promise.catch(callback, ...args);
 				}
-				wrapPromiseMethod((callback) => {
+				return wrapPromiseMethod((callback) => {
 					return promise.catch((...args) => {
 						return callback(...args);
 					});
@@ -197,7 +197,7 @@ return (function(){
 				{
 					return promise.finally(callback, ...args);
 				}
-				wrapPromiseMethod((callback) => {
+				return wrapPromiseMethod((callback) => {
 					return promise.finally((...args) => {
 						return callback(...args);
 					});
@@ -206,7 +206,7 @@ return (function(){
 
 			// perform promise
 			let exitSignal = null;
-			let promise = new Promise((resolve, reject) => {
+			promise = new Promise((resolve, reject) => {
 				try
 				{
 					callback((...args) => {
@@ -436,7 +436,6 @@ return (function(){
 			}
 			catch(error)
 			{
-				console.error("unable to stat "+path+": ", error);
 				return false;
 			}
 			return false;
@@ -479,7 +478,7 @@ return (function(){
 		function resolveModuleFolder(context, path)
 		{
 			var packagePath = path+'/package.json';
-			if(!checkIfFile(packagePath))
+			if(!checkIfFile(context, packagePath))
 			{
 				return null;
 			}
@@ -507,7 +506,6 @@ return (function(){
 		// find a valid module path from the given context, base path, and path
 		function resolveModulePath(context, basePath, path, options=null)
 		{
-			console.log("resolving module path for "+path);
 			options = Object.assign({}, options);
 			var modulePath = resolveRelativePath(context, path, basePath);
 			// find full module path
@@ -584,7 +582,7 @@ return (function(){
 				}
 				catch(error)
 				{
-					throw new Error("could not resolve module: "+error.message);
+					throw new Error("could not resolve '"+path+"': "+error.message);
 				}
 			}
 			else
@@ -603,7 +601,7 @@ return (function(){
 				}
 				if(modulePath == null)
 				{
-					throw new Error("could not resolve module");
+					throw new Error("could not resolve '"+path+"'");
 				}
 			}
 			return modulePath;
@@ -766,7 +764,7 @@ return (function(){
 			}
 
 			// get parent directory of module path
-			const moduleDir = context.builtIns.path.dirname(modulePath);
+			const moduleDir = context.builtIns.modules.path.dirname(modulePath);
 
 			// create slightly modified module scope
 			var scope = {
@@ -823,10 +821,10 @@ return (function(){
 			}
 
 			// save exported module
-			moduleContainer[modulePath] = scope.exports;
+			moduleContainer[modulePath] = scope.let.exports;
 
 			// return exported module
-			return scope.exports;
+			return scope.let.exports;
 		}
 
 
@@ -903,7 +901,7 @@ return (function(){
 			}
 
 			// read css data
-			var cssData = context.modules.fs.readFileSync(cssPath);
+			var cssData = context.modules.fs.readFileSync(cssPath, {encoding: 'utf8'});
 
 			// TODO parse out special CSS functions
 
@@ -1111,20 +1109,6 @@ return (function(){
 							clearTimeout(timeout);
 						}
 						context.timeouts = [];
-
-						// close I/O streams
-						if(context.stdin)
-						{
-							stdin.input.end();
-						}
-						if(context.stdout)
-						{
-							stdout.input.end();
-						}
-						if(context.stderr)
-						{
-							stderr.input.end();
-						}
 					}
 				}
 			};
@@ -2345,8 +2329,6 @@ return (function(){
 
 						// define general process info
 						var argv0 = path;
-						path = resolveRelativePath(context, path);
-						const dirname = context.builtIns.modules.path.dirname(path);
 
 						// validate options
 						if(options.cwd)
@@ -2382,9 +2364,9 @@ return (function(){
 						const stdin = createTwoWayStream(context, childContext);
 						const stdout = createTwoWayStream(childContext, context);
 						const stderr = createTwoWayStream(childContext, context);
-						childContext.stdin = stdin.input;
-						childContext.stdout = stdout.output;
-						childContext.stderr = stderr.output;
+						childContext.stdin = stdin.output;
+						childContext.stdout = stdout.input;
+						childContext.stderr = stderr.input;
 
 						// add invalidation hook
 						const childContextInvalidate = childContext.invalidate;
@@ -2394,6 +2376,10 @@ return (function(){
 							childContextInvalidate();
 							if(wasValid)
 							{
+								// close I/O
+								stdin.input.end();
+								stdout.input.end();
+								stderr.input.end();
 								// wait for next queue to emit event
 								setTimeout(() => {
 									this.emit('exit', exitCode, killSignal);
@@ -2402,6 +2388,20 @@ return (function(){
 						}
 
 						// TODO apply properties
+						Object.defineProperties(this, {
+							stdin: {
+								value: stdin.input,
+								writable: false
+							},
+							stdout: {
+								value: stdout.output,
+								writable: false
+							},
+							stderr: {
+								value: stderr.output,
+								writable: false
+							}
+						});
 
 						// try to start the process
 						try
@@ -2412,7 +2412,8 @@ return (function(){
 							{
 								paths = context.env.paths;
 							}
-							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binFolderExtensions});
+							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binDirExtensions});
+							const dirname = context.builtIns.modules.path.dirname(filename);
 
 							// ensure that the cwd is enterable by the calling context
 							var cwdStats = childContext.modules.fs.statSync(childContext.cwd);
@@ -2547,7 +2548,20 @@ return (function(){
 										}
 									}),
 									module: new ScriptGlobalAlias('exports'),
-									process: new Process(childContext, context),
+									process: Object.defineProperties(new Process(childContext, context), {
+										stdin: {
+											value: stdin.output,
+											writable: false
+										},
+										stdout: {
+											value: stdout.input,
+											writable: false
+										},
+										stderr: {
+											value: stderr.input,
+											writable: false
+										}
+									}),
 
 									// addons
 									ExitSignal: ExitSignal,
@@ -2559,6 +2573,13 @@ return (function(){
 									exports: {}
 								}
 							};
+
+							// set PID
+							Object.defineProperty(this, 'pid', {
+								get: () => {
+									return childContext.pid;
+								}
+							});
 
 							// start process in the next queue
 							browserWrappers.setTimeout(context, () => {
@@ -2729,7 +2750,8 @@ return (function(){
 
 		// bootup method
 		let booted = false;
-		this.boot = (url, path) => {
+		function boot(url, path)
+		{
 			if(booted)
 			{
 				throw new Error("system is already booted");
@@ -2767,6 +2789,13 @@ return (function(){
 				console.error(error);
 			});
 		};
+
+
+
+		// apply kernel properties
+		this.boot = boot;
+		this.require = require;
+
 	// end kernel class
 	}
 

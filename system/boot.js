@@ -1,35 +1,77 @@
 
-const rootContext = kernel.rootContext;
+const fs = require('fs');
+const { spawn } = require('child_process');
 
-kernel.log(rootContext, "downloading init data...");
+syscall('log', "downloading init data...");
+
+// set system paths
+process.env.paths = ['/system/bin','/apps','/bin'];
+
+// function to make a directory if it's missing
+function mkdirIfMissing(path)
+{
+	if(!fs.existsSync(path))
+	{
+		fs.mkdirSync(path);
+	}
+}
+
+// function to download a file to the "disk"
+function downloadFile(url, path, options)
+{
+	options = Object.assign({}, options);
+	return new Promise((resolve, reject) => {
+		if(options.onlyIfMissing)
+		{
+			if(fs.existsSync(path))
+			{
+				resolve();
+				return;
+			}
+		}
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = () => {
+			if(xhr.readyState === 4)
+			{
+				if(xhr.status === 200)
+				{
+					fs.writeFileSync(path, xhr.responseText);
+					resolve();
+				}
+				else
+				{
+					reject(new Error(xhr.status+": "+xhr.statusText));
+				}
+			}
+		};
+
+		xhr.open('GET', url);
+		xhr.send();
+	});
+}
 
 // create system folders
-const dirOptions = {ignoreIfExists: true};
-kernel.filesystem.createDir(rootContext, '/system', dirOptions);
-kernel.filesystem.createDir(rootContext, '/system/bin', dirOptions);
-kernel.filesystem.createDir(rootContext, '/system/lib', dirOptions);
-kernel.filesystem.createDir(rootContext, '/system/slib', dirOptions);
-kernel.filesystem.createDir(rootContext, '/system/share', dirOptions);
-// delete and remake tmp
-kernel.filesystem.deleteDir(rootContext, '/tmp');
-kernel.filesystem.createDir(rootContext, '/tmp', dirOptions);
+mkdirIfMissing('/system');
+mkdirIfMissing('/system/bin');
+mkdirIfMissing('/system/lib');
+mkdirIfMissing('/system/slib');
+mkdirIfMissing('/system/share');
 
 // download system files
 const downloads = [];
 const downloadOptions = {onlyIfMissing: true};
-downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js', downloadOptions) );
-downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js', downloadOptions) );
-downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js', downloadOptions) );
-downloads.push( kernel.filesystem.downloadFile(rootContext, 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js', downloadOptions) );
-downloads.push( kernel.filesystem.downloadFile(rootContext, 'system/init.jsx?v='+(Math.random()*9999999999), '/system/init.jsx') );
+downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js', downloadOptions) );
+downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js', downloadOptions) );
+downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js', downloadOptions) );
+downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js', downloadOptions) );
+downloads.push( downloadFile('system/init.jsx?v='+(Math.random()*9999999999), '/system/init.jsx') );
 
 // wait for files to finish downloading
-const ProcPromise = kernel.ProcPromise;
-ProcPromise.all(rootContext, downloads).then(() => {
-	kernel.log(rootContext, "init data downloaded");
+Promise.all(downloads).then(() => {
+	syscall('log', "init data downloaded");
 	
 	// download sass.worker.js to give to scss
-	kernel.log(rootContext, "preparing scss...");
+	syscall('log', "preparing scss...");
 	var xhr = new XMLHttpRequest();
 	xhr.onreadystatechange = () => {
 		if(xhr.readyState == 4)
@@ -39,13 +81,13 @@ ProcPromise.all(rootContext, downloads).then(() => {
 				// apply downloaded worker data to Sass
 				var workerData = xhr.responseText;
 				var workerURL = 'data:application/javascript;base64,'+btoa(workerData);
-				const Sass = kernel.require(rootContext, {}, '/', 'sass');
+				const Sass = require('sass');
 				Sass.setWorkerUrl(workerURL);
-				kernel.log(rootContext, "done preparing scss");
+				syscall('log', "done preparing scss");
 
 				// boot
-				kernel.log(rootContext, "starting...");
-				kernel.execute(rootContext, '/system/init');
+				syscall('log', "starting...");
+				spawn('/system/init');
 			}
 			else
 			{
@@ -60,8 +102,8 @@ ProcPromise.all(rootContext, downloads).then(() => {
 					}
 				}
 				console.error(errorMessage);
-				kernel.log(rootContext, "fatal error", {color: 'red'});
-				kernel.log(rootContext, errorMessage, {color: 'red'});
+				syscall('log', "fatal error", {color: 'red'});
+				syscall('log', errorMessage, {color: 'red'});
 			}
 		}
 	}
@@ -69,6 +111,6 @@ ProcPromise.all(rootContext, downloads).then(() => {
 	xhr.send();
 }).catch((error) => {
 	console.error("kernel error: ", error);
-	kernel.log(rootContext, "fatal error", {color: 'red'});
-	kernel.log(rootContext, error.toString(), {color: 'red'});
+	syscall('log', "fatal error", {color: 'red'});
+	syscall('log', error.toString(), {color: 'red'});
 });

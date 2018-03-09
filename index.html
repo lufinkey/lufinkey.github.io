@@ -66,12 +66,12 @@
 
 				scriptExtensions: [ 'jsx' ],
 				styleExtensions: [ 'scss' ],
-				libFolderExtensions: [ 'dll' ],
-				binFolderExtensions: [ 'exe' ],
+				libDirExtensions: [ 'dll' ],
+				binDirExtensions: [ 'exe' ],
 			});
 			
 			window.addEventListener('load', () => {
-				kernel.boot('boot2.js?v='+(Math.random()*999999999), '/boot2.js');
+				kernel.boot('/system/boot.js?v='+(Math.random()*999999999), '/system/boot.js');
 			});
 		})();
 	</script>

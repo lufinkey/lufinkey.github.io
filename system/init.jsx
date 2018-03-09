@@ -1,4 +1,5 @@
 
+const fs = require('fs');
 let Transcend32 = null;
 let Shell32 = null;
 let SelfAd = null;
@@ -32,6 +33,39 @@ function RemoteFile(options)
 	this.options = Object.assign({}, options);
 }
 
+function downloadFile(url, path, options)
+{
+	options = Object.assign({}, options);
+	return new Promise((resolve, reject) => {
+		if(options.onlyIfMissing)
+		{
+			if(fs.existsSync(path))
+			{
+				resolve();
+				return;
+			}
+		}
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = () => {
+			if(xhr.readyState === 4)
+			{
+				if(xhr.status === 200)
+				{
+					fs.writeFileSync(path, xhr.responseText);
+					resolve();
+				}
+				else
+				{
+					reject(new Error(xhr.status+": "+xhr.statusText));
+				}
+			}
+		};
+
+		xhr.open('GET', url);
+		xhr.send();
+	});
+}
+
 function downloadFiles(structure, path=null)
 {
 	var promises = [];
@@ -58,11 +92,14 @@ function downloadFiles(structure, path=null)
 				{
 					url = entryPath+'?v='+(Math.random()*9999999999);
 				}
-				promises.push(syscall('filesystem.downloadFile', url, '/'+entryPath));
+				promises.push(downloadFile(url, '/'+entryPath));
 			}
 			else
 			{
-				syscall('filesystem.createDir', '/'+entryPath, {ignoreIfExists: true});
+				if(!fs.existsSync('/'+entryPath))
+				{
+					fs.mkdirSync('/'+entryPath);
+				}
 				promises = promises.concat( downloadFiles(entry, entryPath) );
 			}
 		}
@@ -113,14 +150,14 @@ function downloadFilesSlowly(structure, path=null)
 			
 			// download file
 			bootlog("downloading /"+entryPath);
-			syscall('filesystem.downloadFile', url, '/'+entryPath).then(() => {
+			downloadFile(url, '/'+entryPath).then(() => {
 				bootlog("downloaded /"+entryPath);
 				// append to file if necessary
 				if(entry.options.append)
 				{
-					var fileData = syscall('filesystem.readFile', '/'+entryPath);
+					var fileData = fs.readFileSync('/'+entryPath, {encoding: 'utf8'});
 					fileData += entry.options.append;
-					syscall('filesystem.writeFile', '/'+entryPath, fileData);
+					fs.writeFileSync('/'+entryPath, fileData);
 				}
 				// load next file in structure
 				downloadFilesSlowly(nextStructure, path).then(() => {
@@ -140,7 +177,10 @@ function downloadFilesSlowly(structure, path=null)
 			// create directory
 			try
 			{
-				syscall('filesystem.createDir', '/'+entryPath, {ignoreIfExists: true});
+				if(!fs.existsSync('/'+entryPath))
+				{
+					fs.mkdirSync('/'+entryPath);
+				}
 			}
 			catch(error)
 			{
