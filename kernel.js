@@ -1113,7 +1113,16 @@ return (function(){
 				}
 			};
 
-			context.builtIns = createBuiltIns(context);
+			let builtIns = null;
+			Object.defineProperty(context, 'builtIns', {
+				get: () => {
+					if(builtIns == null)
+					{
+						builtIns = createBuiltIns(context);
+					}
+					return builtIns;
+				}
+			});
 
 			return context;
 		}
@@ -2415,13 +2424,6 @@ return (function(){
 							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binDirExtensions});
 							const dirname = context.builtIns.modules.path.dirname(filename);
 
-							// ensure that the cwd is enterable by the calling context
-							var cwdStats = childContext.modules.fs.statSync(childContext.cwd);
-							if(!cwdStats.isDirectory())
-							{
-								throw new Error("cwd is not a directory");
-							}
-
 							// create process scope
 							let scope = null;
 							scope = {
@@ -2583,7 +2585,24 @@ return (function(){
 
 							// start process in the next queue
 							browserWrappers.setTimeout(context, () => {
-								// start process
+								// load built-ins
+								context.builtIns;
+								// ensure that the cwd is enterable by the calling context
+								try
+								{
+									var cwdStats = childContext.modules.fs.statSync(childContext.cwd);
+									if(!cwdStats.isDirectory())
+									{
+										throw new Error("cwd is not a directory");
+									}
+								}
+								catch(error)
+								{
+									childContext.invalidate();
+									this.emit('error', error);
+									return;
+								}
+								// start the process
 								try
 								{
 									requireFile(childContext, filename, scope);
@@ -2615,6 +2634,7 @@ return (function(){
 							// send error in the next queue
 							browserWrappers.setTimeout(context, () => {
 								// send error
+								childContext.invalidate();
 								this.emit('error', error);
 							}, 0);
 						}
