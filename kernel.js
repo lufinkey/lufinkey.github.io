@@ -2583,7 +2583,7 @@ return (function(){
 								}
 							});
 
-							// start process in the next queue
+							// load built-ins in the next queue
 							browserWrappers.setTimeout(context, () => {
 								// load built-ins
 								context.builtIns;
@@ -2602,31 +2602,34 @@ return (function(){
 									this.emit('error', error);
 									return;
 								}
-								// start the process
-								try
-								{
-									requireFile(childContext, filename, scope);
-								}
-								catch(error)
-								{
-									if(error instanceof ExitSignal)
+								// start the process in the next queue
+								browserWrappers.setTimeout(context, () => {
+									// start the process
+									try
 									{
-										// process has ended
+										requireFile(childContext, filename, scope);
 									}
-									else
+									catch(error)
 									{
-										if(childContext.valid)
+										if(error instanceof ExitSignal)
 										{
-											console.error("unhandled process error:", error);
-											childContext.invalidate(1, null);
+											// process has ended
 										}
 										else
 										{
-											// just ignore...
+											if(childContext.valid)
+											{
+												console.error("unhandled process error:", error);
+												childContext.invalidate(1, null);
+											}
+											else
+											{
+												// just ignore...
+											}
 										}
+										return;
 									}
-									return;
-								}
+								}, 0);
 							}, 0);
 						}
 						catch(error)
