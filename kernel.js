@@ -1,5 +1,4 @@
 
-
 // sandbox evalJavaScript + Kernel
 const Kernel = (function(){
 
@@ -73,7 +72,7 @@ return (function(){
 		const tmpStorage = {};
 		const storage = window.localStorage;
 
-		let builtInsCode = null;
+		let builtInsGenerator = null;
 		let browserWrappers = null;
 		let generatedModules = null;
 		let loadedSharedModules = {};
@@ -371,35 +370,54 @@ return (function(){
 
 
 
+		function createBuiltInGenerator(code)
+		{
+			code = 'exports = ((__scope) => {\n'+
+				'const setTimeout = __scope.setTimeout;\n'+
+				'const clearTimeout = __scope.setTimeout;\n'+
+				'const setInterval = __scope.setInterval;\n'+
+				'const clearInterval = __scope.clearInterval;\n'+
+				'const Promise = __scope.Promise;\n'+
+				'let require = null;\n'+
+				'(() => {\n'+
+				code+
+				'})();\n'+
+				'return require;'+
+				'});';
+			
+			var scope = {
+				'let': {
+					exports: {}
+				}
+			};
+			
+			runScript(null, code, scope);
+
+			return scope.let.exports;
+		}
+
+
+
 		// create built in modules for a given context
 		function createBuiltIns(context)
 		{
 			var scope = {
-				'const': {
-					setTimeout: (...args) => {
-						return browserWrappers.setTimeout(context, ...args);
-					},
-					clearTimeout: (...args) => {
-						return browserWrappers.clearTimeout(context, ...args);
-					},
-					setInterval: (...args) => {
-						return browserWrappers.setInterval(context, ...args);
-					},
-					clearInterval: (...args) => {
-						return browserWrappers.clearInterval(context, ...args);
-					},
-					Promise: createProcPromiseClass(context)
+				setTimeout: (...args) => {
+					return browserWrappers.setTimeout(context, ...args);
 				},
-				'let': {
-					require: {}
-				}
+				clearTimeout: (...args) => {
+					return browserWrappers.clearTimeout(context, ...args);
+				},
+				setInterval: (...args) => {
+					return browserWrappers.setInterval(context, ...args);
+				},
+				clearInterval: (...args) => {
+					return browserWrappers.clearInterval(context, ...args);
+				},
+				Promise: createProcPromiseClass(context)
 			};
-			runScript(context, builtInsCode, scope);
-			if(typeof scope.let.require !== 'function')
-			{
-				throw new Error("missing require function for builtins");
-			}
-			return scope.let.require('node-builtin-map');
+			var builtIns = builtInsGenerator(scope)('node-builtin-map');
+			return builtIns;
 		}
 
 
@@ -2763,7 +2781,7 @@ return (function(){
 		// download built-in node modules / classes
 		builtInsPromise = new Promise((resolve, reject) => {
 			download('cdn/bundle/node-builtin-map').then((data) => {
-				builtInsCode = data;
+				builtInsGenerator = createBuiltInGenerator(data);
 				resolve();
 			}).catch((error) => {
 				reject(error);
