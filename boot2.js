@@ -1,2 +1,2 @@
 
-console.log("we've booted up!");
+console.log("ayy we booted!");

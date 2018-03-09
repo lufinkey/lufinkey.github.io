@@ -70,8 +70,9 @@
 				binFolderExtensions: [ 'exe' ],
 			});
 			
-			
-			kernel.boot('boot2.js?v='+(Math.random()*999999999), 'boot2.js');
+			window.addEventListener('load', () => {
+				kernel.boot('boot2.js?v='+(Math.random()*999999999), '/boot2.js');
+			});
 		})();
 	</script>
 </head>

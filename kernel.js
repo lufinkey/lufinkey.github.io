@@ -1,7 +1,6 @@
 
-window.localStorage.clear();
 
-// sandbox evalScript
+// sandbox evalJavaScript + Kernel
 const Kernel = (function(){
 
 // function to evaluate a given script
@@ -20,414 +19,119 @@ function evalJavaScript(__scope, __code) {
 // sandbox kernel data
 return (function(){
 
-function randomString(length = 32)
-{
-	var possible = 'abcdefghijklmnopqrstuvwxyz0123456789';
-	var str = '';
-	for(var i=0; i<length; i++)
+	function deepCopyObject(object)
 	{
-		var index = Math.floor(Math.random()*possible.length);
-		str += possible[index];
-	}
-	return str;
-}
-
-function deepCopyObject(object)
-{
-	switch(typeof object)
-	{
-		case 'object':
-			if(object === null)
-			{
-				return null;
-			}
-			else if(object instanceof Array)
-			{
-				var newObject = object.slice(0);
-				for(var i=0; i<newObject.length; i++)
+		switch(typeof object)
+		{
+			case 'object':
+				if(object === null)
 				{
-					newObject[i] = deepCopyObject(newObject[i]);
+					return null;
 				}
-				return newObject;
-			}
-			else
-			{
-				var newObject = {};
-				for(const key of Object.keys(object))
+				else if(object instanceof Array)
 				{
-					newObject[key] = deepCopyObject(object[key]);
+					var newObject = object.slice(0);
+					for(var i=0; i<newObject.length; i++)
+					{
+						newObject[i] = deepCopyObject(newObject[i]);
+					}
+					return newObject;
 				}
-				return newObject;
-			}
-
-		case 'number':
-			return 0+object;
-
-		case 'string':
-			return ''+object;
-		
-		default:
-			return object;
-	}
-}
-
-
-const rootContext = {
-	cwd: '/',
-	pid: 0,
-	uid: 0,
-	gid: 0,
-	stdin: null,
-	stdout: null,
-	stderr: null,
-	argv: ['[kernel]'],
-	env: {
-		libpaths: [
-			'/system/slib',
-			'/system/lib',
-			'/lib'
-		],
-		paths: [
-			'/system/bin',
-			'/apps',
-			'/bin'
-		]
-	},
-
-	valid: true,
-	timeouts: [],
-	intervals: []
-};
-
-
-// class to allow aliasing select globals to itself when evaluating a script
-function ScriptGlobalAlias(aliases)
-{
-	this.aliases = aliases;
-}
-
-
-// validate a scope variable name
-function validateVariableName(varName)
-{
-	if(typeof varName !== 'string')
-	{
-		throw new TypeError("variable name must be a string");
-	}
-	// ensure string isn't empty
-	if(varName.length == 0)
-	{
-		throw new Error("empty string cannot be variable name");
-	}
-	// ensure all characters are valid
-	for(const char of varName)
-	{
-		if(validScopeCharacters.indexOf(char) === -1)
-		{
-			throw new Error("invalid scope variable name "+varName);
-		}
-	}
-	// ensure name doesn't start with a number
-	if("1234567890".indexOf(varName[0]) !== -1)
-	{
-		throw new Error("variable name cannot start with a number");
-	}
-}
-
-
-// run a script with a given interpreter
-const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
-function runScript(kernel, context, interpreter, scope, code)
-{
-	// transform code if necessary
-	if(interpreter)
-	{
-		if(typeof interpreter.transform !== 'function')
-		{
-			throw new TypeError("interpreter.transform must be a function");
-		}
-		code = interpreter.transform(code, context);
-	}
-	// TODO parse a little bit to check if strict mode is enabled
-	// create strings for global scope variables
-	var prefixString = '';
-	var suffixString = '';
-	for(const varName in scope)
-	{
-		validateVariableName(varName);
-		if(scope[varName] instanceof ScriptGlobalAlias)
-		{
-			var aliases = scope[varName].aliases;
-			prefixString += 'let '+varName+' = Object.defineProperties({}, { ';
-			for(var i=0; i<aliases.length; i++)
-			{
-				const alias = aliases[i];
-				validateVariableName(alias);
-				prefixString += '"'+alias+'": {';
-				prefixString += 'get:() => { return '+alias+'; },set:(___val) => { '+alias+' = ___val; }';
-				prefixString += '}';
-				if(i < (aliases.length-1))
+				else
 				{
-					prefixString += ',';
+					var newObject = {};
+					for(const key of Object.keys(object))
+					{
+						newObject[key] = deepCopyObject(object[key]);
+					}
+					return newObject;
 				}
-			}
-			prefixString += '});\n';
-		}
-		else
-		{
-			prefixString += 'let '+varName+' = __scope.'+varName+';\n';
-			suffixString += '__scope.'+varName+' = '+varName+';\n';
-		}
-	}
-	// evaluate the script
-	return evalJavaScript(scope, prefixString+'\n(() => {\n'+code+'\n})();\n'+suffixString);
-}
 
+			case 'number':
+				return 0+object;
 
-
-
-
-
-// Kernel class
-function Kernel(kernelOptions)
-{
-	const osName = 'finkeos';
-
-
-	// exception for process exit signal
-	class ExitSignal extends Error
-	{
-		constructor(exitCode, message)
-		{
-			if(typeof exitCode === 'string')
-			{
-				message = exitCode;
-				exitCode = null;
-			}
+			case 'string':
+				return ''+object;
 			
-			if(!message && exitCode)
-			{
-				message = "process exited with signal "+exitCode;
-			}
-			super(message);
-			this.exitCode = exitCode;
+			default:
+				return object;
 		}
 	}
 
 
-	// promise to handle exit signals
-	// TODO simplify this class
-	function ProcPromise(context, callback)
+
+
+	// class to handle all kernel functions
+	function Kernel(kernelOptions)
 	{
-		if(!context.cwd)
+		// clear localStorage for now
+		window.localStorage.clear();
+
+		const osName = 'finkeos';
+		const fsPrefix = ''+(kernelOptions.fsPrefix || '');
+
+		const tmpStorage = {};
+		const storage = window.localStorage;
+
+		let builtInsCode = null;
+		let browserWrappers = null;
+		let generatedModules = null;
+		let loadedSharedModules = {};
+		let loadedCSS = {};
+
+		let builtInsPromise = null;
+
+		let rootContext = null;
+		let pidCounter = 1;
+
+
+
+		// class to allow aliasing select globals to itself when evaluating a script
+		function ScriptGlobalAlias(aliases)
 		{
-			console.log("context, ", context);
-			throw new Error("why we getting bad contexts here");
+			this.aliases = aliases;
 		}
 
-		// then
-		this.then = (callback, ...args) => {
-			if(typeof callback !== 'function')
-			{
-				return promise.then(callback, ...args);
-			}
-			let exitSignal = null;
-			var retVal = promise.then((...args) => {
-				try
-				{
-					return callback(...args);
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
-					}
-					else
-					{
-						throw error;
-					}
-				}
-			}, ...args);
-			if(exitSignal != null)
-			{
-				throw exitSignal;
-			}
-			// wrap return value if necessary
-			if(retVal === promise)
-			{
-				return this;
-			}
-			else if(retVal instanceof Promise)
-			{
-				return new ProcPromise(context, (resolve, reject) => {
-					return retVal.then(resolve).catch(reject);
-				});
-			}
-			return retVal;
-		};
 
-		// catch
-		this.catch = (callback, ...args) => {
-			if(typeof callback !== 'function')
-			{
-				return promise.catch(callback, ...args);
-			}
-			let exitSignal = null;
-			var retVal = promise.catch((...args) => {
-				try
-				{
-					return callback(...args);
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
-					}
-					else
-					{
-						throw error;
-					}
-				}
-			}, ...args);
-			if(exitSignal != null)
-			{
-				throw exitSignal;
-			}
-			// wrap return value if necessary
-			if(retVal === promise)
-			{
-				return this;
-			}
-			else if(retVal instanceof Promise)
-			{
-				return new ProcPromise(context, (resolve, reject) => {
-					return retVal.then(resolve).catch(reject);
-				});
-			}
-			return retVal;
-		};
 
-		// finally
-		this.finally = (callback, ...args) => {
-			if(!callback)
+		// exception for process exit signal
+		class ExitSignal extends Error
+		{
+			constructor(exitCode, message)
 			{
-				return promise.finally(callback, ...args);
-			}
-			let exitSignal = null;
-			var retVal = promise.finally((...args) => {
-				try
+				if(typeof exitCode === 'string')
 				{
-					return callback(...args);
+					message = exitCode;
+					exitCode = null;
 				}
-				catch(error)
+				
+				if(!message && exitCode)
 				{
-					if(error instanceof ExitSignal)
-					{
-						exitSignal = error;
-						return;
-					}
-					else
-					{
-						throw error;
-					}
+					message = "process exited with signal "+exitCode;
 				}
-			}, ...args);
-			if(exitSignal != null)
-			{
-				throw exitSignal;
+				super(message);
+				this.exitCode = exitCode;
 			}
-			// wrap return value if necessary
-			if(retVal === promise)
-			{
-				return this;
-			}
-			else if(retVal instanceof Promise)
-			{
-				return new ProcPromise(context, (resolve, reject) => {
-					return retVal.then(resolve).catch(reject);
-				});
-			}
-			return retVal;
-		};
+		}
 
-		// perform promise
-		let exitSignal = null;
-		let promise = new Promise((resolve, reject) => {
-			try
+
+
+		// promise to handle exit signals
+		function ProcPromise(context, callback)
+		{
+			let promise = null;
+
+			function wrapPromiseMethod(method, callback)
 			{
-				callback((...args) => {
-					// ensure calling context is valid
+				let exitSignal = null;
+				var retVal = method((...args) => {
 					if(!context.valid)
 					{
 						return;
 					}
-					// resolve
-					if(resolve)
-					{
-						resolve(...args);
-					}
-				}, (...args) => {
-					// ensure calling context is valid
-					if(!context.valid)
-					{
-						return;
-					}
-					// reject
-					if(reject)
-					{
-						reject(...args);
-					}
-				});
-			}
-			catch(error)
-			{
-				if(error instanceof ExitSignal)
-				{
-					exitSignal = error;
-					return;
-				}
-				else
-				{
-					throw error;
-				}
-			}
-		});
-		if(exitSignal != null)
-		{
-			throw exitSignal;
-		}
-	}
-
-	function wrapPromiseFunc(context, callback)
-	{
-		return new ProcPromise(context, (resolve, reject) => {
-			try
-			{
-				return callback((...args) => {
 					try
 					{
-						return resolve(...args);
-					}
-					catch(error)
-					{
-						if(error instanceof ExitSignal)
-						{
-							exitSignal = error;
-							return;
-						}
-						else
-						{
-							throw error;
-						}
-					}
-				}, (...args) => {
-					try
-					{
-						return reject(...args);
+						return callback(...args);
 					}
 					catch(error)
 					{
@@ -442,321 +146,305 @@ function Kernel(kernelOptions)
 						}
 					}
 				});
-			}
-			catch(error)
-			{
-				if(error instanceof ExitSignal)
+				// rethrow exit signal if there was one
+				if(exitSignal != null)
 				{
-					exitSignal = error;
-					return;
+					throw exitSignal;
 				}
-				else
+				// wrap return value if necessary
+				if(retVal === promise)
 				{
-					throw error;
+					return this;
 				}
+				else if(retVal instanceof Promise)
+				{
+					return new ProcPromise(context, (resolve, reject) => {
+						return retVal.then(resolve).catch(reject);
+					});
+				}
+				return retVal;
 			}
-		})
-	}
 
-	ProcPromise.resolve = function(context, ...args) {
-		return wrapPromiseFunc(context, (resolve, reject) => {
-			resolve(...args);
-		});
-	}
+			// then
+			this.then = (callback, ...args) => {
+				if(typeof callback !== 'function')
+				{
+					return promise.then(callback, ...args);
+				}
+				wrapPromiseMethod((callback) => {
+					return promise.then((...args) => {
+						return callback(...args);
+					});
+				}, callback);
+			};
 
-	ProcPromise.reject = function(context, ...args) {
-		return wrapPromiseFunc(context, (resolve, reject) => {
-			reject(...args);
-		});
-	}
+			// catch
+			this.catch = (callback, ...args) => {
+				if(typeof callback !== 'function')
+				{
+					return promise.catch(callback, ...args);
+				}
+				wrapPromiseMethod((callback) => {
+					return promise.catch((...args) => {
+						return callback(...args);
+					});
+				}, callback);
+			};
 
-	ProcPromise.all = function(context, promises, ...args) {
-		// wrap promises
-		if(promises instanceof Array)
-		{
-			promises = promises.slice(0);
-			for(var i=0; i<promises.length; i++)
+			// finally
+			this.finally = (callback, ...args) => {
+				if(typeof callback !== 'function')
+				{
+					return promise.finally(callback, ...args);
+				}
+				wrapPromiseMethod((callback) => {
+					return promise.finally((...args) => {
+						return callback(...args);
+					});
+				}, callback);
+			};
+
+			// perform promise
+			let exitSignal = null;
+			let promise = new Promise((resolve, reject) => {
+				try
+				{
+					callback((...args) => {
+						// ensure calling context is valid
+						if(!context.valid)
+						{
+							return;
+						}
+						// resolve
+						if(resolve)
+						{
+							resolve(...args);
+						}
+					}, (...args) => {
+						// ensure calling context is valid
+						if(!context.valid)
+						{
+							return;
+						}
+						// reject
+						if(reject)
+						{
+							reject(...args);
+						}
+					});
+				}
+				catch(error)
+				{
+					if(error instanceof ExitSignal)
+					{
+						exitSignal = error;
+						return;
+					}
+					else
+					{
+						throw error;
+					}
+				}
+			});
+			if(exitSignal != null)
 			{
-				let tmpPromise = promises[i];
-				promises[i] = new Promise((resolve, reject) => {
-					tmpPromise.then(resolve).catch(reject);
-				});
+				throw exitSignal;
 			}
 		}
-		// perform promises
-		return wrapPromiseFunc(context, (resolve, reject) => {
-			Promise.all(promises, ...args).then(resolve).catch(reject);
-		});
-	}
 
-	ProcPromise.race = function(context, promises, ...args) {
-		// wrap promises
-		if(promises instanceof Array)
+		ProcPromise.resolve = function(context, ...args)
 		{
-			promises = promises.slice(0);
-			for(var i=0; i<promises.length; i++)
-			{
-				let tmpPromise = promises[i];
-				promises[i] = new Promise((resolve, reject) => {
-					tmpPromise.then(resolve).catch(reject);
-				});
-			}
+			return new ProcPromise(context, (resolve, reject) => {
+				resolve(...args);
+			});
 		}
-		// perform promises
-		return wrapPromiseFunc(context, (resolve, reject) => {
-			Promise.race(promises, ...args).then(resolve).catch(reject);
-		});
-	}
-
-	// create a ProcPromise bound to a context
-	function createProcPromiseClass(context)
-	{
-		const PromiseClass = ProcPromise.bind(ProcPromise, context);
-		PromiseClass.resolve = ProcPromise.resolve.bind(PromiseClass, context);
-		PromiseClass.reject = ProcPromise.reject.bind(PromiseClass, context);
-		PromiseClass.all = ProcPromise.all.bind(PromiseClass, context);
-		PromiseClass.race = ProcPromise.race.bind(PromiseClass, context);
-		return PromiseClass;
-	}
 	
-
-
-	// Filesystem class
-	function Filesystem(kernel, storage)
-	{
-		const fsMetaPrefix = osName+'/fs-meta:';
-		const fsPrefix = osName+'/fs:';
-
-		const invalidPathCharacters = [':'];
-
-
-		// validate a path
-		function validatePath(context, path)
+		ProcPromise.reject = function(context, ...args)
 		{
-			// ensure string
-			if(typeof path !== 'string')
+			return new ProcPromise(context, (resolve, reject) => {
+				reject(...args);
+			});
+		}
+	
+		ProcPromise.all = function(context, promises, ...args)
+		{
+			// wrap promises
+			if(promises instanceof Array)
 			{
-				throw new TypeError("path must be a string");
-			}
-
-			// check for invalid characters
-			for(const invalidChar of invalidPathCharacters)
-			{
-				if(path.indexOf(invalidChar) !== -1)
+				promises = promises.slice(0);
+				for(var i=0; i<promises.length; i++)
 				{
-					throw new Error("invalid character in path");
+					let tmpPromise = promises[i];
+					promises[i] = new Promise((resolve, reject) => {
+						tmpPromise.then(resolve).catch(reject);
+					});
 				}
 			}
+			// perform promises
+			return new ProcPromise(context, (resolve, reject) => {
+				Promise.all(promises, ...args).then(resolve).catch(reject);
+			});
+		}
+	
+		ProcPromise.race = function(context, promises, ...args)
+		{
+			// wrap promises
+			if(promises instanceof Array)
+			{
+				promises = promises.slice(0);
+				for(var i=0; i<promises.length; i++)
+				{
+					let tmpPromise = promises[i];
+					promises[i] = new Promise((resolve, reject) => {
+						tmpPromise.then(resolve).catch(reject);
+					});
+				}
+			}
+			// perform promises
+			return new ProcPromise(context, (resolve, reject) => {
+				Promise.race(promises, ...args).then(resolve).catch(reject);
+			});
 		}
 
 
-		// normalize a path
-		function normalizePath(context, path)
+
+		// create a ProcPromise bound to a context
+		function createProcPromiseClass(context)
 		{
-			if(typeof path !== 'string')
-			{
-				throw new TypeError("path must be a string");
-			}
-
-			// check if absolute
-			var absolute = false;
-			if(path.startsWith('/'))
-			{
-				absolute = true;
-			}
-
-			// split path into parts and remove empty parts
-			var pathParts = path.split('/');
-			for(var i=0; i<pathParts.length; i++)
-			{
-				if(pathParts[i] === "")
-				{
-					pathParts.splice(i, 1);
-					i--;
-				}
-			}
-
-			// determine base directory
-			var baseDir = null;
-			if(absolute)
-			{
-				baseDir = '/';
-			}
-			else
-			{
-				baseDir = '.';
-			}
-
-			// return base directory if empty path
-			if(pathParts.length === 0)
-			{
-				return baseDir;
-			}
-
-			// function to resolve the path resursively
-			function resolvePathParts(pathParts, base)
-			{
-				if(pathParts.length === 0)
-				{
-					return base;
-				}
-
-				if(pathParts[0] == '.')
-				{
-					return resolvePathParts(pathParts.slice(1), base);
-				}
-				else if(pathParts[0] == '..')
-				{
-					var baseDir = dirname(context, base);
-					return resolvePathParts(pathParts.slice(1), baseDir);
-				}
-				var nextBase = null;
-				if(base === '/')
-				{
-					nextBase = '/'+pathParts[0];
-				}
-				else
-				{
-					nextBase = base+'/'+pathParts[0];
-				}
-				return resolvePathParts(pathParts.slice(1), nextBase);
-			}
-
-			// resolve the path
-			var resolvedPath = resolvePathParts(pathParts, baseDir);
-			// remove relative base if it exists
-			if(resolvedPath.startsWith('./'))
-			{
-				resolvedPath = resolvedPath.substring(2, resolvedPath.length);
-				if(resolvedPath == '')
-				{
-					return '.';
-				}
-			}
-			return resolvedPath;
+			const PromiseClass = ProcPromise.bind(ProcPromise, context);
+			PromiseClass.resolve = ProcPromise.resolve.bind(PromiseClass, context);
+			PromiseClass.reject = ProcPromise.reject.bind(PromiseClass, context);
+			PromiseClass.all = ProcPromise.all.bind(PromiseClass, context);
+			PromiseClass.race = ProcPromise.race.bind(PromiseClass, context);
+			return PromiseClass;
 		}
 
 
-		// get path of directory containing path
-		function dirname(context, path)
+
+		// define contextual browser functions
+		browserWrappers = {
+			setTimeout: (context, handler, ...args) => {
+				if(typeof handler !== 'function')
+				{
+					throw new TypeError("handler must be a function");
+				}
+				const timeout = setTimeout((...args) => {
+					var index = context.timeouts.indexOf(timeout);
+					if(index !== -1)
+					{
+						context.timeouts.splice(index, 1);
+					}
+					handler(...args);
+				}, ...args);
+				context.timeouts.push(timeout);
+				return timeout;
+			},
+			clearTimeout: (context, timeout) => {
+				var index = context.timeouts.indexOf(timeout);
+				if(index !== -1)
+				{
+					context.timeouts.splice(index, 1);
+				}
+				return clearTimeout(timeout);
+			},
+			// intervals
+			setInterval: (context, handler, ...args) => {
+				if(typeof handler !== 'function')
+				{
+					throw new TypeError("handler must be a function");
+				}
+				const interval = setInterval((...args) => {
+					handler(...args);
+				}, ...args);
+				context.intervals.push(interval);
+				return interval;
+			},
+			clearInterval: (context, interval) => {
+				var index = context.intervals.indexOf(interval);
+				if(index !== -1)
+				{
+					context.intervals.splice(index, 1);
+				}
+				return clearInterval(interval);
+			}
+		};
+
+
+
+		// create built in modules for a given context
+		function createBuiltIns(context)
 		{
-			// normalize the path
-			path = normalizePath(context, path);
-
-			// determine if path is absolute
-			var absolute = false;
-			if(path.startsWith('/'))
-			{
-				absolute = true;
-			}
-
-			// split path into parts and remove empty parts
-			var pathParts = path.split('/');
-			for(var i=0; i<pathParts.length; i++)
-			{
-				if(pathParts[i] === "")
-				{
-					pathParts.splice(i, 1);
-					i--;
+			var scope = {
+				'const': {
+					setTimeout: (...args) => {
+						return browserWrappers.setTimeout(context, ...args);
+					},
+					clearTimeout: (...args) => {
+						return browserWrappers.clearTimeout(context, ...args);
+					},
+					setInterval: (...args) => {
+						return browserWrappers.setInterval(context, ...args);
+					},
+					clearInterval: (...args) => {
+						return browserWrappers.clearInterval(context, ...args);
+					},
+					Promise: createProcPromiseClass(context)
+				},
+				'let': {
+					require: {}
 				}
-			}
-			// trim the last entry
-			pathParts = pathParts.slice(0, pathParts.length-1);
-			
-			// return dir name
-			if(pathParts.length==0)
+			};
+			runScript(context, builtInsCode, scope);
+			if(typeof scope.let.require !== 'function')
 			{
-				if(absolute)
-				{
-					return '/';
-				}
-				else
-				{
-					return ".";
-				}
+				throw new Error("missing require function for builtins");
 			}
-			if(absolute)
-			{
-				return '/'+pathParts.join('/');
-			}
-			return pathParts.join('/');
+			return scope.let.require('node-builtin-map');
 		}
 
 
-		// get entry name of path
-		function basename(context, path)
+
+		// check if a given path is a folder
+		function checkIfDir(context, path)
 		{
-			// normalize the path
-			path = normalizePath(context, path);
-			
-			// split path into parts and remove empty parts
-			var pathParts = path.split('/');
-			for(var i=0; i<pathParts.length; i++)
+			try
 			{
-				if(pathParts[i] === "")
+				var stats = context.modules.fs.statSync(path);
+				if(stats.isDirectory())
 				{
-					pathParts.splice(i, 1);
-					i--;
+					return true;
 				}
 			}
-
-			// return empty string if no path parts
-			if(pathParts.length === 0)
+			catch(error)
 			{
-				return "";
+				return false;
 			}
-
-			// return last path part
-			return pathParts[pathParts.length-1];
+			return false;
 		}
 
 
-		// get extension name of path
-		function extname(context, path)
+		// check if a given path is a file
+		function checkIfFile(context, path)
 		{
-			// normalize the path
-			path = normalizePath(context, path);
-
-			// find last decimal
-			var lastDotIndex = path.lastIndexOf('.');
-			if(lastDotIndex === -1)
+			try
 			{
-				return '';
-			}
-
-			// ensure the last dot index comes after the last slash
-			var extension = path.substring(lastDotIndex, path.length);
-			if(extension.indexOf('/') !== -1)
-			{
-				return '';
-			}
-			
-			// return the file extension
-			return extension;
-		}
-
-
-		// concatenate two paths
-		function concatPaths(context, path1, path2)
-		{
-			if(typeof path1 !== 'string' || typeof path2 !== 'string')
-			{
-				throw new TypeError("paths must be strings");
-			}
-			if(path1.length === 0)
-			{
-				if(path2.length === 0)
+				var stats = context.modules.fs.statSync(path);
+				if(stats.isFile())
 				{
-					return '.';
+					return true;
 				}
-				return normalizePath(context, path2);
 			}
-			return normalizePath(context, path1+'/'+path2);
+			catch(error)
+			{
+				console.error("unable to stat "+path+": ", error);
+				return false;
+			}
+			return false;
 		}
 
 
-		// resolve relative path from current or given cwd
-		function resolvePath(context, path, cwd)
+		// resolves a relative path to a full path using a given cwd or the context's cwd
+		function resolveRelativePath(context, path, cwd)
 		{
 			if(typeof path !== 'string')
 			{
@@ -779,1625 +467,2273 @@ function Kernel(kernelOptions)
 			// return normalized path if it's absolute
 			if(path.startsWith('/'))
 			{
-				return normalizePath(context, path);
+				return context.builtIns.modules.path.normalize(path);
 			}
 
 			// concatenate path with cwd
-			return concatPaths(context, cwd, path);
+			return context.builtIns.modules.path.join(cwd, path);
 		}
 
 
-		// get metadata about item at path
-		function readMeta(context, path)
+		// resolve a module's main js file from a folder
+		function resolveModuleFolder(context, path)
 		{
-			path = resolvePath(context, path);
-
-			var meta = storage.getItem(fsMetaPrefix+path);
-			if(meta != null)
+			var packagePath = path+'/package.json';
+			if(!checkIfFile(packagePath))
 			{
-				try
-				{
-					meta = JSON.parse(meta);
-				}
-				catch(error)
-				{
-					throw new Error("corrupted entry meta");
-				}
+				return null;
 			}
-			return meta;
+
+			var packageInfo = JSON.parse(context.modules.fs.readFileSync(packagePath, {encoding:'utf8'}));
+			var mainFile = packageInfo["main"];
+			if(!mainFile)
+			{
+				throw new Error("no main file specified");
+			}
+
+			if(typeof mainFile !== 'string')
+			{
+				throw new TypeError("\"main\" must be a string");
+			}
+
+			if(mainFile.startsWith('/'))
+			{
+				return mainFile;
+			}
+			return context.builtIns.modules.path.join(path, mainFile);
 		}
 
 
-		// create a default meta object
-		function createMeta(context, meta)
+		// find a valid module path from the given context, base path, and path
+		function resolveModulePath(context, basePath, path, options=null)
 		{
-			var newMeta = Object.assign({}, meta);
-			var defaultMeta = {
-				type: 'file',
-				dateCreated: new Date().getTime(),
-				dateUpdated: new Date().getTime()
-			};
-
-			for(const metaKey in defaultMeta)
-			{
-				if(newMeta[metaKey] === undefined)
-				{
-					newMeta[metaKey] = defaultMeta[metaKey];
-				}
-			}
-
-			return newMeta;
-		}
-
-
-		// write an entry
-		function writeEntry(context, path, meta, data)
-		{
-			path = resolvePath(context, path);
-			validatePath(context, path);
-			
-			// validate data
-			if(typeof data !== 'string')
-			{
-				throw new Error("non-string data may not be written");
-			}
-
-			// get info about potentially already existing entry
-			var entryMeta = readMeta(context, path);
-
-			// validate containing directory
-			var dirPath = dirname(context, path);
-			var dirMeta = readMeta(context, dirPath);
-			if(dirMeta == null)
-			{
-				throw new Error("parent directory does not exist");
-			}
-			else if(dirMeta.type !== 'dir')
-			{
-				throw new Error("invalid containing directory");
-			}
-
-			var dirData = readDir(context, dirPath);
-
-			// create new meta data
-			var newMeta = entryMeta;
-			if(newMeta == null)
-			{
-				// create default meta
-				newMeta = createMeta(context, meta);
-			}
-			else
-			{
-				// validate existing meta
-				if(meta.type !== entryMeta.type)
-				{
-					throw new Error("overwriting entry type mismatch");
-				}
-			}
-
-			// add updated entry meta info
-			newMeta.dateUpdated = new Date().getTime();
-
-			// add entry to parent directory contents, if not already added
-			var entryName = basename(context, path);
-			if(dirData.indexOf(entryName) === -1)
-			{
-				// add entry to parent directory
-				dirData.push(entryName);
-				// update parent dir entry meta info
-				dirMeta.dateUpdated = new Date().getTime();
-			}
-
-			// write meta + data
-			storage.setItem(fsPrefix+path, data);
-			storage.setItem(fsMetaPrefix+path, JSON.stringify(newMeta));
-			// write parent dir meta + parent dir data
-			storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
-			storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
-		}
-
-
-		// remove an entry
-		function removeEntry(context, path)
-		{
-			path = resolvePath(context, path);
-			validatePath(context, path);
-
-			// get info about parent directory
-			if(path !== '/')
-			{
-				var dirPath = dirname(context, path);
-				var dirData = readDir(context, dirPath);
-				var dirMeta = readMeta(context, dirPath);
-
-				const baseName = basename(context, path);
-				var index = dirData.indexOf(baseName);
-				if(index !== -1)
-				{
-					// remove from parent directory
-					dirData.splice(index, 1);
-					// update parent dir entry meta info
-					dirMeta.dateUpdated = new Date().getTime();
-				}
-
-				// write parent directory meta / data
-				storage.setItem(fsPrefix+dirPath, JSON.stringify(dirData));
-				storage.setItem(fsMetaPrefix+dirPath, JSON.stringify(dirMeta));
-			}
-
-			// remove entry meta / data
-			storage.removeItem(fsMetaPrefix+path);
-			storage.removeItem(fsPrefix+path);
-		}
-
-
-		// check if an entry exists
-		function exists(context, path)
-		{
-			path = resolvePath(context, path);
-			if(storage.getItem(fsPrefix+path) == null)
-			{
-				return false;
-			}
-			return true;
-		}
-
-
-		// read the contents of a directory
-		function readDir(context, path)
-		{
-			path = resolvePath(context, path);
-
-			// read dir meta
-			var meta = readMeta(context, path);
-			if(meta == null)
-			{
-				throw new Error("directory does not exist");
-			}
-			else if(meta.type !== 'dir')
-			{
-				throw new Error("entry is not a directory");
-			}
-
-			// read directory data
-			var data = storage.getItem(fsPrefix+path);
-			if(data == null)
-			{
-				throw new Error("missing directory data");
-			}
-			try
-			{
-				data = JSON.parse(data);
-			}
-			catch(error)
-			{
-				throw new Error("corrupted directory data");
-			}
-
-			return data;
-		}
-
-
-		// create a directory
-		function createDir(context, path, options)
-		{
-			path = resolvePath(context, path);
+			console.log("resolving module path for "+path);
 			options = Object.assign({}, options);
-
-			var meta = readMeta(context, path);
-			if(meta != null)
+			var modulePath = resolveRelativePath(context, path, basePath);
+			// find full module path
+			var fullModulePath = modulePath;
+			if(checkIfDir(context, fullModulePath))
 			{
-				if(meta.type == 'dir')
-				{
-					if(options.ignoreIfExists)
-					{
-						return;
-					}
-					else
-					{
-						throw new Error("directory already exists");
-					}
-				}
-				else
-				{
-					throw new Error("entry already exists at path");
-				}
-			}
-
-			return writeEntry(context, path, {type: 'dir'}, JSON.stringify([]));
-		}
-
-
-		// delete a directory
-		function deleteDir(context, path)
-		{
-			path = resolvePath(context, path);
-			if(!exists(context, path))
-			{
-				return;
-			}
-			const dirData = readDir(context, path);
-			if(dirData.length > 0)
-			{
-				throw new Error("directory is not empty");
-			}
-			removeEntry(context, path);
-		}
-
-
-		// read file from a given path
-		function readFile(context, path)
-		{
-			path = resolvePath(context, path);
-			
-			var meta = readMeta(context, path);
-			if(meta == null)
-			{
-				throw new Error("file does not exist");
-			}
-			else if(meta.type !== 'file')
-			{
-				throw new Error("entry is not a file");
-			}
-
-			var data = storage.getItem(fsPrefix+path);
-			if(data == null)
-			{
-				throw new Error("missing file data");
-				return;
-			}
-			return data;
-		}
-
-
-		// write file to a given path
-		function writeFile(context, path, data)
-		{
-			path = resolvePath(context, path);
-			if(exists(context, path))
-			{
-				var meta = readMeta(context, path);
-				if(meta.type !== 'file')
-				{
-					throw new Error("cannot write to a directory");
-				}
-			}
-			return writeEntry(context, path, {type: 'file'}, data);
-		}
-
-
-		// download a file to a given path
-		function downloadFile(context, url, path, options)
-		{
-			options = Object.assign({}, options);
-			path = resolvePath(context, path);
-
-			if(options.onlyIfMissing)
-			{
-				if(exists(context, path))
-				{
-					return ProcPromise.resolve(context);
-				}
-			}
-
-			return new ProcPromise(context, (resolve, reject) => {
-				// create request to retrieve remote file
-				var xhr = new XMLHttpRequest();
-				xhr.onreadystatechange = () => {
-					// ensure calling context is still alive
-					if(!context.valid)
-					{
-						return;
-					}
-					// handle ready state
-					if(xhr.readyState == 4)
-					{
-						// handle result
-						if(xhr.status == 200)
-						{
-							// attempt to write file to filesystem
-							try
-							{
-								var content = xhr.responseText;
-								writeFile(context, path, content);
-							}
-							catch(error)
-							{
-								reject(error);
-								return;
-							}
-							resolve();
-						}
-						else
-						{
-							var errorMessage = "request failed";
-							if(xhr.status > 0)
-							{
-								errorMessage += " with status "+xhr.status;
-								if(xhr.statusText.length > 0)
-								{
-									errorMessage += ": "+xhr.statusText;
-								}
-							}
-							reject(new Error(errorMessage));
-						}
-					}
-				};
-
-				// send remote file request
-				xhr.open("GET", url);
-				xhr.send();
-			});
-		}
-
-
-		// execute a js script at a given path
-		function executeFile(context, path, args=[], options=null)
-		{
-			return new ChildProcess(kernel, context, path, args, options);
-		}
-
-
-		// load a js script into the current process
-		function requireFile(context, scope, path)
-		{
-			path = resolvePath(context, path);
-			const data = kernel.filesystem.readFile(context, path);
-			const interpreter = getInterpreter(kernel, context, 'script', path);
-			return runScript(kernel, context, interpreter, scope, data);
-		}
-
-
-		// delete a file
-		function deleteFile(context, path)
-		{
-			path = resolvePath(context, path);
-			if(!exists(context, path))
-			{
-				return;
-			}
-			const meta = readMeta(context, fullPath);
-			if(meta.type !== 'file')
-			{
-				throw new Error("path is not a file");
-			}
-			removeEntry(context, path);
-		}
-
-
-		// rename a file or folder
-		function rename(context, oldPath, newPath)
-		{
-			const fullOldPath = resolvePath(context, oldPath);
-			const fullNewPath = resolvePath(context, oldPath);
-
-			if(!exists(context, fullOldPath))
-			{
-				throw new Error("source path does not exist");
-			}
-			const meta = readMeta(context, fullOldPath);
-
-			// stop if source and destination paths are the same
-			if(fullOldPath === fullNewPath)
-			{
-				return;
-			}
-
-			// check if destination exists
-			let destMeta = null;
-			if(exists(context, fullNewPath))
-			{
-				// ensure we can rename to the destination
-				destMeta = readMeta(context, fullNewPath);
-				if(meta.type === 'dir' && destMeta.type === 'file')
-				{
-					throw new Error("not a directory");
-				}
-				else if(meta.type === 'file' && destMeta.type === 'dir')
-				{
-					throw new Error("illegal operation on a directory");
-				}
-			}
-
-			if(meta.type === 'dir')
-			{
-				// create empty directory if one doesn't exist
-				if(destMeta === null)
-				{
-					destMeta = Object.assign({}, meta);
-					writeEntry(context, fullNewPath, destMeta, JSON.stringify('[]'));
-				}
-
-				// move contents of old directory into new directory
-				const dirEntries = readDir(context, path);
-				for(const entryName of dirEntries)
-				{
-					rename(context, fullOldPath+'/'+entryName, fullNewPath+'/'+entryName);
-				}
-
-				// delete old directory
-				removeEntry(context, fullOldPath);
-			}
-			else
-			{
-				// get source file data
-				const data = readFile(context, fullOldPath);
-
-				// remove old file entry and write new one
-				removeEntry(context, fullOldPath);
-				writeEntry(context, fullNewPath, meta, data);
-			}
-		}
-
-
-		// create empty filesystem, if necessary
-		var rootDirMeta = storage.getItem(fsMetaPrefix+'/');
-		if(!rootDirMeta)
-		{
-			// root dir has no meta. create empty filesystem
-			storage.setItem(fsMetaPrefix+'/', JSON.stringify(createMeta(rootContext, {type: 'dir'})));
-			storage.setItem(fsPrefix+'/', JSON.stringify([]));
-		}
-
-		// add properties
-		this.validatePath = validatePath;
-		this.normalizePath = normalizePath;
-		this.dirname = dirname;
-		this.basename = basename;
-		this.extname = extname;
-		this.concatPaths = concatPaths;
-		this.resolvePath = resolvePath;
-		this.exists = exists;
-		this.readMeta = readMeta;
-		this.readDir = readDir;
-		this.createDir = createDir;
-		this.deleteDir = deleteDir;
-		this.readFile = readFile;
-		this.writeFile = writeFile;
-		this.downloadFile = downloadFile;
-		this.executeFile = executeFile;
-		this.requireFile = requireFile;
-		this.deleteFile = deleteFile;
-		this.rename = rename;
-	}
-
-
-
-	
-	function createTwoWayStream(kernel, context)
-	{
-		const EventEmitter = kernel.require(context, {}, '/', 'events');
-
-		let ended = false;
-
-		let input = new EventEmitter();
-		let output = new EventEmitter();
-
-
-		// input stream
-
-		input.write = (chunk, encoding=null, callback=null) => {
-			if(ended)
-			{
-				throw new Error("tried to write input after writable has finished");
-			}
-			output.emit('data', chunk);
-			if(callback)
-			{
-				callback();
-			}
-		};
-
-		input.end = (chunk, encoding, callback) => {
-			if(ended)
-			{
-				return;
-			}
-
-			if(typeof chunk == 'function')
-			{
-				callback = chunk;
-				chunk = null;
-			}
-			else if(typeof encoding == 'function')
-			{
-				callback = encoding;
-				encoding = null;
-			}
-
-			if(chunk)
-			{
-				input.write(chunk, encoding);
-			}
-			input.destroy();
-			if(callback)
-			{
-				callback();
-			}
-			input.emit('finish');
-		}
-
-		input.destroy = (error=null) => {
-			if(ended)
-			{
-				return;
-			}
-			ended = true;
-
-			if(error)
-			{
-				output.emit('error', error);
-			}
-			output.emit('end');
-			output.emit('close');
-		};
-
-
-		return {
-			input: input,
-			output: output
-		};
-	}
-
-
-
-	let pidCounter = 1;
-	
-	function ChildProcess(kernel, parentContext, path, args, options)
-	{
-		const fullPath = kernel.filesystem.resolvePath(parentContext, path);
-		if(!kernel.filesystem.exists(parentContext, fullPath))
-		{
-			throw new Error("file does not exist");
-		}
-		const meta = kernel.filesystem.readMeta(parentContext, fullPath);
-		if(meta.type !== 'file')
-		{
-			throw new Error("path is not a file");
-		}
-		
-		if(!(args instanceof Array))
-		{
-			throw new TypeError("args must be an Array");
-		}
-		options = Object.assign({}, options);
-
-		// get new process PID
-		const pid = pidCounter;
-		pidCounter++;
-
-		const context = deepCopyObject(parentContext);
-		context.pid = pid;
-		context.valid = true;
-
-		const dir = kernel.filesystem.dirname(parentContext, fullPath);
-
-		let executed = false;
-		let exited = false;
-		let exiting = false;
-		var argv0 = path;
-
-		// validate options
-		if(options.cwd)
-		{
-			if(typeof options.cwd !== 'string')
-			{
-				throw new TypeError("options.cwd must be a string");
-			}
-			if(!exists(context, options.cwd))
-			{
-				throw new Error("cwd does not exist");
-			}
-			else if(readMeta(context, cwd).type === 'file')
-			{
-				throw new Error("cwd must be a directory");
-			}
-			context.cwd = ''+options.cwd;
-		}
-		if(options.env)
-		{
-			if(typeof options.env !== 'object')
-			{
-				throw new TypeError("options.env must be an object")
-			}
-			context.env = Object.assign(context.env, deepCopyObject(options.env));
-		}
-		if(options.argv0)
-		{
-			if(typeof options.argv0 !== 'string')
-			{
-				throw new TypeError("options.argv0 must be a string");
-			}
-			argv0 = options.argv0;
-		}
-
-		// build streams
-		const stdin = createTwoWayStream(kernel, context);
-		const stdout = createTwoWayStream(kernel, context);
-		const stderr = createTwoWayStream(kernel, context);
-
-		// apply options
-		context.argv = [argv0].concat(args);
-
-		// build process scope
-		let exports = null;
-		let scope = Object.assign(Object.assign({}, options.scope), {
-			syscall: (func, ...args) => {
-				return kernel.syscall(context, func, ...args);
-			},
-			require: (path) => {
-				return kernel.require(context, scope, dir, path);
-			},
-			requireCSS: (path) => {
-				return kernel.requireCSS(context, dir, path);
-			},
-			__dirname: dir,
-			__filename: fullPath,
-			exports: {},
-			module: new ScriptGlobalAlias(['exports']),
-
-			ExitSignal: ExitSignal,
-			Promise: createProcPromiseClass(context),
-			setTimeout: (...args) => {
-				return kernel.setTimeout(context, ...args);
-			},
-			clearTimeout: (...args) => {
-				return kernel.clearTimeout(context, ...args);
-			},
-			setInterval: (...args) => {
-				return kernel.setInterval(context, ...args);
-			},
-			clearInterval: (...args) => {
-				return kernel.clearInterval(context, ...args);
-			},
-			console: Object.defineProperties(Object.assign({}, console), {
-				log: {
-					value: (...args) => {
-						var strings = [];
-						for(const arg of args)
-						{
-							strings.push(''+arg);
-						}
-						var stringVal = strings.join(' ');
-
-						stdout.input.write(stringVal+'\n');
-						console.log(...args);
-					},
-					enumerable: true
-				},
-				warn: {
-					value: (...args) => {
-						var strings = [];
-						for(const arg of args)
-						{
-							if(arg instanceof Error)
-							{
-								strings.push(''+arg.stack);
-							}
-							else
-							{
-								strings.push(''+arg);
-							}
-						}
-						var stringVal = strings.join(' ');
-
-						stderr.input.write(stringVal+'\n');
-						console.warn(...args);
-					},
-					enumerable: true
-				},
-				error: {
-					value: (...args) => {
-						var strings = [];
-						for(const arg of args)
-						{
-							if(arg instanceof Error)
-							{
-								strings.push(''+arg.stack);
-							}
-							else
-							{
-								strings.push(''+arg);
-							}
-						}
-						var stringVal = strings.join(' ');
-
-						stderr.input.write(stringVal+'\n');
-						console.error(...args);
-					},
-					enumerable: true
-				},
-				memory: {
-					get: () => {
-						return console.memory;
-					}
-				}
-			})
-		});
-		scope.require.resolve = (path) => {
-			return findRequirePath(kernel, context, dir, path);
-		};
-		scope.requireCSS.resolve = (path) => {
-			return resolveCSSPath(kernel, context, dir, path);
-		};
-		scope.requireCSS.wait = (path, callback) => {
-			return waitForCSS(kernel, context, dir, path, callback);
-		};
-		scope.requireCSS.ready = (path) => {
-			return isCSSReady(kernel, context, dir, path);
-		};
-
-		// define Process object
-		const EventEmitter = kernel.require(context, {}, '/', 'events');
-		let process = new EventEmitter();
-		(function(){
-			let procArgv = context.argv.slice(0);
-			Object.defineProperties(this, {
-				'argv': {
-					value: procArgv
-				},
-				'chdir': {
-					value: (path) => {
-						path = kernel.filesystem.resolvePath(context, path);
-						var meta = kernel.filesystem.readMeta(context, path);
-						if(meta.type !== 'dir')
-						{
-							throw new Error("path is not a directory");
-						}
-						context.cwd = path;
-					},
-				},
-				'cwd': {
-					value: () => {
-						return context.cwd;
-					}
-				},
-				'env': {
-					get: () => {
-						return context.env;
-					},
-					set: (value) => {
-						context.env = value;
-					}
-				},
-				'exit': {
-					value: (code) => {
-						if(code == null)
-						{
-							code = 0;
-						}
-						if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
-						{
-							throw new Error("invalid exit code");
-						}
-						if(exited || exiting)
-						{
-							throw new Error("cannot exit process more than once");
-						}
-						// call exit event
-						exiting = true;
-						process.emit('exit', code);
-						// end process
-						if(code != 0)
-						{
-							var error = new Error("process exited with code "+code);
-							error.exitCode = code;
-							context.reject(error);
-						}
-						else
-						{
-							context.resolve();
-						}
-						// throw exit signal
-						var exitSignal = new ExitSignal(code);
-						throw exitSignal;
-					}
-				},
-				'pid': {
-					get: () => {
-						return context.pid;
-					}
-				},
-				'ppid': {
-					get: () => {
-						return parentContext.pid;
-					}
-				},
-				'platform': {
-					get: () => {
-						return osName;
-					}
-				}
-			});
-
-			this.stdin = stdin.output;
-			this.stdout = stdout.input;
-			this.stderr = stderr.input;
-		}).bind(process)();
-		scope.process = process;
-
-		// process lifecycle functions
-
-		function endProcess()
-		{
-			if(!exited)
-			{
-				exited = true;
-				context.valid = false;
-
-				// unload required modules
-				unloadRequired(kernel, context);
-
-				// destroy timeouts and intervals
-				for(const interval of context.intervals)
-				{
-					clearInterval(interval);
-				}
-				context.intervals = [];
-				for(const timeout of context.timeouts)
-				{
-					clearTimeout(timeout);
-				}
-				context.timeouts = [];
-
-				// close I/O streams
-				stdin.input.end();
-				stdout.input.end();
-				stderr.input.end();
-			}
-		}
-
-		function execute()
-		{
-			if(executed)
-			{
-				throw new Error("process already executed");
-			}
-			executed = true;
-
-			return new ProcPromise(parentContext, (resolve, reject) => {
-				context.resolve = (...args) => {
-					endProcess(0);
-					resolve(...args);
-				};
-
-				context.reject = (...args) => {
-					endProcess();
-					reject(...args);
-				};
-
-				// run process
-				try
-				{
-					kernel.filesystem.requireFile(context, scope, path);
-				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
-						// process has ended
-					}
-					else
-					{
-						if(!exited)
-						{
-							console.error("unhandled process error:", error);
-							context.reject(error);
-						}
-						else
-						{
-							// just ignore...
-						}
-					}
-					return;
-				}
-			});
-		}
-
-		Object.defineProperty(this, 'pid', {
-			get: () => {
-				return pid;
-			}
-		});
-
-		// build properties
-		this.stdin = stdin.input;
-		this.stdout = stdout.output;
-		this.stderr = stderr.output;
-
-		// start process
-		this.promise = new ProcPromise(parentContext, (resolve, reject) => {
-			setTimeout(() => {
-				execute().then((...args) => {
-					resolve(...args);
-				}).catch((...args) => {
-					reject(...args);
-				});
-			}, 0);
-		});
-	}
-
-
-
-	// determine the interpreter for the file
-	function getInterpreter(kernel, context, type, path)
-	{
-		path = kernel.filesystem.resolvePath(context, path);
-		if(kernelOptions.interpreters)
-		{
-			for(const interpreter of kernelOptions.interpreters)
-			{
-				if(interpreter.type === type && interpreter.check(path))
-				{
-					return interpreter;
-				}
-			}
-		}
-		return undefined;
-	}
-
-
-
-	let loadedModules = {};
-	let loadedCSS = {};
-	let sharedModules = {};
-
-
-	// check if a given path is a folder
-	function checkIfFolder(kernel, context, path)
-	{
-		var meta = kernel.filesystem.readMeta(context, path);
-		if(meta.type === 'dir')
-		{
-			return true;
-		}
-		return false;
-	}
-
-
-	// resolve a module's main js file from a folder
-	function resolveModuleFolder(kernel, context, path)
-	{
-		var packagePath = path+'/package.json';
-		if(!kernel.filesystem.exists(context, packagePath))
-		{
-			return null;
-		}
-
-		var packageInfo = JSON.parse(kernel.filesystem.readFile(context, packagePath));
-		var mainFile = packageInfo["main"];
-		if(!mainFile)
-		{
-			throw new Error("no main file specified");
-		}
-
-		if(typeof mainFile !== 'string')
-		{
-			throw new TypeError("\"main\" must be a string");
-		}
-
-		if(mainFile.startsWith('/'))
-		{
-			return mainFile;
-		}
-		return kernel.filesystem.concatPaths(context, path, mainFile);
-	}
-
-
-	// find a valid module path from the given context, base path, and path
-	function resolveModulePath(kernel, context, basePath, path, options=null)
-	{
-		options = Object.assign({}, options);
-
-		var modulePath = null;
-		try
-		{
-			modulePath = kernel.filesystem.resolvePath(context, path, basePath);
-		}
-		catch(error)
-		{
-			throw new Error("unable to resolve module path");
-		}
-		
-		// find full module path
-		var fullModulePath = modulePath;
-		if(kernel.filesystem.exists(context, fullModulePath))
-		{
-			if(checkIfFolder(kernel, context, fullModulePath))
-			{
-				fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
+				fullModulePath = resolveModuleFolder(context, fullModulePath);
 				if(fullModulePath != null)
 				{
 					return fullModulePath;
 				}
 			}
-			else
+			else if(checkIfFile(context, fullModulePath))
 			{
 				return fullModulePath;
 			}
-		}
-		fullModulePath = modulePath + '.js';
-		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
-		{
-			return fullModulePath;
-		}
-		fullModulePath = modulePath + '.jsx';
-		if(kernel.filesystem.exists(context, fullModulePath) && !checkIfFolder(kernel, context, fullModulePath))
-		{
-			return fullModulePath;
-		}
-		if(options.folderExtensions)
-		{
-			for(const extension of options.folderExtensions)
+			// check if file exists with a js extension
+			fullModulePath = modulePath + '.js';
+			if(checkIfFile(context, fullModulePath))
 			{
-				fullModulePath = modulePath + '.' + extension;
-				if(kernel.filesystem.exists(context, fullModulePath) && checkIfFolder(kernel, context, fullModulePath))
+				return fullModulePath;
+			}
+			// check file against known script extensions
+			if(kernelOptions.scriptExtensions)
+			{
+				for(const scriptExt of kernelOptions.scriptExtensions)
 				{
-					fullModulePath = resolveModuleFolder(kernel, context, fullModulePath);
-					if(fullModulePath != null)
+					fullModulePath = modulePath + '.' + scriptExt;
+					if(checkIfFile(context, fullModulePath))
 					{
 						return fullModulePath;
 					}
 				}
 			}
+			// check file against specified folder extensions
+			if(options.dirExtensions)
+			{
+				for(const extension of options.dirExtensions)
+				{
+					fullModulePath = modulePath + '.' + extension;
+					if(checkIfDir(context, fullModulePath))
+					{
+						try
+						{
+							fullModulePath = resolveModuleFolder(context, fullModulePath);
+							if(fullModulePath != null)
+							{
+								return fullModulePath;
+							}
+						}
+						catch(error)
+						{
+							// try the next one
+						}
+					}
+				}
+			}
+			
+			throw new Error("module not found");
 		}
-		
-		throw new Error("module not found");
-	}
 
 
-	// find a valid module path from the given context, base paths, and path
-	function findModulePath(kernel, context, basePaths, dir, path, options=null)
-	{
-		options = Object.assign({}, options);
-
-		var modulePath = null;
-		if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
+		// find a valid module path from the given context, base paths, and path
+		function findModulePath(context, basePaths, dirname, path, options=null)
 		{
-			try
-			{
-				modulePath = resolveModulePath(kernel, context, dir, path, options);
-			}
-			catch(error)
-			{
-				throw new Error("could not resolve module: "+error.message);
-			}
-		}
-		else
-		{
-			if(!basePaths)
-			{
-				basePaths = [];
-			}
-			for(const basePath of basePaths)
+			options = Object.assign({}, options);
+
+			var modulePath = null;
+			if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
 			{
 				try
 				{
-					modulePath = resolveModulePath(kernel, context, basePath, path, options);
-					break;
+					modulePath = resolveModulePath(context, dirname, path, options);
 				}
 				catch(error)
 				{
-					// path couldn't be resolved
+					throw new Error("could not resolve module: "+error.message);
 				}
 			}
-			if(modulePath == null)
+			else
 			{
-				throw new Error("could not resolve module");
-			}
-		}
-		return modulePath;
-	}
-
-
-	// execute a module in a new context
-	function execute(kernel, context, command, args=[], options=null)
-	{
-		if(!(args instanceof Array))
-		{
-			throw new TypeError("args must be an array");
-		}
-
-		// get full module path
-		var paths = [];
-		if(context.env && context.env.paths)
-		{
-			paths = context.env.paths;
-		}
-		var modulePath = findModulePath(kernel, context, paths, context.cwd, command, {folderExtensions: ['exe']});
-
-		// add options
-		options = Object.assign({}, options);
-		if(!options.argv0)
-		{
-			options.argv0 = command;
-		}
-
-		return kernel.filesystem.executeFile(context, modulePath, args, options);
-	}
-
-
-	// find the path to a required module
-	function findRequirePath(kernel, context, dir, path)
-	{
-		// get full module path
-		var libpaths = [];
-		if(context.env && context.env.libpaths)
-		{
-			libpaths = context.env.libpaths;
-		}
-		return findModulePath(kernel, context, libpaths, dir, path, {folderExtensions: ['dll']});
-	}
-
-
-	// load a module into the current context
-	function require(kernel, context, parentScope, dir, path)
-	{
-		// get full module path
-		var modulePath = findRequirePath(kernel, context, dir, path);
-
-		// add empty modules object for context if necessary
-		if(!loadedModules[context.pid])
-		{
-			loadedModules[context.pid] = {};
-		}
-
-		// use shared container if library is in /system/slib
-		let moduleContext = context;
-		let moduleContainer = loadedModules[context.pid];
-		if(modulePath.startsWith('/system/slib'))
-		{
-			moduleContext = rootContext;
-			moduleContainer = sharedModules;
-		}
-
-		// check if module already loaded
-		if(moduleContainer[modulePath] !== undefined)
-		{
-			return moduleContainer[modulePath];
-		}
-
-		// get parent directory of module path
-		const moduleDir = kernel.filesystem.dirname(context, modulePath);
-
-		// create module scope
-		var scope = Object.assign({}, parentScope);
-		scope.require = (path) => {
-			return require(kernel, moduleContext, scope, moduleDir, path);
-		};
-		scope.require.resolve = (path) => {
-			return findRequirePath(kernel, moduleContext, moduleDir, path);
-		};
-		scope.requireCSS = (path) => {
-			return requireCSS(kernel, moduleContext, moduleDir, path);
-		};
-		scope.requireCSS.resolve = (path) => {
-			return resolveCSSPath(kernel, moduleContext, dir, path);
-		};
-		scope.requireCSS.wait = (path, callback) => {
-			return waitForCSS(kernel, moduleContext, dir, path, callback);
-		};
-		scope.requireCSS.ready = (path) => {
-			return isCSSReady(kernel, moduleContext, dir, path);
-		};
-		scope.__dirname = moduleDir;
-		scope.__filename = modulePath;
-		scope.exports = {};
-		scope.module = new ScriptGlobalAlias(['exports']);
-
-		// require file
-		try
-		{
-			kernel.filesystem.requireFile(moduleContext, scope, modulePath);
-		}
-		catch(error)
-		{
-			console.error("unable to require "+path, error);
-			throw error;
-		}
-
-		// save exported module
-		moduleContainer[modulePath] = scope.exports;
-
-		// return exported module
-		return scope.exports;
-	}
-
-
-	// resolve a required CSS file
-	function resolveCSSPath(kernel, context, dir, path)
-	{
-		if(typeof path !== 'string')
-		{
-			throw new TypeError("path must be a string");
-		}
-
-		// validate path
-		if(!path.startsWith('/') && !path.startsWith('./') && !path.startsWith('../'))
-		{
-			throw new Error("invalid path");
-		}
-
-		// resolve full path
-		var cssPath = kernel.filesystem.resolvePath(context, path, dir);
-
-		// resolve actual css file path
-		var testExtensions = ['', '.css', '.scss'];
-		for(const extension of testExtensions)
-		{
-			var testPath = cssPath+extension;
-			if(kernel.filesystem.exists(context, testPath) && !checkIfFolder(kernel, context, testPath))
-			{
-				return cssPath;
-			}
-		}
-		throw new Error("unable to resolve css path "+path);
-	}
-
-
-	// inject a CSS file into the current page
-	function requireCSS(kernel, context, dir, path)
-	{
-		var cssPath = resolveCSSPath(kernel, context, dir, path);
-
-		// check if css already loaded
-		if(loadedCSS[cssPath])
-		{
-			// add process PID if necessary
-			var info = loadedCSS[cssPath];
-			if(info.pids.indexOf(context.pid) === -1)
-			{
-				info.pids.push(context.pid);
-			}
-			loadedCSS[cssPath] = info;
-			return new Promise((resolve, reject) => {
-				waitForCSS(kernel, context, dir, cssPath, () => {
-					if(loadedCSS[cssPath].error)
+				for(const basePath of basePaths)
+				{
+					try
 					{
-						reject(loadedCSS[cssPath].error);
-						return;
+						modulePath = resolveModulePath(context, basePath, path, options);
+						break;
 					}
-					resolve();
-				})
-			});
-		}
-
-		// read css data
-		var cssData = null;
-		try
-		{
-			cssData = kernel.filesystem.readFile(context, cssPath);
-		}
-		catch(error)
-		{
-			throw new Error("unable to read css file: "+error.message);
-		}
-
-		// TODO parse out special CSS functions
-
-		// add style tag to page
-		var head = document.querySelector('head');
-		let styleTag = document.createElement("STYLE");
-		styleTag.type = "text/css";
-		head.appendChild(styleTag);
-
-		// save tag
-		loadedCSS[cssPath] = {
-			pids: [context.pid],
-			tag: styleTag,
-			ready: false
-		};
-
-		// interpret css
-		var cssPromise = null;
-		var interpreter = getInterpreter(kernel, context, 'style', cssPath);
-		if(interpreter)
-		{
-			cssPromise = interpreter.transform(cssData, context);
-		}
-		else
-		{
-			// apply plain content
-			cssPromise = Promise.resolve(cssData);
-		}
-
-		// add CSS to page when finished parsing
-		return new ProcPromise(context, (resolve, reject) => {
-			cssPromise.then((cssData) => {
-				if(!loadedCSS[cssPath])
-				{
-					return;
+					catch(error)
+					{
+						// path couldn't be resolved
+					}
 				}
-				styleTag.textContent = cssData;
-				loadedCSS[cssPath].ready = true;
-				resolve();
-			}).catch((error) => {
-				if(!loadedCSS[cssPath])
+				if(modulePath == null)
 				{
-					return;
+					throw new Error("could not resolve module");
 				}
-				console.error("failed to parse "+path+": "+error.message);
-				loadedCSS[cssPath].error = error;
-				loadedCSS[cssPath].ready = true;
-				reject(error);
-			});
-		});
-	}
+			}
+			return modulePath;
+		}
 
 
-	// check if CSS for this context is ready
-	function isCSSReady(kernel, context, dir, path=null)
-	{
-		if(path != null)
+		// determine the interpreter for the file
+		function getInterpreter(context, type, path)
 		{
-			// check for specific CSS file
-			var cssPath = null;
+			path = resolveRelativePath(context, path);
+			if(kernelOptions.interpreters)
+			{
+				for(const interpreter of kernelOptions.interpreters)
+				{
+					if(interpreter.type === type && interpreter.check(path))
+					{
+						return interpreter;
+					}
+				}
+			}
+			return undefined;
+		}
+
+
+		// validate a scope variable name
+		const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
+		function validateVariableName(varName)
+		{
+			if(typeof varName !== 'string')
+			{
+				throw new TypeError("variable name must be a string");
+			}
+			// ensure string isn't empty
+			if(varName.length == 0)
+			{
+				throw new Error("empty string cannot be variable name");
+			}
+			// ensure all characters are valid
+			for(const char of varName)
+			{
+				if(validScopeCharacters.indexOf(char) === -1)
+				{
+					throw new Error("invalid scope variable name "+varName);
+				}
+			}
+			// ensure name doesn't start with a number
+			if("1234567890".indexOf(varName[0]) !== -1)
+			{
+				throw new Error("variable name cannot start with a number");
+			}
+		}
+
+
+		// run code with a given scope and interpreter
+		function runScript(context, code, scope={}, interpreter=null)
+		{
+			// transform code if necessary
+			if(interpreter)
+			{
+				if(typeof interpreter.transform !== 'function')
+				{
+					throw new TypeError("interpreter.transform must be a function");
+				}
+				code = interpreter.transform(code, context);
+			}
+			
+			// create strings for global scope variables
+			var prefixString = '';
+			var suffixString = '';
+			for(const decType in scope)
+			{
+				for(const varName in scope[decType])
+				{
+					validateVariableName(varName);
+					var varValue = scope[decType][varName];
+					if(varValue instanceof ScriptGlobalAlias)
+					{
+						var aliases = varValue.aliases;
+						prefixString += decType+' '+varName+' = Object.defineProperties({}, { ';
+						for(var i=0; i<aliases.length; i++)
+						{
+							const alias = aliases[i];
+							validateVariableName(alias);
+							prefixString += '"'+alias+'": {';
+							prefixString += 'get:() => { return '+alias+'; },set:(___val) => { '+alias+' = ___val; }';
+							prefixString += '}';
+							if(i < (aliases.length-1))
+							{
+								prefixString += ',';
+							}
+						}
+						prefixString += '});\n';
+					}
+					else
+					{
+						prefixString += decType+' '+varName+' = __scope.'+decType+'.'+varName+';\n';
+						if(decType !== 'const')
+						{
+							suffixString += '__scope.'+decType+'.'+varName+' = '+varName+';\n';
+						}
+					}
+				}
+			}
+
+			// evaluate the code
+			return evalJavaScript(scope, prefixString+'\n(() => {\n'+code+'\n})()\n'+suffixString);
+		}
+
+
+		// run a script with the specified scope
+		function requireFile(context, path, scope={})
+		{
+			path = resolveRelativePath(context, path);
+			const data = context.modules.fs.readFileSync(path, {encoding:'utf8'});
+			const interpreter = getInterpreter(context, 'script', path);
+			return runScript(context, data, scope, interpreter);
+		}
+
+
+		// handle node's 'require' function
+		function require(context, parentScope, dirname, path)
+		{
+			// check if built-in module
+			if(context.modules[path])
+			{
+				return context.modules[path];
+			}
+			if(context.builtIns.modules[path])
+			{
+				return context.builtIns.modules[path];
+			}
+			// get full module path
+			var basePaths = kernelOptions.libPaths || [];
+			var modulePath = findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
+
+			// check if library is shared
+			let moduleContext = context;
+			let moduleContainer = context.loadedModules;
+			if(kernelOptions.sharedLibPaths)
+			{
+				for(var libPath of kernelOptions.sharedLibPaths)
+				{
+					if(!libPath.endsWith('/'))
+					{
+						libPath += '/';
+					}
+					if(modulePath.startsWith(libPath))
+					{
+						moduleContext = rootContext;
+						moduleContainer = loadedSharedModules;
+						break;
+					}
+				}
+			}
+
+			// check if module has already been loaded
+			if(moduleContainer[modulePath] !== undefined)
+			{
+				return moduleContainer[modulePath];
+			}
+
+			// get parent directory of module path
+			const moduleDir = context.builtIns.path.dirname(modulePath);
+
+			// create slightly modified module scope
+			var scope = {
+				'const': Object.assign({}, parentScope.const),
+				'let': Object.assign({}, parentScope.let),
+				'var': Object.assign({}, parentScope.var)
+			};
+			scope.const.require = Object.defineProperties((path) => {
+				return require(moduleContext, scope, moduleDir, path);
+			}, {
+				resolve: {
+					value: (path) => {
+						return require.resolve(moduleContext, moduleDir, path);
+					},
+					writable: false
+				}
+			});
+			scope.const.requireCSS = Object.defineProperties((path) => {
+				return requireCSS(context, moduleDir, path);
+			}, {
+				resolve: {
+					value: (path) => {
+						return resolveCSSPath(context, moduleDir, path);
+					},
+					writable: false
+				},
+				wait: {
+					value: (path, callback) => {
+						return waitForCSS(context, moduleDir, path, callback);
+					},
+					writable: false
+				},
+				ready: {
+					value: (path) => {
+						return isCSSReady(context, moduleDir, path);
+					},
+					writable: false
+				}
+			});
+			scope.const.__dirname = moduleDir;
+			scope.const.__filename = modulePath;
+			scope.const.module = new ScriptGlobalAlias(['exports']);
+			scope.let.exports = {};
+
+			// require file
 			try
 			{
-				cssPath = resolveCSSPath(kernel, context, dir, path);
+				requireFile(moduleContext, modulePath, scope);
 			}
 			catch(error)
 			{
-				return false;
+				console.error("unable to require "+path, error);
+				throw error;
 			}
 
-			return loadedCSS[cssPath].ready;
+			// save exported module
+			moduleContainer[modulePath] = scope.exports;
+
+			// return exported module
+			return scope.exports;
 		}
-		else
+
+
+		// resolves the path to a given module
+		require.resolve = function(context, dirname, path)
 		{
-			// check for all CSS files used by this context
-			for(const cssPath in loadedCSS)
+			// check if built-in module
+			if(context.modules[path])
 			{
-				var info = loadedCSS[cssPath];
-				if(!info.ready)
+				return path;
+			}
+			if(context.builtIns.modules[path])
+			{
+				return path;
+			}
+			// get full module path
+			var basePaths = kernelOptions.libPaths || [];
+			return findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
+		}
+
+
+		// resolve a required CSS file
+		function resolveCSSPath(context, dirname, path)
+		{
+			// resolve full path
+			var cssPath = resolveRelativePath(context, path, dirname);
+
+			// resolve actual css file path
+			var testExtensions = ['', '.css'];
+			if(kernelOptions.styleExtensions)
+			{
+				for(const extension of kernelOptions.styleExtensions)
 				{
-					if(info.pids.indexOf(context.pid) !== -1)
+					testExtensions.push('.'+extension);
+				}
+			}
+			for(const extension of testExtensions)
+			{
+				var testPath = cssPath+extension;
+				if(checkIfFile(context, testPath))
+				{
+					return cssPath;
+				}
+			}
+			throw new Error("unable to resolve css path "+path);
+		}
+
+
+		// inject a CSS file into the current page
+		function requireCSS(context, dirname, path)
+		{
+			var cssPath = resolveCSSPath(context, dirname, path);
+
+			// check if css already loaded
+			if(loadedCSS[cssPath])
+			{
+				// add process PID if necessary
+				var info = loadedCSS[cssPath];
+				if(info.pids.indexOf(context.pid) === -1)
+				{
+					info.pids.push(context.pid);
+				}
+				loadedCSS[cssPath] = info;
+				return new ProcPromise(context, (resolve, reject) => {
+					waitForCSS(context, dirname, cssPath, () => {
+						if(loadedCSS[cssPath].error)
+						{
+							reject(loadedCSS[cssPath].error);
+							return;
+						}
+						resolve();
+					})
+				});
+			}
+
+			// read css data
+			var cssData = context.modules.fs.readFileSync(cssPath);
+
+			// TODO parse out special CSS functions
+
+			// add style tag to page
+			var head = document.querySelector('head');
+			let styleTag = document.createElement("STYLE");
+			styleTag.type = "text/css";
+			head.appendChild(styleTag);
+
+			// save tag
+			loadedCSS[cssPath] = {
+				pids: [context.pid],
+				tag: styleTag,
+				ready: false
+			};
+
+			// interpret css
+			var cssPromise = null;
+			var interpreter = getInterpreter(context, 'style', cssPath);
+			if(interpreter)
+			{
+				cssPromise = interpreter.transform(cssData, context);
+			}
+			else
+			{
+				// apply plain content
+				cssPromise = Promise.resolve(cssData);
+			}
+
+			// add CSS to page when finished parsing
+			return new ProcPromise(context, (resolve, reject) => {
+				cssPromise.then((cssData) => {
+					if(!loadedCSS[cssPath])
 					{
-						return false
+						return;
+					}
+					styleTag.textContent = cssData;
+					loadedCSS[cssPath].ready = true;
+					resolve();
+				}).catch((error) => {
+					if(!loadedCSS[cssPath])
+					{
+						return;
+					}
+					console.error("failed to parse "+path+": "+error.message);
+					loadedCSS[cssPath].error = error;
+					loadedCSS[cssPath].ready = true;
+					reject(error);
+				});
+			});
+		}
+
+
+		// check if CSS for this context is ready
+		function isCSSReady(context, dirname, path=null)
+		{
+			if(path != null)
+			{
+				// check for specific CSS file
+				var cssPath = null;
+				try
+				{
+					cssPath = resolveCSSPath(context, dirname, path);
+				}
+				catch(error)
+				{
+					return false;
+				}
+
+				return loadedCSS[cssPath].ready;
+			}
+			else
+			{
+				// check for all CSS files used by this context
+				for(const cssPath in loadedCSS)
+				{
+					var info = loadedCSS[cssPath];
+					if(!info.ready)
+					{
+						if(info.pids.indexOf(context.pid) !== -1)
+						{
+							return false
+						}
+					}
+				}
+
+				return true;
+			}
+		}
+
+		
+		// wait for CSS file(s) to be ready
+		function waitForCSS(context, dirname, path, callback)
+		{
+			if(typeof path == 'function')
+			{
+				callback = path;
+				path = null;
+			}
+
+			// check if file(s) ready
+			var ready = true;
+			if(path instanceof Array)
+			{
+				for(const cssPath of path)
+				{
+					if(!isCSSReady(context, dirname, cssPath))
+					{
+						ready = false;
+						break;
 					}
 				}
 			}
-
-			return true;
-		}
-	}
-
-	
-	// wait for CSS file(s) to be ready
-	function waitForCSS(kernel, context, dir, path, callback)
-	{
-		if(typeof path == 'function')
-		{
-			callback = path;
-			path = null;
-		}
-
-		// check if file(s) ready
-		var ready = true;
-		if(path instanceof Array)
-		{
-			for(const cssPath of path)
+			else if(typeof path == 'string')
 			{
-				if(!isCSSReady(kernel, context, dir, cssPath))
+				if(!isCSSReady(context, dirname, path))
 				{
 					ready = false;
-					break;
 				}
 			}
-		}
-		else if(typeof path == 'string')
-		{
-			if(!isCSSReady(kernel, context, dir, path))
+			else if(path != null)
 			{
-				ready = false;
+				throw new TypeError("path must be a string or an Array");
 			}
-		}
-		else if(path != null)
-		{
-			throw new TypeError("path must be a string or an Array");
-		}
 
-		// finish if ready ;)
-		if(ready)
-		{
-			callback();
-			return;
-		}
-
-		// wait a little bit and try again
-		kernel.setTimeout(context, () => {
-			waitForCSS(kernel, context, dir, path, callback);
-		}, 100);
-	}
-
-	// unload any required scripts or CSS
-	function unloadRequired(kernel, context)
-	{
-		// delete any loaded modules for this PID
-		delete loadedModules[context.pid];
-		// remove PID references from loaded CSS
-		for(const cssPath of Object.keys(loadedCSS))
-		{
-			var info = loadedCSS[cssPath];
-			var pidIndex = info.pids.indexOf(context.pid);
-			if(pidIndex !== -1)
+			// finish if ready ;)
+			if(ready)
 			{
-				info.pids.splice(pidIndex, 1);
-				if(info.pids.length === 0)
-				{
-					// no referencing PIDs remaining. unload CSS
-					info.tag.parentNode.removeChild(info.tag);
-					delete loadedCSS[cssPath];
+				callback();
+				return;
+			}
+
+			// wait a little bit and try again
+			browserWrappers.setTimeout(context, () => {
+				waitForCSS(context, dirname, path, callback);
+			}, 100);
+		}
+
+
+		// give a default value if the given value is null
+		function toNonNull(value, defaultValue)
+		{
+			if(value == null)
+			{
+				return defaultValue;
+			}
+			return value;
+		}
+
+
+		// create a new context from a given context
+		function createContext(parentContext = null)
+		{
+			parentContext = Object.assign({}, parentContext);
+			let context = null;
+
+			let moduleGenerator = {};
+			let modules = {};
+			for(let moduleName in generatedModules)
+			{
+				Object.defineProperty(moduleGenerator, moduleName, {
+					get: () => {
+						if(modules[moduleName] === undefined)
+						{
+							modules[moduleName] = generatedModules[moduleName](context);
+						}
+						return modules[moduleName];
+					}
+				});
+			}
+
+			context = {
+				cwd: toNonNull(parentContext.cwd, '/'),
+				pid: toNonNull(parentContext.pid, 0),
+				uid: toNonNull(parentContext.uid, 0),
+				gid: toNonNull(parentContext.uid, 0),
+				stdin: null,
+				stdout: null,
+				stderr: null,
+				argv: toNonNull(parentContext.argv, []).slice(0),
+				env: deepCopyObject(toNonNull(parentContext.env, {})),
+
+				timeouts: [],
+				intervals: [],
+				modules: moduleGenerator,
+				loadedModules: {},
+
+				valid: true,
+				exiting: false,
+				invalidate: () => {
+					if(context.valid)
+					{
+						context.valid = false;
+
+						// TODO unload CSS
+
+						// destroy timeouts and intervals
+						for(const interval of context.intervals)
+						{
+							clearInterval(interval);
+						}
+						context.intervals = [];
+						for(const timeout of context.timeouts)
+						{
+							clearTimeout(timeout);
+						}
+						context.timeouts = [];
+
+						// close I/O streams
+						if(context.stdin)
+						{
+							stdin.input.end();
+						}
+						if(context.stdout)
+						{
+							stdout.input.end();
+						}
+						if(context.stderr)
+						{
+							stderr.input.end();
+						}
+					}
 				}
+			};
+
+			context.builtIns = createBuiltIns(context);
+
+			return context;
+		}
+
+
+		// take a normal function and make it an asyncronous promise
+		function makeAsyncPromise(context, task)
+		{
+			return new Promise((resolve, reject) => {
+				browserWrappers.setTimeout(context, () => {
+					var retVal = null;
+					try
+					{
+						retVal = task();
+					}
+					catch(error)
+					{
+						reject(error);
+						return;
+					}
+					resolve(retVal);
+				}, 0);
+			});
+		}
+
+
+
+		// append information to the system log
+		function log(context, message, options)
+		{
+			options = Object.assign({}, options);
+
+			var kernelElement = document.getElementById("kernel");
+			if(kernelElement != null)
+			{
+				const logElement = document.createElement("DIV");
+				logElement.textContent = message;
+				logElement.style.color = options.color;
+
+				kernelElement.appendChild(logElement);
+				kernelElement.scrollTop = kernelElement.scrollHeight;
 			}
 		}
-	}
 
 
-	// facilitate a kernel call
-	function syscall(kernel, context, func, ...args)
-	{
-		if(typeof func != 'string')
+
+		// call special kernel functions
+		function syscall(context, func, ...args)
 		{
-			throw new Error("func must be a string");
-		}
-		func = ''+func;
+			if(typeof func != 'string')
+			{
+				throw new Error("func must be a string");
+			}
+			func = ''+func;
 
-		if(!context.valid)
-		{
-			throw new Error("calling context is not valid");
-		}
+			if(!context.valid)
+			{
+				throw new Error("calling context is not valid");
+			}
 
-		var funcParts = func.split('.');
-		if(funcParts.length > 2)
-		{
-			throw new Error("invalid system call");
-		}
-		switch(funcParts[0])
-		{
-			case 'filesystem':
-				if(!Object.keys(kernel.filesystem).includes(funcParts[1]))
-				{
-					throw new Error("invalid system call");
-				}
-				var caller = kernel.filesystem[funcParts[1]];
-				return caller(context, ...args);
-
-			case 'execute':
-				if(funcParts[1] != null)
-				{
-					throw new Error("invalid system call");
-				}
-				return kernel.execute(context, ...args);
-				
-			case 'log':
-				if(funcParts[1] != null)
-				{
-					throw new Error("invalid system call");
-				}
-				return kernel.log(context, ...args);
-
-			default:
+			var funcParts = func.split('.');
+			if(funcParts.length > 2)
+			{
 				throw new Error("invalid system call");
-		}
-	}
-
-
-	// append information to the system log
-	function log(kernel, context, message, options)
-	{
-		options = Object.assign({}, options);
-
-		var kernelElement = document.getElementById("kernel");
-
-		const logElement = document.createElement("DIV");
-		logElement.textContent = message;
-		logElement.style.color = options.color;
-
-		kernelElement.appendChild(logElement);
-		kernelElement.scrollTop = kernelElement.scrollHeight;
-	}
-
-
-	// build kernel object
-	this.rootContext = rootContext;
-	this.filesystem = new Filesystem(this, window.localStorage);
-	this.execute = (context, path, args=[], options=null) => {
-		return execute(this, context, path, args, options);
-	};
-	this.require = (context, scope, dir, path) => {
-		return require(this, context, scope, dir, path);
-	};
-	this.require.resolve = (context, dir, path) => {
-		return findRequirePath(this, context, dir, path);
-	};
-	this.requireCSS = (context, dir, path) => {
-		return requireCSS(this, context, dir, path);
-	};
-	this.syscall = (context, func, ...args) => {
-		return syscall(this, context, func, ...args);
-	};
-	this.log = (context, message, options) => {
-		return log(this, context, message, options);
-	};
-	this.ProcPromise = ProcPromise;
-
-	// make polyfills for standard functions
-
-	this.setTimeout = (context, handler, ...args) => {
-		if(typeof handler !== 'function')
-		{
-			throw new TypeError("handler must be a function");
-		}
-
-		const timeout = setTimeout((...args) => {
-			var index = context.timeouts.indexOf(timeout);
-			if(index !== -1)
-			{
-				context.timeouts.splice(index, 1);
 			}
-			handler(...args);
-		}, ...args);
-
-		context.timeouts.push(timeout);
-		return timeout;
-	};
-	this.clearTimeout = (context, timeout) => {
-		var index = context.timeouts.indexOf(timeout);
-		if(index !== -1)
-		{
-			context.timeouts.splice(index, 1);
-		}
-		return clearTimeout(timeout);
-	};
-
-	this.setInterval = (context, handler, ...args) => {
-		if(typeof handler !== 'function')
-		{
-			throw new TypeError("handler must be a function");
-		}
-
-		const interval = setInterval((...args) => {
-			var index = context.intervals.indexOf(interval);
-			if(index !== -1)
+			switch(funcParts[0])
 			{
-				context.intervals.splice(index, 1);
+				case 'log':
+					if(funcParts[1] != null)
+					{
+						throw new Error("invalid system call");
+					}
+					return log(context, ...args);
+
+				default:
+					throw new Error("invalid system call");
 			}
-			handler(...args);
-		}, ...args);
-
-		context.intervals.push(interval);
-		return interval;
-	};
-	this.clearInterval = (context, interval) => {
-		var index = context.intervals.indexOf(interval);
-		if(index !== -1)
-		{
-			context.intervals.splice(index, 1);
 		}
-		return clearInterval(interval);
-	};
 
 
-	this.boot = (path, url) => {
-		this.filesystem.createDir(rootContext, '/system', {ignoreIfExists: true});
-		this.filesystem.createDir(rootContext, '/system/lib', {ignoreIfExists: true});
-		// download dependencies
-		this.filesystem.downloadFile(rootContext, 'https://raw.githubusercontent.com/Gozala/events/master/events.js', '/system/lib/events.js').then(() => {
-			return this.filesystem.downloadFile(rootContext, url, path);
-		}).then(() => {
-			this.filesystem.executeFile(rootContext, path, [], {scope: {kernel: this}});
-		}).catch((error) => {
-			this.log(rootContext, 'unable to boot', {error:'red'});
-			this.log(rootContext, error.toString(), {color: 'red'});
-			console.error(error);
+
+		// define kernel modules
+		generatedModules = {
+			'fs': (context) => {
+				const FS = {};
+
+				const Buffer = context.builtIns.modules.buffer.Buffer;
+				const inodePrefix = fsPrefix+'__inode:';
+				const entryPrefix = fsPrefix+'__entry:';
+
+				// use inodes to handle creating filesystem entries
+				// valid inode types: FILE, DIR, LINK, REMOTE
+
+				function createINode(type, info)
+				{
+					// validate type
+					if(typeof type !== 'string')
+					{
+						throw new TypeError("inode type must be a string");
+					}
+					if(['FILE', 'DIR', 'LINK', 'REMOTE'].indexOf(type) === -1)
+					{
+						throw new Error("invalid inode type "+type);
+					}
+					// find available inode ID
+					var id = 1;
+					while(true)
+					{
+						var item = storage.getItem(inodePrefix+id);
+						if(!item)
+						{
+							break;
+						}
+						id++;
+					}
+					// create inode
+					info = Object.assign({uid: 0, gid: 0, mode: 0o777}, info);
+					var inode = {
+						'type': type,
+						'uid': info.uid,
+						'gid': info.gid,
+						'mode': info.mode
+					};
+					// store inode
+					storage.setItem(inodePrefix+id, JSON.stringify(inode));
+					var data = '';
+					switch(type)
+					{
+						case 'FILE':
+						case 'LINK':
+						case 'REMOTE':
+							data = Buffer.from('', 'utf8');
+							break;
+
+						case 'DIR':
+							data = {};
+							break;
+					}
+					writeINodeContent(id, data);
+					return id;
+				}
+
+
+				function getINode(id)
+				{
+					var inode = storage.getItem(inodePrefix+id);
+					if(!inode)
+					{
+						throw new Error("cannot access nonexistant inode "+id);
+					}
+					return JSON.parse(inode);
+				}
+
+
+				function destroyINode(id)
+				{
+					storage.removeItem(inodePrefix+id);
+					writeINodeContent(id, null);
+				}
+
+
+				function doesINodeExist(id)
+				{
+					if(storage.getItem(inodePrefix+id))
+					{
+						return true;
+					}
+					return false;
+				}
+
+
+				function getModePart(accessor, mode)
+				{
+					mode = mode.toString(8);
+					while(mode.length < 4)
+					{
+						mode = '0'+mode;
+					}
+					switch(accessor)
+					{
+						case 'sticky':
+							return parseInt(mode[0]);
+
+						case 'owner':
+							return parseInt(mode[1]);
+
+						case 'group':
+							return parseInt(mode[2]);
+
+						case 'world':
+							return parseInt(mode[3]);
+					}
+				}
+
+
+				function readINodeContent(id)
+				{
+					var inode = getINode(id);
+
+					switch(inode.type)
+					{
+						case 'FILE':
+							var content = storage.getItem(entryPrefix+id);
+							if(content == null)
+							{
+								return null;
+							}
+							return Buffer.from(content, 'base64');
+
+						case 'DIR':
+							var content = storage.getItem(entryPrefix+id);
+							if(content == null)
+							{
+								return null;
+							}
+							return JSON.parse(content);
+
+						case 'LINK':
+							var content = storage.getItem(entryPrefix+id);
+							if(content == null)
+							{
+								return null;
+							}
+							return Buffer.from(content, 'base64');
+
+						case 'REMOTE':
+							return Buffer.from(tmpStorage[id]);
+
+						default:
+							throw new Error("invalid inode type");
+					}
+				}
+
+
+				function writeINodeContent(id, content)
+				{
+					var inode = getINode(id);
+
+					switch(inode.type)
+					{
+						case 'FILE':
+							if(content == null)
+							{
+								storage.removeItem(entryPrefix+id);
+							}
+							else
+							{
+								if(!(content instanceof Buffer))
+								{
+									throw new TypeError("inode file content must be a buffer");
+								}
+								storage.setItem(entryPrefix+id, content.toString('base64'));
+							}
+							break;
+
+						case 'DIR':
+							if(content == null)
+							{
+								storage.removeItem(entryPrefix+id);
+							}
+							else
+							{
+								if(typeof content !== 'object')
+								{
+									throw new TypeError("inode dir content must be an object");
+								}
+								storage.setItem(entryPrefix+id, JSON.stringify(content));
+							}
+							break;
+
+						case 'LINK':
+							if(content == null)
+							{
+								storage.removeItem(entryPrefix+id);
+							}
+							else
+							{
+								if(!(content instanceof Buffer))
+								{
+									throw new TypeError("inode file content must be a buffer");
+								}
+								storage.setItem(entryPrefix+id, content.toString('base64'));
+							}
+							break;
+
+						case 'REMOTE':
+							if(content == null)
+							{
+								delete tmpStorage[id];
+							}
+							else
+							{
+								if(!(content instanceof Buffer))
+								{
+									throw new TypeError("inode remote content must be a buffer");
+								}
+								tmpStorage[id] = Buffer.from(content);
+							}
+							break;
+
+						default:
+							throw new Error("invalid inode type");
+					}
+				}
+
+
+				function validatePath(path)
+				{
+					if(path instanceof Buffer)
+					{
+						path = path.toString('utf8');
+					}
+					if(typeof path !== 'string')
+					{
+						throw new TypeError("path must be a string");
+					}
+					path = resolveRelativePath(context, path);
+					if(!path.startsWith('/'))
+					{
+						throw new Error("internal inconsistency: resolved path is not absolute");
+					}
+					return path;
+				}
+
+
+				function findINode(path)
+				{
+					// validate path
+					path = validatePath(path);
+					// get all path parts
+					var pathParts = path.split('/');
+					// remove empty path parts
+					for(var i=0; i<pathParts.length; i++)
+					{
+						if(pathParts[i] == '')
+						{
+							pathParts.splice(i, 1);
+							i--;
+						}
+					}
+					// traverse directories to find path
+					var rootEntry = readINodeContent(0);
+					var entry = rootEntry;
+					var id = 0;
+					for(const pathPart of pathParts)
+					{
+						var inode = getINode(id);
+						// TODO, while entry is a link, set the link destination as the current entry
+						// make sure the entry is a directory
+						if(inode.type !== 'DIR')
+						{
+							throw new Error("part of path is not a directory");
+						}
+						// make sure next part of path exists
+						if(entry[pathPart] == null)
+						{
+							return null;
+						}
+						// TODO check permissions
+						id = entry[pathPart];
+						entry = readINodeContent(id);
+					}
+					return id;
+				}
+
+
+				function createPathEntry(path, type, info, options)
+				{
+					options = Object.assign({}, options);
+					// validate path
+					path = validatePath(path);
+
+					// get info about parent directory
+					var pathName = context.builtIns.modules.path.basename(path);
+					var pathDir = context.builtIns.modules.path.dirname(path);
+					var parentId = findINode(pathDir);
+					if(parentId == null)
+					{
+						throw new Error("parent directory does not exist");
+					}
+					var parentINode = getINode(parentId);
+					if(parentINode.type != 'DIR')
+					{
+						throw new Error("parent entry is not a directory");
+					}
+					var parentData = readINodeContent(parentId);
+
+					// ensure path doesn't already exist
+					if(parentData[pathName] != null)
+					{
+						if(options.onlyIfMissing)
+						{
+							return parentData[pathName];
+						}
+						throw new Error("entry already exists");
+					}
+					
+					// add entry to parent dir
+					var id = createINode(type, info);
+					parentData[pathName] = id;
+					writeINodeContent(parentId, parentData);
+
+					// done
+					return id;
+				}
+
+
+				function movePathEntry(oldPath, newPath)
+				{
+					// validate paths
+					oldPath = validatePath(oldPath);
+					newPath = validatePath(newPath);
+
+					// get info about parent directory
+					function getPathInfo(path)
+					{
+						var pathName = context.builtIns.modules.path.basename(path);
+						var pathDir = context.builtIns.modules.path.dirname(path);
+						var parentId = findINode(oldPathDir);
+						if(parentId == null)
+						{
+							throw new Error("parent directory does not exist");
+						}
+						var parentINode = getINode(parentId);
+						if(parentINode.type != 'DIR')
+						{
+							throw new Error("parent entry is not a directory");
+						}
+						var parentData = readINodeContent(parentId);
+						return {
+							name: pathName,
+							dirname: pathDir,
+							parentId: parentId,
+							parentINode: parentINode,
+							parentData: parentData
+						};
+					}
+					var oldInfo = getPathInfo(oldPath);
+					var newInfo = getPathInfo(newPath);
+
+					// move from old dir to new dir
+					if(oldInfo.parentData[oldInfo.name] == null)
+					{
+						throw new Error("entry does not exist");
+					}
+					if(newInfo.parentData[newInfo.name] != null)
+					{
+						throw new Error("destination entry already exists");
+					}
+					var id = oldInfo.parentData[oldInfo.name];
+					delete oldInfo.parentData[oldInfo.name];
+					newInfo.parentData[newInfo.name] = id;
+					
+					// flush updated data
+					writeINodeContent(oldInfo.parentId, oldInfo.parentData);
+					writeINodeContent(newInfo.parentId, newInfo.parentData);
+				}
+
+
+				function destroyPathEntry(path)
+				{
+					// validate path
+					path = validatePath(path);
+
+					// get info about the parent directory
+					var pathName = context.builtIns.modules.path.basename(path);
+					var pathDir = context.builtIns.modules.path.dirname(path);
+					var parentId = findINode(pathDir);
+					if(parentId == null)
+					{
+						throw new Error("parent directory does not exist");
+					}
+					var parentINode = getINode(parentId);
+					if(parentINode.type !== 'DIR')
+					{
+						throw new Error("parent entry is not a directory");
+					}
+					var parentData = readINodeContent(parentId);
+
+					// ensure entry exists
+					var id = parentData[pathName];
+					if(id == null)
+					{
+						throw new Error("entry does not exist");
+					}
+
+					// remove entry from parent dir
+					var inode = getINode(id);
+					if(inode.type === 'DIR')
+					{
+						// make sure directory is empty
+						var data = readINodeContent(id);
+						if(Object.keys(data).length > 0)
+						{
+							throw new Error("directory is not empty");
+						}
+					}
+					delete parentData[pathName];
+					writeINodeContent(parentId, parentData);
+					destroyINode(id);
+				}
+
+
+
+				//========= FS =========//
+
+				const constants = {
+					COPYFILE_EXCL: 0b00000000000000000000000000000001
+				};
+				
+				Object.defineProperty(FS, 'constants', {
+					value: Object.assign({}, constants),
+					writable: false
+				});
+
+
+
+				class Stats
+				{
+					constructor(id)
+					{
+						var inode = getINode(id);
+
+						Object.defineProperties(this, {
+							// attributes
+							ino: {
+								value: id,
+								writable: false
+							},
+							mode: {
+								value: inode.mode,
+								writable: false
+							},
+							uid: {
+								value: inode.uid,
+								writable: false
+							},
+							gid: {
+								value: inode.gid,
+								writable: false
+							},
+
+							// functions
+							isBlockDevice: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isCharacterDevice: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isDirectory: {
+								value: () => {
+									if(inode.type === 'DIR')
+									{
+										return true;
+									}
+									return false;
+								},
+								writable: false
+							},
+							isFIFO: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isFile: {
+								value: () => {
+									if(inode.type === 'FILE' || inode.type === 'REMOTE')
+									{
+										return true;
+									}
+									return false;
+								},
+								writable: false
+							},
+							isSocket: {
+								value: () => {
+									return false;
+								},
+								writable: false
+							},
+							isSymbolicLink: {
+								value: () => {
+									if(inode.type === 'LINK')
+									{
+										return true;
+									}
+									return false;
+								},
+								writable: false
+							}
+						});
+					}
+				}
+
+				FS.Stats = Stats;
+
+
+
+				function copyFile(src, dest, flags, callback)
+				{
+					if(typeof flags === 'function')
+					{
+						callback = flags;
+						flags = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return copyFileSync(src, dest, flags);
+					}).then((content) => {
+						callback(null, content);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function copyFileSync(src, dest, flags)
+				{
+					if(flags == null)
+					{
+						flags = 0;
+					}
+					if(typeof flags !== 'number' || !Number.isInteger(flags))
+					{
+						throw new TypeError("flags must be an integer");
+					}
+
+					src = validatePath(src);
+					dest = validatePath(dest);
+
+					var srcId = findINode(src);
+					var destId = findINode(dest);
+
+					if(srcId == null)
+					{
+						throw new Error("source file does not exist");
+					}
+					var srcINode = getINode(srcId);
+					if(srcINode.type === 'DIR')
+					{
+						throw new Error("source path is a directory");
+					}
+
+					// copy content
+					var data = readINodeContent(srcId);
+					if(destId == null)
+					{
+						// create destination
+						destId = createPathEntry(dest, 'DIR', {});
+					}
+					else
+					{
+						if((flags & constants.COPYFILE_EXCL) === constants.COPYFILE_EXCL)
+						{
+							throw new Error("destination already exists");
+						}
+						var destINode = getINode(destId);
+						if(destINode.type !== 'DIR')
+						{
+							throw new Error("destination is a directory");
+						}
+					}
+					writeINodeContent(destId, data);
+				}
+
+				FS.copyFile = copyFile;
+				FS.copyFileSync = copyFileSync;
+
+
+
+				function mkdir(path, mode, callback)
+				{
+					if(typeof mode === 'function')
+					{
+						callback = mode;
+						mode = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return mkdirSync(path, mode);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function mkdirSync(path, mode)
+				{
+					if(mode == null)
+					{
+						mode = 0o777;
+					}
+					createPathEntry(path, 'DIR', {mode: mode});
+				}
+
+				FS.mkdir = mkdir;
+				FS.mkdirSync = mkdirSync;
+
+
+
+				function readdir(path, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return readdirSync(path, options);
+					}).then((data) => {
+						callback(null, data);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function readdirSync(path, options)
+				{
+					options = Object.assign({}, options);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("directory does not exist");
+					}
+					var content = readINodeContent(id);
+					var data = [];
+					for(const fileName in content)
+					{
+						data.push(fileName);
+					}
+					return data;
+				}
+
+				FS.readdir = readdir;
+				FS.readdirSync = readdirSync;
+
+				
+
+				function readFile(path, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return readFileSync(path, options);
+					}).then((content) => {
+						callback(null, content);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function readFileSync(path, options)
+				{
+					options = Object.assign({}, options);
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
+					}
+					var content = readINodeContent(id);
+					if(options.encoding)
+					{
+						content = content.toString(options.encoding);
+					}
+					return content;
+				}
+
+				FS.readFile = readFile;
+				FS.readFileSync = readFileSync;
+
+
+
+				function rename(oldPath, newPath, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return renameSync(oldPath, newPath);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function renameSync(oldPath, newPath)
+				{
+					movePathEntry(oldPath, newPath);
+				}
+
+				FS.rename = rename;
+				FS.renameSync = renameSync;
+
+
+
+				function rmdir(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return rmdirSync(path);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function rmdirSync(path)
+				{
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("directory does not exist");
+					}
+					var inode = getINode(id);
+					if(inode.type !== 'DIR')
+					{
+						throw new Error("path is not a directory");
+					}
+					destroyPathEntry(path);
+				}
+
+				FS.rmdir = rmdir;
+				FS.rmdirSync = rmdirSync;
+
+
+
+				function stat(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return statSync(path);
+					}).then((stats) => {
+						callback(null, stats);
+					}).catch((error) => {
+						callback(error, null);
+					});
+				}
+
+				function statSync(path)
+				{
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
+					}
+					return new Stats(id);
+				}
+
+				FS.stat = stat;
+				FS.statSync = statSync;
+
+
+				
+				function unlink(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return unlinkSync(path);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function unlinkSync(path)
+				{
+					path = validatePath(path);
+					var id = findINode(path);
+					if(id == null)
+					{
+						throw new Error("file does not exist");
+					}
+					var inode = getINode(id);
+					if(inode.type === 'DIR')
+					{
+						throw new Error("path cannot be a directory");
+					}
+					destroyPathEntry(path);
+				}
+
+				FS.unlink = unlink;
+				FS.unlinkSync = unlinkSync;
+
+
+
+				function writeFile(path, data, options, callback)
+				{
+					if(typeof options === 'function')
+					{
+						callback = options;
+						options = null;
+					}
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return writeFileSync(path, data, options);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function writeFileSync(path, data, options)
+				{
+					options = Object.assign({}, options);
+					path = validatePath(path);
+					var id = createPathEntry(path, 'FILE', {mode:0o666}, {onlyIfMissing: true});
+					if(typeof data === 'string')
+					{
+						var encoding = options.encoding;
+						if(!encoding)
+						{
+							encoding = 'utf8';
+						}
+						data = Buffer.from(data, encoding);
+					}
+					writeINodeContent(id, data);
+				}
+
+				FS.writeFile = writeFile;
+				FS.writeFileSync = writeFileSync;
+
+
+
+				return FS;
+			},
+
+
+
+
+			'child_process': (context) => {
+				const child_process = {};
+
+				const EventEmitter = context.modules.events;
+
+				function createTwoWayStream(contextIn, contextOut)
+				{
+					let ended = false;
+
+					const InEventEmitter = contextIn.modules.events;
+					const OutEventEmitter = contextOut.modules.events;
+
+					let input = new InEventEmitter();
+					let output = new OutEventEmitter();
+
+					// input stream
+
+					input.write = (chunk, encoding=null, callback=null) => {
+						if(ended)
+						{
+							throw new Error("tried to write input after writable has finished");
+						}
+						output.emit('data', chunk);
+						if(callback)
+						{
+							callback();
+						}
+					};
+
+					input.end = (chunk, encoding, callback) => {
+						if(ended)
+						{
+							return;
+						}
+
+						if(typeof chunk == 'function')
+						{
+							callback = chunk;
+							chunk = null;
+						}
+						else if(typeof encoding == 'function')
+						{
+							callback = encoding;
+							encoding = null;
+						}
+
+						if(chunk)
+						{
+							input.write(chunk, encoding);
+						}
+						input.destroy();
+						if(callback)
+						{
+							callback();
+						}
+						input.emit('finish');
+					}
+
+					input.destroy = (error=null) => {
+						if(ended)
+						{
+							return;
+						}
+						ended = true;
+
+						if(error)
+						{
+							output.emit('error', error);
+						}
+						output.emit('end');
+						output.emit('close');
+					};
+
+					return {
+						input: input,
+						output: output
+					};
+				}
+
+
+
+				class Process extends EventEmitter
+				{
+					constructor(context, parentContext)
+					{
+						super();
+						var argv = context.argv.slice(0);
+						Object.defineProperties(this, {
+							'argv': {
+								value: argv
+							},
+							'chdir': {
+								value: (path) => {
+									path = resolveRelativePath(context, path);
+									var stats = context.modules.fs.statSync(path);
+									if(!stats.isDirectory())
+									{
+										throw new Error("path is not a directory");
+									}
+									context.cwd = path;
+								},
+								writable: false
+							},
+							'cwd': {
+								value: () => {
+									return context.cwd;
+								},
+								writable: false
+							},
+							'env': {
+								get: () => {
+									return context.env;
+								},
+								set: (value) => {
+									context.env = value;
+								}
+							},
+							'exit': {
+								value: (code) => {
+									if(code == null)
+									{
+										code = 0;
+									}
+									if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
+									{
+										throw new Error("invalid exit code");
+									}
+									if(!context.valid || context.exiting)
+									{
+										throw new Error("cannot exit process more than once");
+									}
+									// call exit event
+									context.exiting = true;
+									this.emit('exit', code);
+									// end process
+									context.invalidate(code, null);
+									// throw exit signal
+									var exitSignal = new ExitSignal(code);
+									throw exitSignal;
+								},
+								writable: false
+							},
+							'pid': {
+								get: () => {
+									return context.pid;
+								}
+							},
+							'ppid': {
+								get: () => {
+									return parentContext.pid;
+								}
+							},
+							'platform': {
+								get: () => {
+									return kernelOptions.platform || osName;
+								}
+							}
+						});
+					}
+				}
+
+
+
+				class ChildProcess extends EventEmitter
+				{
+					constructor(path, args=[], options={})
+					{
+						super();
+						if(typeof path !== 'string')
+						{
+							throw new TypeError("path must be a string");
+						}
+						if(!(args instanceof Array))
+						{
+							throw new TypeError("args must be an Array");
+						}
+						for(const arg of args)
+						{
+							if(typeof arg !== 'string')
+							{
+								throw new TypeError("args must be an array of strings");
+							}
+						}
+						options = Object.assign({}, options);
+
+						// create new context
+						const childContext = createContext(context);
+
+						// get new process PID
+						childContext.pid = pidCounter;
+						pidCounter++;
+
+						// define general process info
+						var argv0 = path;
+						path = resolveRelativePath(context, path);
+						const dirname = context.builtIns.modules.path.dirname(path);
+
+						// validate options
+						if(options.cwd)
+						{
+							if(typeof options.cwd !== 'string')
+							{
+								throw new TypeError("options.cwd must be a string");
+							}
+							// TODO check permissions and check if dir exists
+							childContext.cwd = options.cwd;
+						}
+						if(options.env)
+						{
+							if(typeof options.env !== 'object')
+							{
+								throw new TypeError("options.env must be an object")
+							}
+							childContext.env = Object.assign(childContext.env, deepCopyObject(options.env));
+						}
+						if(options.argv0)
+						{
+							if(typeof options.argv0 !== 'string')
+							{
+								throw new TypeError("options.argv0 must be a string");
+							}
+							argv0 = options.argv0;
+						}
+
+						// apply options
+						childContext.argv = [argv0].concat(args);
+
+						// build I/O streams
+						const stdin = createTwoWayStream(context, childContext);
+						const stdout = createTwoWayStream(childContext, context);
+						const stderr = createTwoWayStream(childContext, context);
+						childContext.stdin = stdin.input;
+						childContext.stdout = stdout.output;
+						childContext.stderr = stderr.output;
+
+						// add invalidation hook
+						const childContextInvalidate = childContext.invalidate;
+						childContext.invalidate = (exitCode, killSignal) => {
+							var wasValid = childContext.valid;
+							// invalidate
+							childContextInvalidate();
+							if(wasValid)
+							{
+								// wait for next queue to emit event
+								setTimeout(() => {
+									this.emit('exit', exitCode, killSignal);
+								}, 0);
+							}
+						}
+
+						// TODO apply properties
+
+						// try to start the process
+						try
+						{
+							// get full module path
+							var paths = [];
+							if(context.env && context.env.paths)
+							{
+								paths = context.env.paths;
+							}
+							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binFolderExtensions});
+
+							// ensure that the cwd is enterable by the calling context
+							var cwdStats = childContext.modules.fs.statSync(childContext.cwd);
+							if(!cwdStats.isDirectory())
+							{
+								throw new Error("cwd is not a directory");
+							}
+
+							// create process scope
+							let scope = null;
+							scope = {
+								'const': {
+									// browser built-ins
+									// timeouts
+									setTimeout: (...args) => {
+										return browserWrappers.setTimeout(childContext, ...args);
+									},
+									clearTimeout: (...args) => {
+										return browserWrappers.clearTimeout(childContext, ...args);
+									},
+									// intervals
+									setInterval: (...args) => {
+										return browserWrappers.setInterval(childContext, ...args);
+									},
+									clearInterval: (...args) => {
+										return browserWrappers.clearInterval(childContext, ...args);
+									},
+									// console
+									console: Object.defineProperties(Object.assign({}, console), {
+										log: {
+											value: (...args) => {
+												var strings = [];
+												for(const arg of args)
+												{
+													strings.push(''+arg);
+												}
+												var stringVal = strings.join(' ');
+						
+												stdout.input.write(stringVal+'\n');
+												console.log(...args);
+											},
+											enumerable: true,
+											writable: false
+										},
+										warn: {
+											value: (...args) => {
+												var strings = [];
+												for(const arg of args)
+												{
+													if(arg instanceof Error)
+													{
+														strings.push(''+arg.stack);
+													}
+													else
+													{
+														strings.push(''+arg);
+													}
+												}
+												var stringVal = strings.join(' ');
+						
+												stderr.input.write(stringVal+'\n');
+												console.warn(...args);
+											},
+											enumerable: true,
+											writable: false
+										},
+										error: {
+											value: (...args) => {
+												var strings = [];
+												for(const arg of args)
+												{
+													if(arg instanceof Error)
+													{
+														strings.push(''+arg.stack);
+													}
+													else
+													{
+														strings.push(''+arg);
+													}
+												}
+												var stringVal = strings.join(' ');
+						
+												stderr.input.write(stringVal+'\n');
+												console.error(...args);
+											},
+											enumerable: true,
+											writable: false
+										},
+										memory: {
+											get: () => {
+												return console.memory;
+											}
+										}
+									}),
+				
+									// node built-ins
+									Promise: createProcPromiseClass(childContext),
+									Buffer: childContext.builtIns.modules.buffer.Buffer,
+									__dirname: dirname,
+									__filename: filename,
+									require: Object.defineProperties((path) => {
+										return require(childContext, scope, dirname, path);
+									}, {
+										resolve: {
+											value: (path) => {
+												return require.resolve(childContext, dirname, path);
+											},
+											enumerable: true,
+											writable: false
+										}
+									}),
+									requireCSS: Object.defineProperties((path) => {
+										return requireCSS(context, dirname, path);
+									}, {
+										resolve: {
+											value: (path) => {
+												return resolveCSSPath(context, dirname, path);
+											},
+											writable: false
+										},
+										wait: {
+											value: (path, callback) => {
+												return waitForCSS(context, dirname, path, callback);
+											},
+											writable: false
+										},
+										ready: {
+											value: (path) => {
+												return isCSSReady(context, dirname, path);
+											},
+											writable: false
+										}
+									}),
+									module: new ScriptGlobalAlias('exports'),
+									process: new Process(childContext, context),
+
+									// addons
+									ExitSignal: ExitSignal,
+									syscall: (func, ...args) => {
+										return syscall(context, func, ...args);
+									}
+								},
+								'let': {
+									exports: {}
+								}
+							};
+
+							// start process in the next queue
+							browserWrappers.setTimeout(context, () => {
+								// start process
+								try
+								{
+									requireFile(childContext, filename, scope);
+								}
+								catch(error)
+								{
+									if(error instanceof ExitSignal)
+									{
+										// process has ended
+									}
+									else
+									{
+										if(childContext.valid)
+										{
+											console.error("unhandled process error:", error);
+											childContext.invalidate(1, null);
+										}
+										else
+										{
+											// just ignore...
+										}
+									}
+									return;
+								}
+							}, 0);
+						}
+						catch(error)
+						{
+							// send error in the next queue
+							browserWrappers.setTimeout(context, () => {
+								// send error
+								this.emit('error', error);
+							}, 0);
+						}
+					}
+				}
+
+				child_process.ChildProcess = ChildProcess;
+
+
+
+				function spawn(command, args=[], options=null)
+				{
+					if(args != null && typeof args === 'object' && !(args instanceof Array))
+					{
+						options = args;
+						args = [];
+					}
+					if(typeof command !== 'string')
+					{
+						throw new TypeError("command must be a string");
+					}
+					return new ChildProcess(command, args, options);
+				}
+
+				child_process.spawn = spawn;
+
+				return child_process;
+			},
+
+
+
+			'events': (context) => {
+				const EventEmitter = context.builtIns.modules.events;
+
+				const superEmit = EventEmitter.prototype.emit;
+				EventEmitter.prototype.emit = function(eventName, ...args)
+				{
+					// ensure context is valid
+					if(!context.valid)
+					{
+						this.removeAllListeners();
+						return false;
+					}
+					// send event
+					return superEmit.call(this, eventName, ...args);
+				}
+
+				return EventEmitter;
+			}
+		};
+
+
+
+
+		// function to download a file
+		function download(url)
+		{
+			return new Promise((resolve, reject) => {
+				var xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = () => {
+					if(xhr.readyState === 4)
+					{
+						if(xhr.status === 200)
+						{
+							resolve(xhr.responseText);
+						}
+						else
+						{
+							reject(new Error(xhr.status+": "+xhr.statusText));
+						}
+					}
+				};
+
+				xhr.open('GET', url);
+				xhr.send();
+			});
+		}
+
+
+		// make the path leading up to the given file
+		function makeLeadingDirs(context, path)
+		{
+			// resolve path
+			path = resolveRelativePath(context, path);
+			// split and remove empty path parts
+			var pathParts = path.split('/');
+			for(var i=0; i<pathParts.length; i++)
+			{
+				if(pathParts[i]=='')
+				{
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+			
+			// make sure each leading path part exists and is a directory
+			for(var i=0; i<(pathParts.length-1); i++)
+			{
+				var leadingPath = '/'+pathParts.slice(0, i+1).join('/');
+				// ensure path is a directory or doesn't exist
+				try
+				{
+					var stats = context.modules.fs.statSync(leadingPath);
+					if(stats.isDirectory())
+					{
+						continue;
+					}
+					else
+					{
+						context.modules.fs.unlinkSync(leadingPath);
+					}
+				}
+				catch(error) {}
+				// create the directory
+				context.modules.mkdirSync(leadingPath);
+			}
+		}
+
+
+		// download built-in node modules / classes
+		builtInsPromise = new Promise((resolve, reject) => {
+			download('https://wzrd.in/bundle/node-builtin-map').then((data) => {
+				builtInsCode = data;
+				resolve();
+			}).catch((error) => {
+				reject(error);
+			});
 		});
-	};
-}
 
-return Kernel;
-// end kernel class
+
+		// TODO everything else
+
+
+		// bootup method
+		let booted = false;
+		this.boot = (url, path) => {
+			if(booted)
+			{
+				throw new Error("system is already booted");
+			}
+			booted = true;
+			log(null, "starting boot...");
+			// ensure the root filesystem has been created
+			if(!storage.getItem(fsPrefix+'__inode:0'))
+			{
+				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o754}));
+				storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
+			}
+			// create promise for boot data
+			log(null, "downloading built-ins");
+			log(null, "downloading boot data");
+			var bootDataPromise = download(url);
+			// wait for builtins to download
+			builtInsPromise.then(() => {
+				log(null, "built-ins downloaded");
+				// create root context
+				rootContext = createContext(null);
+				// wait for boot data to download
+				return bootDataPromise;
+			}).then((data) => {
+				log(null, "boot data downloaded");
+				// write boot data to path
+				makeLeadingDirs(rootContext, path);
+				rootContext.modules.fs.writeFileSync(path, data);
+				// execute boot file
+				log(null, "booting...");
+				rootContext.modules.child_process.spawn(path);
+			}).catch((error) => {
+				log(null, "unable to boot from kernel:", {color: 'red'});
+				log(null, error.toString(), {color: 'red'});
+				console.error(error);
+			});
+		};
+	// end kernel class
+	}
+
+	return Kernel;
+// end kernel sandbox
 })();
 
-// end evalScript sandbox
+// end evalScript + kernel sandbox
 })();
