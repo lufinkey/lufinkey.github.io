@@ -172,7 +172,14 @@ windowManager.createWindow().then((window) => {
 					: (<span key={"shelloutput"+index} className="shell-output" style={{color: line.color}}>{line.content}</span>)
 				)) }
 				<span className="shell-input">{shellInput}</span>
-				<textarea className="shell-input" onKeyDown={onTextAreaUpdate} onChange={onTextAreaUpdate}></textarea>
+				<textarea
+					className="shell-input"
+					onKeyDown={onTextAreaUpdate}
+					onChange={onTextAreaUpdate}
+					autoComplete={false}
+					autoCorrect={false}
+					autoCapitalize={false}
+					spellCheck={false}></textarea>
 			</div>
 		);
 	};
