@@ -1,0 +1,16 @@
+
+.explorer .error {
+	color: red;
+}
+
+.explorer {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	flex-grow: 1;
+}
+
+.explorer > .icon-grid {
+	flex-grow: 1;
+	width: 100%;
+}

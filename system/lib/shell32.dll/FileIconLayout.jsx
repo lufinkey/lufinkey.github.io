@@ -45,15 +45,13 @@ class FileIconLayout extends React.Component
 		return icons;
 	}
 
-	componentWillMount()
+	reloadFileStates(files)
 	{
 		const maxCols = 5;
 		var col = 0;
 		var row = 0;
-
-		// set default file states
-		var fileStates = Object.assign({}, this.state.files);
-		for(const fileName of this.props.files)
+		var fileStates = {};
+		for(const fileName of files)
 		{
 			fileStates[fileName] = {position:{x:(col*72), y:(row*72)}};
 			col++;
@@ -66,11 +64,25 @@ class FileIconLayout extends React.Component
 		this.setState({files:fileStates});
 	}
 
+	componentWillMount()
+	{
+		// set default file states
+		this.reloadFileStates(this.props.files);
+	}
+
 	componentDidMount()
 	{
 		// add mouse event listeners
 		document.addEventListener('mousemove', this.onDocumentMouseMove);
 		document.addEventListener('mouseup', this.onDocumentMouseUp);
+	}
+
+	componentWillReceiveProps(newProps)
+	{
+		if(this.props.files !== newProps.files)
+		{
+			this.reloadFileStates(newProps.files);
+		}
 	}
 
 	componentWillUnmount()

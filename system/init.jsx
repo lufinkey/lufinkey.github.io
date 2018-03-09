@@ -226,7 +226,12 @@ const systemFiles = {
 			'index.jsx': new RemoteFile(),
 			'package.json': new RemoteFile()
 		},
-		"iframe.exe": {
+		'explorer.exe': {
+			'style.css': new RemoteFile(),
+			'index.jsx': new RemoteFile(),
+			'package.json': new RemoteFile()
+		},
+		'iframe.exe': {
 			'style.css': new RemoteFile(),
 			'index.jsx': new RemoteFile(),
 			'package.json': new RemoteFile()

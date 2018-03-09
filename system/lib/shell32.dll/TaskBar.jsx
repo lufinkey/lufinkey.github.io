@@ -31,6 +31,14 @@ class TaskBar extends React.Component
 		spawn('aboutme');
 	}
 
+	onClickExplorer()
+	{
+		this.setState({
+			startMenuOpen: false
+		});
+		spawn('explorer');
+	}
+
 	onClickTerminal()
 	{
 		this.setState({
@@ -76,6 +84,7 @@ class TaskBar extends React.Component
 				</div>
 				<ul className="items">
 					<li onClick={()=>{this.onClickAboutMe()}}>About Me</li>
+					<li onClick={()=>{this.onClickExplorer()}}>Explorer</li>
 					<li onClick={()=>{this.onClickTerminal()}}>Terminal</li>
 					<li onClick={()=>{this.onClickRun()}}>Run</li>
 					<li className="divider"></li>
