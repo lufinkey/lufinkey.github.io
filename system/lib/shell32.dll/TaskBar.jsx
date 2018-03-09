@@ -52,7 +52,7 @@ class TaskBar extends React.Component
 		this.setState({
 			startMenuOpen: false,
 		});
-		spawn('/system/boot.jsx');
+		spawn('/system/boot.js');
 	}
 
 	renderStartMenu()
