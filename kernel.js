@@ -1810,6 +1810,45 @@ return (function(){
 
 
 
+				function exists(path, callback)
+				{
+					if(typeof callback !== 'function')
+					{
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return existsSync(path);
+					}).then((exists) => {
+						callback(exists);
+					}).catch((error) => {
+						callback(false);
+					});
+				}
+
+				function existsSync(path, callback)
+				{
+					path = validatePath(path);
+					try
+					{
+						var id = findINode(path);
+						if(id == null)
+						{
+							return false;
+						}
+						return true;
+					}
+					catch(error)
+					{
+						return false;
+					}
+				}
+
+				FS.exists = exists;
+				FS.existsSync = existsSync;
+
+
+
 				function mkdir(path, mode, callback)
 				{
 					if(typeof mode === 'function')
@@ -2669,7 +2708,7 @@ return (function(){
 				}
 				catch(error) {}
 				// create the directory
-				context.modules.mkdirSync(leadingPath);
+				context.modules.fs.mkdirSync(leadingPath);
 			}
 		}
 
