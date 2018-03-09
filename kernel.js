@@ -2762,7 +2762,7 @@ return (function(){
 
 		// download built-in node modules / classes
 		builtInsPromise = new Promise((resolve, reject) => {
-			download('https://wzrd.in/bundle/node-builtin-map').then((data) => {
+			download('cdn/bundle/node-builtin-map').then((data) => {
 				builtInsCode = data;
 				resolve();
 			}).catch((error) => {

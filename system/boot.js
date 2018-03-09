@@ -60,10 +60,10 @@ mkdirIfMissing('/system/share');
 // download system files
 const downloads = [];
 const downloadOptions = {onlyIfMissing: true};
-downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js', downloadOptions) );
-downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js', downloadOptions) );
-downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js', downloadOptions) );
-downloads.push( downloadFile('https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js', downloadOptions) );
+downloads.push( downloadFile('cdn/ajax/libs/react/15.4.2/react.js', '/system/slib/react.js', downloadOptions) );
+downloads.push( downloadFile('cdn/ajax/libs/react/15.4.2/react-dom.js', '/system/slib/react-dom.js', downloadOptions) );
+downloads.push( downloadFile('cdn/ajax/libs/babel-standalone/6.21.1/babel.js', '/system/slib/babel.js', downloadOptions) );
+downloads.push( downloadFile('cdn/ajax/libs/sass.js/0.10.9/sass.js', '/system/slib/sass.js', downloadOptions) );
 downloads.push( downloadFile('system/init.jsx?v='+(Math.random()*9999999999), '/system/init.jsx') );
 
 // wait for files to finish downloading
@@ -107,7 +107,7 @@ Promise.all(downloads).then(() => {
 			}
 		}
 	}
-	xhr.open('GET', 'https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.worker.min.js');
+	xhr.open('GET', 'cdn/ajax/libs/sass.js/0.10.9/sass.worker.min.js');
 	xhr.send();
 }).catch((error) => {
 	console.error("kernel error: ", error);
