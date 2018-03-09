@@ -2631,10 +2631,10 @@ return (function(){
 						}
 						catch(error)
 						{
+							childContext.invalidate();
 							// send error in the next queue
 							browserWrappers.setTimeout(context, () => {
 								// send error
-								childContext.invalidate();
 								this.emit('error', error);
 							}, 0);
 						}
