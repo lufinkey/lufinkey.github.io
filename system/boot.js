@@ -45,7 +45,7 @@ function downloadFile(url, path, options)
 			}
 		};
 
-		xhr.open('GET', url);
+		xhr.open('GET', url+'?v='+(Math.random()*999999999));
 		xhr.send();
 	});
 }
