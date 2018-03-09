@@ -2569,6 +2569,9 @@ return (function(){
 									ExitSignal: ExitSignal,
 									syscall: (func, ...args) => {
 										return syscall(context, func, ...args);
+									},
+									syslog: (message, options=null) => {
+										return syscall(context, 'log', message, options);
 									}
 								},
 								'let': {
