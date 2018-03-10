@@ -433,10 +433,7 @@ return (function(){
 					return true;
 				}
 			}
-			catch(error)
-			{
-				return false;
-			}
+			catch(error) {}
 			return false;
 		}
 
@@ -452,10 +449,7 @@ return (function(){
 					return true;
 				}
 			}
-			catch(error)
-			{
-				return false;
-			}
+			catch(error) {}
 			return false;
 		}
 
@@ -1257,12 +1251,13 @@ return (function(){
 						id++;
 					}
 					// create inode
-					info = Object.assign({uid: 0, gid: 0, mode: 0o777}, info);
+					info = Object.assign({uid: 0, gid: 0, mode: 0o777, encoding: 'utf8'}, info);
 					var inode = {
 						'type': type,
 						'uid': info.uid,
 						'gid': info.gid,
-						'mode': info.mode
+						'mode': info.mode,
+						'encoding': info.encoding
 					};
 					// store inode
 					storage.setItem(inodePrefix+id, JSON.stringify(inode));
@@ -1292,6 +1287,26 @@ return (function(){
 						throw new Error("cannot access nonexistant inode "+id);
 					}
 					return JSON.parse(inode);
+				}
+
+				function updateINode(id, info)
+				{
+					if(info.type !== undefined)
+					{
+						throw new Error("cannot update inode type");
+					}
+					var inode = getINode(id);
+					var type = inode.type;
+					var newINode = Object.assign({}, inode);
+					newINode = Object.assign(newINode, info);
+					newINode = {
+						'type': type,
+						'uid': inode.uid,
+						'gid': inode.gid,
+						'mode': inode.mode,
+						'encoding': inode.encoding
+					};
+					storage.setItem(inodePrefix+id, JSON.stringify(inode));
 				}
 
 
@@ -1336,7 +1351,7 @@ return (function(){
 				}
 
 
-				function readINodeContent(id)
+				function readINodeContent(id, encoding)
 				{
 					var inode = getINode(id);
 
@@ -1348,7 +1363,16 @@ return (function(){
 							{
 								return null;
 							}
-							return Buffer.from(content, 'base64');
+							if(inode.encoding === encoding)
+							{
+								return content;
+							}
+							var buffer = Buffer.from(content, inode.encoding);
+							if(encoding == null)
+							{
+								return buffer;
+							}
+							return buffer.toString(encoding);
 
 						case 'DIR':
 							var content = storage.getItem(entryPrefix+id);
@@ -1364,7 +1388,7 @@ return (function(){
 							{
 								return null;
 							}
-							return Buffer.from(content, 'base64');
+							return Buffer.from(content);
 
 						case 'REMOTE':
 							return Buffer.from(tmpStorage[id]);
@@ -1375,7 +1399,7 @@ return (function(){
 				}
 
 
-				function writeINodeContent(id, content)
+				function writeINodeContent(id, content, encoding)
 				{
 					var inode = getINode(id);
 
@@ -1388,11 +1412,33 @@ return (function(){
 							}
 							else
 							{
-								if(!(content instanceof Buffer))
+								if(content instanceof Buffer)
 								{
-									throw new TypeError("inode file content must be a buffer");
+									if(inode.encoding !== 'base64')
+									{
+										updateINode(id, {encoding:'base64'});
+									}
+									storage.setItem(entryPrefix+id, content.toString('base64'));
 								}
-								storage.setItem(entryPrefix+id, content.toString('base64'));
+								else if(typeof content === 'string')
+								{
+									if(encoding)
+									{
+										if(encoding !== inode.encoding)
+										{
+											updateINode(id, {encoding: encoding});
+										}
+									}
+									else if(inode.encoding !== 'utf8')
+									{
+										updateINode(id, {encoding:'utf8'});
+									}
+									storage.setItem(entryPrefix+id, content);
+								}
+								else
+								{
+									throw new Error("invalid content data");
+								}
 							}
 							break;
 
@@ -1422,7 +1468,7 @@ return (function(){
 								{
 									throw new TypeError("inode file content must be a buffer");
 								}
-								storage.setItem(entryPrefix+id, content.toString('base64'));
+								storage.setItem(entryPrefix+id, content.toString());
 							}
 							break;
 
@@ -1485,15 +1531,10 @@ return (function(){
 					var rootEntry = readINodeContent(0);
 					var entry = rootEntry;
 					var id = 0;
-					for(const pathPart of pathParts)
+					var inode = getINode(id);
+					for(var i=0; i<pathParts.length; i++)
 					{
-						var inode = getINode(id);
-						// TODO, while entry is a link, set the link destination as the current entry
-						// make sure the entry is a directory
-						if(inode.type !== 'DIR')
-						{
-							throw new Error("part of path is not a directory");
-						}
+						var pathPart = pathParts[i];
 						// make sure next part of path exists
 						if(entry[pathPart] == null)
 						{
@@ -1501,7 +1542,24 @@ return (function(){
 						}
 						// TODO check permissions
 						id = entry[pathPart];
-						entry = readINodeContent(id);
+						if(i<(pathParts.length-1))
+						{
+							// read next directory
+							inode = getINode(id);
+							// TODO, while entry is a link, set the link destination as the current entry
+							// make sure the entry is a directory
+							if(inode.type !== 'DIR')
+							{
+								throw new Error("part of path is not a directory");
+							}
+							entry = readINodeContent(id);
+						}
+						else
+						{
+							// don't read target inode
+							inode = null;
+							entry = null;
+						}
 					}
 					return id;
 				}
@@ -1968,12 +2026,7 @@ return (function(){
 					{
 						throw new Error("file does not exist");
 					}
-					var content = readINodeContent(id);
-					if(options.encoding)
-					{
-						content = content.toString(options.encoding);
-					}
-					return content;
+					return readINodeContent(id, options.encoding);
 				}
 
 				FS.readFile = readFile;
@@ -2139,16 +2192,7 @@ return (function(){
 					options = Object.assign({}, options);
 					path = validatePath(path);
 					var id = createPathEntry(path, 'FILE', {mode:0o666}, {onlyIfMissing: true});
-					if(typeof data === 'string')
-					{
-						var encoding = options.encoding;
-						if(!encoding)
-						{
-							encoding = 'utf8';
-						}
-						data = Buffer.from(data, encoding);
-					}
-					writeINodeContent(id, data);
+					writeINodeContent(id, data, options.encoding);
 				}
 
 				FS.writeFile = writeFile;
@@ -2329,6 +2373,7 @@ return (function(){
 				{
 					constructor(path, args=[], options={})
 					{
+						var startTime = new Date().getTime();
 						super();
 						if(typeof path !== 'string')
 						{
