@@ -63,22 +63,22 @@ return (function(){
 	// class to handle all kernel functions
 	function Kernel(kernelOptions)
 	{
+		kernelOptions = Object.assign({}, kernelOptions);
+		
 		// clear localStorage for now
 		window.localStorage.clear();
 
-		const osName = 'finkeos';
+		const osName = ''+(kernelOptions.osName || 'finkeos');
 		const fsPrefix = ''+(kernelOptions.fsPrefix || '');
 
 		const tmpStorage = {};
-		const storage = window.localStorage;
+		let storage = null;
 
 		let builtInsGenerator = null;
 		let browserWrappers = null;
 		let generatedModules = null;
 		let loadedSharedModules = {};
 		let loadedCSS = {};
-
-		let builtInsPromise = null;
 
 		let rootContext = null;
 		let pidCounter = 1;
@@ -2823,8 +2823,42 @@ return (function(){
 		}
 
 
+
+		// download persistjs
+		var persistJSPromise = new Promise((resolve, reject) => {
+			download('https://raw.githubusercontent.com/jeremydurham/persist-js/master/persist-min.js').then((data) => {
+				var scope = {
+					'let': {
+						Persist: null
+					}
+				};
+				runScript(null, data, scope);
+				const Persist = scope.let.Persist;
+				Persist.remove('cookie');
+				storage = new (function(){
+					var store = new Persist.Store(osName);
+
+					this.setItem = (key, value) => {
+						store.set(key, value);
+					};
+
+					this.getItem = (key) => {
+						return store.get(key);
+					};
+
+					this.removeItem = (key) => {
+						store.remove(key);
+					};
+				});
+				resolve();
+			}).catch((error) => {
+				reject(error);
+			});
+		});
+
+
 		// download built-in node modules / classes
-		builtInsPromise = new Promise((resolve, reject) => {
+		var builtInsPromise = new Promise((resolve, reject) => {
 			download('https://wzrd.in/bundle/node-builtin-map').then((data) => {
 				builtInsGenerator = createBuiltInGenerator(data);
 				resolve();
@@ -2847,18 +2881,22 @@ return (function(){
 			}
 			booted = true;
 			log(null, "starting boot...");
-			// ensure the root filesystem has been created
-			if(!storage.getItem(fsPrefix+'__inode:0'))
-			{
-				storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o754}));
-				storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
-			}
-			// create promise for boot data
+			log(null, "downloading persistjs");
 			log(null, "downloading built-ins");
 			log(null, "downloading boot data");
+			// create promise for boot data
 			var bootDataPromise = download(url);
 			// wait for builtins to download
-			builtInsPromise.then(() => {
+			persistJSPromise.then(() => {
+				// ensure the root filesystem has been created
+				if(!storage.getItem(fsPrefix+'__inode:0'))
+				{
+					storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o754}));
+					storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
+				}
+				// wait for built-ins to download
+				return builtInsPromise;
+			}).then(() => {
 				log(null, "built-ins downloaded");
 				// create root context
 				rootContext = createContext(null);
