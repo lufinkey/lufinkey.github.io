@@ -281,8 +281,6 @@ const systemFiles = {
 				'index.jsx': new RemoteFile()
 			},
 			'base64uri.js': new RemoteFile(),
-			'child_process.js': new RemoteFile(),
-			'fs.js': new RemoteFile(),
 			'mimetype.js': new RemoteFile(),
 			'path.js': new RemoteFile()
 		},
