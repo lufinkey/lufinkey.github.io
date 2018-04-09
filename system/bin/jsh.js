@@ -102,16 +102,26 @@ function runCommand(command, ...args)
 			process.stderr.write(chunk);
 		});
 
+		let processExited = false;
+
 		// handle error
 		subprocess.on('error', (error) => {
 			currentProcess = null;
-			reject(error);
+			if(!processExited)
+			{
+				processExited = true;
+				reject(error);
+			}
 		});
 
 		// handle exit
 		subprocess.on('exit', (exitCode) => {
 			currentProcess = null;
-			resolve(exitCode);
+			if(!processExited)
+			{
+				processExited = true;
+				resolve(exitCode);
+			}
 		});
 
 		currentProcess = subprocess;
