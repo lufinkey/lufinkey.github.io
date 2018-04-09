@@ -85,7 +85,6 @@ class TaskBar extends React.Component
 				<ul className="items">
 					<li onClick={()=>{this.onClickAboutMe()}}>About Me</li>
 					<li onClick={()=>{this.onClickTerminal()}}>Terminal</li>
-					<li onClick={()=>{this.onClickRun()}}>Run</li>
 					<li className="divider"></li>
 					<li onClick={()=>{this.onClickReboot()}}>Reboot</li>
 				</ul>
