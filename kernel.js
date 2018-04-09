@@ -2663,8 +2663,7 @@ return (function(){
 								}
 								catch(error)
 								{
-									childContext.invalidate();
-									this.emit('error', error);
+									childContext.invalidate(255, null);
 									return;
 								}
 								// start the process in the next queue
@@ -2685,7 +2684,7 @@ return (function(){
 											if(childContext.valid)
 											{
 												console.error("unhandled process error:", error);
-												childContext.invalidate(1, null);
+												childContext.invalidate(255, null);
 											}
 											else
 											{
