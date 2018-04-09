@@ -173,7 +173,7 @@ return (function(){
 				return wrapPromiseMethod((callback) => {
 					return promise.then((...args) => {
 						return callback(...args);
-					});
+					}, ...args);
 				}, callback);
 			};
 
@@ -186,7 +186,7 @@ return (function(){
 				return wrapPromiseMethod((callback) => {
 					return promise.catch((...args) => {
 						return callback(...args);
-					});
+					}, ...args);
 				}, callback);
 			};
 
@@ -199,7 +199,7 @@ return (function(){
 				return wrapPromiseMethod((callback) => {
 					return promise.finally((...args) => {
 						return callback(...args);
-					});
+					}, ...args);
 				}, callback);
 			};
 
@@ -215,10 +215,7 @@ return (function(){
 							return;
 						}
 						// resolve
-						if(resolve)
-						{
-							resolve(...args);
-						}
+						resolve(...args);
 					}, (...args) => {
 						// ensure calling context is valid
 						if(!context.valid)
@@ -226,10 +223,7 @@ return (function(){
 							return;
 						}
 						// reject
-						if(reject)
-						{
-							reject(...args);
-						}
+						reject(...args);
 					});
 				}
 				catch(error)
@@ -2454,7 +2448,10 @@ return (function(){
 								stderr.input.end();
 								// wait for next queue to emit event
 								setTimeout(() => {
-									this.emit('exit', exitCode, killSignal);
+									if(exitCode != null)
+									{
+										this.emit('exit', exitCode, killSignal);
+									}
 								}, 0);
 							}
 						}
@@ -2506,6 +2503,8 @@ return (function(){
 									clearInterval: (...args) => {
 										return browserWrappers.clearInterval(childContext, ...args);
 									},
+									// true console
+									__console: console,
 									// console
 									console: Object.defineProperties(Object.assign({}, console), {
 										log: {
@@ -2517,8 +2516,8 @@ return (function(){
 												}
 												var stringVal = strings.join(' ');
 						
-												stdout.input.write(stringVal+'\n');
 												console.log(...args);
+												stdout.input.write(stringVal+'\n');
 											},
 											enumerable: true,
 											writable: false
@@ -2539,8 +2538,8 @@ return (function(){
 												}
 												var stringVal = strings.join(' ');
 						
-												stderr.input.write(stringVal+'\n');
 												console.warn(...args);
+												stderr.input.write(stringVal+'\n');
 											},
 											enumerable: true,
 											writable: false
@@ -2561,8 +2560,8 @@ return (function(){
 												}
 												var stringVal = strings.join(' ');
 						
-												stderr.input.write(stringVal+'\n');
 												console.error(...args);
+												stderr.input.write(stringVal+'\n');
 											},
 											enumerable: true,
 											writable: false

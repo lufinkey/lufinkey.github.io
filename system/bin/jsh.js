@@ -54,11 +54,13 @@ function runShellCommand(command, ...args)
 function runCommand(command, ...args)
 {
 	return new Promise((resolve, reject) => {
+		// try to run command as a built-in
 		try
 		{
 			var retVal = runShellCommand(command, ...args);
 			if(retVal != null)
 			{
+				// command run as a built-in
 				if(retVal instanceof Promise)
 				{
 					retVal.then((exitCode) => {
@@ -89,9 +91,10 @@ function runCommand(command, ...args)
 			return;
 		}
 
+		// try to run executable
 		var subprocess = spawn(command, args);
 
-		// handle I/O
+		// forward I/O
 		subprocess.stdout.on('data', (chunk) => {
 			process.stdout.write(chunk);
 		});
@@ -154,7 +157,7 @@ process.stdin.on('data', (chunk) => {
 		prompt();
 	}).catch((error) => {
 		currentPromise = null;
-		console.error(error);
+		console.error(error.message);
 		prompt();
 	});
 });
