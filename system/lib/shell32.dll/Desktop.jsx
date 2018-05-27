@@ -3,7 +3,7 @@ requireCSS('./Desktop.css');
 const fs = require('fs');
 const child_process = require('child_process');
 const React = require('react');
-const WindowManager = require('dwm');
+const { WindowManager } = require('dwm');
 const TaskBar = require('./TaskBar');
 const FileIconLayout = require('./FileIconLayout');
 const Wallpaper = require('./Wallpaper');

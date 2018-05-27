@@ -98,7 +98,8 @@
 					"lib": {
 						"dwm.dll": {
 							"Window.jsx": "",
-							"style.css": "",
+							"WindowManager.css": "",
+							"WindowManager.jsx": "",
 							"index.jsx": "",
 							"package.json": ""
 						},
