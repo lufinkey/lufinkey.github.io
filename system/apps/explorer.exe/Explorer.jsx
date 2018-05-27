@@ -56,7 +56,7 @@ class Explorer extends React.Component
 				});
 			}
 			else if(stats.isFile()) {
-				child_process.spawn('open', ['./'+filename]);
+				spawn('open', ['./'+filename]);
 			}
 			else {
 				throw new Error("cannot open unknown file type");
