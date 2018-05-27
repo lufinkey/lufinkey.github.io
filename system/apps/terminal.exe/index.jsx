@@ -163,7 +163,6 @@ windowManager.createWindow().then((window) => {
 
 	// window created
 	window.renderContent = () => {
-		__console.log(shellOutput);
 		return (
 			<div className="terminal-content" onClick={onWindowClick}>
 				{ shellOutput.map((line, index) => (
