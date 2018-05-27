@@ -53,7 +53,7 @@ class Terminal extends React.Component
 			var scrollBottom = termContent.scrollHeight - termContent.getBoundingClientRect().height;
 			var scrollDiff = Math.abs(scrollBottom - termContent.scrollTop);
 
-			if(scrollDiff < 18) {
+			if(scrollDiff < 20) {
 				shouldAutoScroll = true;
 			}
 		}
@@ -126,7 +126,9 @@ class Terminal extends React.Component
 			this.setState({
 				shellInput: shellInput
 			}, () => {
-				this.scrollToBottom();
+				setTimeout(() => {
+					this.scrollToBottom();
+				}, 0);
 			});
 		}, 0);
 	}
