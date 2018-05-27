@@ -30,9 +30,9 @@ process.stdin.on('data', (data) => {
 
 process.stdin.on('close', () => {
 	booted = true;
-	startupAudio.play();
 	Shell32 = require('shell32');
 	SelfAd = require('selfad');
+	startupAudio.play();
 	if(osComponent != null) {
 		osComponent.forceUpdate();
 	}
