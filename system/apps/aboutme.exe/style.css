@@ -12,7 +12,7 @@
 	font-family: Orbitron;
 
 	background-color: #560556;
-	background-image: linear-gradient( rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5) ), url(apps/aboutme.exe/background.jpg);
+	background-image: linear-gradient( rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5) ), url(/system/apps/aboutme.exe/background.jpg);
 	background-position: center;
 	background-size: cover;
 }
@@ -88,15 +88,15 @@
 }
 
 .aboutme .links-general .github {
-	background-image: url(apps/aboutme.exe/github.png);
+	background-image: url(/system/apps/aboutme.exe/github.png);
 }
 
 .aboutme .links-general .twitter {
-	background-image: url(apps/aboutme.exe/twitter.png);
+	background-image: url(/system/apps/aboutme.exe/twitter.png);
 }
 
 .aboutme .links-general .patreon {
-	background-image: url(apps/aboutme.exe/patreon.png);
+	background-image: url(/system/apps/aboutme.exe/patreon.png);
 }
 
 

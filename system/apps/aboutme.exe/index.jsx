@@ -18,7 +18,7 @@ windowManager.createWindow().then((window) => {
 			<div className="aboutme">
 				<h1>Luis Finke</h1>
 				<hr/>
-				<img className="me-img" src="/apps/aboutme.exe/me.jpg"/>
+				<img className="me-img" src="/system/apps/aboutme.exe/me.jpg"/>
 				<div className="info">
 					<span className="major">Computer Science Major</span>
 					<span className="school">University of Cincinnati</span>
