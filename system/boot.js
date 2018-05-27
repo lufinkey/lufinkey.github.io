@@ -256,6 +256,8 @@ function setupSystem(system)
 	// finish
 	return new Promise((resolve, reject) => {
 		downloadPromise.then(() => {
+			// write system.json to file
+			fs.writeFileSync('/system/system.json', JSON.stringify(system, null, "\t"));
 			// close bootlog pipes
 			const pipes = bootlogPipes.slice(0);
 			bootlogPipes = [];

@@ -161,15 +161,19 @@ windowManager.createWindow().then((window) => {
 	}
 
 
-
 	// window created
 	window.renderContent = () => {
+		__console.log(shellOutput);
 		return (
 			<div className="terminal-content" onClick={onWindowClick}>
 				{ shellOutput.map((line, index) => (
-					line.break
-					? (<br key={"shelloutput"+index}/>)
-					: (<span key={"shelloutput"+index} className="shell-output" style={{color: line.color}}>{line.content}</span>)
+					line.break ? (
+						<br key={"shelloutput"+index}/>
+					) : (
+						<span key={"shelloutput"+index} className="shell-output" style={{color: line.color}}>
+							<pre>{line.content}</pre>
+						</span>
+					)
 				)) }
 				<span className="shell-input">{shellInput}</span>
 				<textarea
