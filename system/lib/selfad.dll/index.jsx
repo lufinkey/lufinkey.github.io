@@ -25,7 +25,7 @@ class SelfAd extends React.Component
 		requireCSS.wait(() => {
 			setTimeout(() => {
 				this.animateNameIntro();
-			}, 1000);
+			}, 1200);
 		});
 	}
 
