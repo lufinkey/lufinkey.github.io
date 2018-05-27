@@ -1212,6 +1212,50 @@ return (function(){
 
 		// define kernel modules
 		generatedModules = {
+			'rimraf': (context) => {
+				const fs = context.modules.fs;
+
+				function deleteSync(path, options) {
+					if(!fs.existsSync(path)) {
+						return;
+					}
+					if(checkIfDir(context, path)) {
+						// delete entries in folder
+						const dirEntries = fs.readdirSync(path, {encoding: 'utf8'});
+						for(const entry of dirEntries) {
+							deleteSync(path+'/'+entry, options);
+						}
+					}
+					else {
+						// delete file
+						fs.unlinkSync(path);
+					}
+				}
+
+				function rimrafSync(path, options) {
+					deleteSync(path, options);
+				}
+
+				function rimraf(path, options, callback) {
+					if(typeof options === 'function') {
+						callback = options;
+						options = {};
+					}
+					if(!options) {
+						options = {};
+					}
+					makeAsyncPromise(context, () => {
+						return rimrafSync(path, options);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				rimraf.sync = rimrafSync;
+				return rimraf;
+			},
 			'fs': (context) => {
 				const FS = {};
 
@@ -1306,8 +1350,8 @@ return (function(){
 
 				function destroyINode(id)
 				{
-					storage.removeItem(inodePrefix+id);
 					writeINodeContent(id, null);
+					storage.removeItem(inodePrefix+id);
 				}
 
 
@@ -1982,6 +2026,7 @@ return (function(){
 					{
 						data.push(fileName);
 					}
+					data.sort();
 					return data;
 				}
 
@@ -2218,55 +2263,46 @@ return (function(){
 					// input stream
 
 					input.write = (chunk, encoding=null, callback=null) => {
-						if(ended)
-						{
+						if(ended) {
 							throw new Error("tried to write input after writable has finished");
 						}
 						output.emit('data', chunk);
-						if(callback)
-						{
+						if(callback) {
 							callback();
 						}
 					};
 
 					input.end = (chunk, encoding, callback) => {
-						if(ended)
-						{
+						if(ended) {
 							return;
 						}
 
-						if(typeof chunk == 'function')
-						{
+						if(typeof chunk == 'function') {
 							callback = chunk;
 							chunk = null;
 						}
-						else if(typeof encoding == 'function')
-						{
+						else if(typeof encoding == 'function') {
 							callback = encoding;
 							encoding = null;
 						}
 
-						if(chunk)
-						{
+						if(chunk) {
 							input.write(chunk, encoding);
 						}
 						input.destroy();
-						if(callback)
-						{
+						if(callback) {
 							callback();
 						}
 						input.emit('finish');
 					}
 
 					input.destroy = (error=null) => {
-						if(ended)
-						{
+						if(ended) {
 							return;
 						}
 						ended = true;
 
-						if(error)
-						{
+						if(error) {
 							output.emit('error', error);
 						}
 						output.emit('end');
@@ -2714,13 +2750,11 @@ return (function(){
 
 				function spawn(command, args=[], options=null)
 				{
-					if(args != null && typeof args === 'object' && !(args instanceof Array))
-					{
+					if(args != null && typeof args === 'object' && !(args instanceof Array)) {
 						options = args;
 						args = [];
 					}
-					if(typeof command !== 'string')
-					{
+					if(typeof command !== 'string') {
 						throw new TypeError("command must be a string");
 					}
 					return new ChildProcess(command, args, options);

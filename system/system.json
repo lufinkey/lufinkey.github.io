@@ -1,0 +1,141 @@
+{
+	"version": "0.0.1",
+	"alwaysRedownload": true,
+	"env": {
+		"paths": [
+			"/system/bin",
+			"/system/apps",
+			"/apps",
+			"/bin"
+		]
+	},
+	"bundles": [
+		{
+			"id": "base",
+			"files": {
+				"system": {
+					"boot": {
+						"triggers": {
+							"delay.js": "",
+							"sassSetup.js": ""
+						}
+					},
+					"init.css": "",
+					"init.jsx": "",
+					"lib": {
+						"transcend32.dll": {
+							"style.css": "",
+							"CRT.jsx": "",
+							"index.jsx": "",
+							"package.json": ""
+						}
+					},
+					"slib": {
+						"react.js": "https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js",
+						"react-dom.js": "https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js",
+						"babel.js": "https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js",
+						"sass.js": "https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js"
+					}
+				}
+			},
+			"triggers": [
+				{
+					"execute": "/system/boot/triggers/sassSetup.js"
+				},
+				{
+					"execute": "/system/init.jsx",
+					"stdin": "bootlog",
+					"detached": true
+				},
+				{
+					"execute": "/system/boot/triggers/delay.js",
+					"args": [ "2000" ]
+				}
+			]
+		},
+		{
+			"id": "main",
+			"files": {
+				"system": {
+					"boot": {
+						"triggers": {
+							"setupFolders.js": ""
+						}
+					},
+					"apps": {
+						"aboutme.exe": {
+							"style.css": "",
+							"index.jsx": "",
+							"package.json": ""
+						},
+						"explorer.exe": {
+							"style.css": "",
+							"index.jsx": "",
+							"package.json": ""
+						},
+						"iframe.exe": {
+							"style.css": "",
+							"index.jsx": "",
+							"package.json": ""
+						},
+						"textedit.exe": {
+							"style.css": "",
+							"index.jsx": "",
+							"package.json": ""
+						},
+						"terminal.exe": {
+							"style.css": "",
+							"index.jsx": "",
+							"package.json": ""
+						}
+					},
+					"bin": {
+						"cat.js": "",
+						"jsh.js": "",
+						"ls.js": "",
+						"open.js": ""
+					},
+					"lib": {
+						"dwm.dll": {
+							"Window.jsx": "",
+							"style.css": "",
+							"index.jsx": "",
+							"package.json": ""
+						},
+						"shell32.dll": {
+							"Desktop.css": "",
+							"Desktop.jsx": "",
+							"FileIcon.jsx": "",
+							"FileIconLayout.css": "",
+							"FileIconLayout.jsx": "",
+							"StartMenu.css": "",
+							"TaskBar.css": "",
+							"TaskBar.jsx": "",
+							"TaskBarWindowButton.jsx": "",
+							"Wallpaper.jsx": "",
+							"index.jsx": "",
+							"package.json": ""
+						},
+						"selfad.dll": {
+							"style.scss": "",
+							"package.json": "",
+							"index.jsx": ""
+						},
+						"base64uri.js": "",
+						"mimetype.js": "",
+						"path.js": ""
+					},
+					"share": {
+						"appdefaults.json": "",
+						"mimetypes.json": ""
+					}
+				}
+			},
+			"triggers": [
+				{
+					"execute": "/system/boot/triggers/setupFolders.js"
+				}
+			]
+		}
+	]
+}
