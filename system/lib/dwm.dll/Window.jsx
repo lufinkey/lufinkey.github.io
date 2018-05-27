@@ -3,102 +3,113 @@ const React = require('react');
 
 class Window extends React.Component
 {
-	constructor(props)
-	{
+	constructor(props) {
+		// check for required props
+		if(props.windowId == null) {
+			throw new Error("Window is missing required prop windowId")
+		}
+		if(!props.component) {
+			throw new Error("Window is missing required prop component");
+		}
+		if(!props.windowManager) {
+			throw new Error("Window is missing required prop windowManager");
+		}
+
+		// call super constructor
 		super(props);
 
+		// get default options
+		const defaults = Object.assign({}, props.defaults);
+
+		// set initial state
 		this.state = {
-			_created: false
+			title: defaults.title,
+			position: Object.assign({x:0,y:0}, defaults.position),
+			size: Object.assign({x:320,y:240}, defaults.size),
+			minimized: defaults.minimized,
+			maximized: defaults.maximized
 		};
+
+		this.onRefWindowComponent = this.onRefWindowComponent.bind(this);
 	}
 
-	componentDidMount()
-	{
-		if(this.props.onMount)
-		{
+	minimize() {
+		this.setState({minimized: true});
+	}
+
+	maximize() {
+		this.setState({maximized: true});
+	}
+
+	restoreDown() {
+		this.setState({maximized: false});
+	}
+
+	close() {
+		if(!this.props.windowManager) {
+			throw new Error("no window manager!");
+		}
+		return this.props.windowManager.destroyWindow(this);
+	}
+
+	componentDidMount() {
+		if(this.props.onMount) {
 			this.props.onMount(this);
 		}
 	}
 
-	componentWillUpdate()
-	{
-		if(this.props.onWillUpdate)
-		{
-			this.props.onWillUpdate();
-		}
-	}
-
-	componentWillUnmount()
-	{
-		if(this.props.onUnmount)
-		{
+	componentWillUnmount() {
+		if(this.props.onUnmount) {
 			this.props.onUnmount(this);
 		}
 	}
 
-	create(initialState, callback)
-	{
-		var state = Object.assign({}, initialState);
-		state._created = true;
-		this.setState(state, callback);
+	onRefWindowComponent(component) {
+		this.windowComponent = component;
 	}
 
-	minimize()
-	{
-		this.setState({minimized: true});
-	}
-
-	maximize()
-	{
-		this.setState({maximized: true});
-	}
-
-	restoreDown()
-	{
-		this.setState({maximized: false});
-	}
-
-	close()
-	{
-		if(this.props.windowManager)
-		{
-			return this.props.windowManager.destroyWindow(this);
+	onMinimizeButtonClick(event) {
+		let callDefault = true;
+		if(this.windowComponent.onMinimizeButtonClick) {
+			callDefault = this.windowComponent.onMinimizeButtonClick(event);
 		}
-		return Promise.reject(new Error("no window manager"));
-	}
-
-	onMinimizeButtonClick(event)
-	{
-		this.minimize();
-	}
-
-	onMaximizeButtonClick(event)
-	{
-		if(this.state.maximized)
-		{
-			this.restoreDown();
-		}
-		else
-		{
-			this.maximize();
+		if(callDefault) {
+			this.minimize();
 		}
 	}
 
-	onCloseButtonClick(event)
-	{
-		this.close();
+	onMaximizeButtonClick(event) {
+		let callDefault = true;
+		if(this.windowComponent.onMaximizeButtonClick) {
+			callDefault = this.windowComponent.onMaximizeButtonClick(event);
+		}
+		if(callDefault) {
+			if(this.state.maximized) {
+				this.restoreDown();
+			}
+			else {
+				this.maximize();
+			}
+		}
 	}
 
-	onCornerMouseDown(event, corner)
-	{
-		if(this.props.onCornerMouseDown)
-		{
+	onCloseButtonClick(event) {
+		let callDefault = true;
+		if(this.windowComponent.onCloseButtonClick) {
+			callDefault = this.windowComponent.onCloseButtonClick(event);
+		}
+		if(callDefault) {
+			this.close();
+		}
+	}
+
+	onCornerMouseDown(event, corner) {
+		if(this.props.onCornerMouseDown) {
 			this.props.onCornerMouseDown(event, corner);
 		}
 	}
 
-	renderTitleBar()
-	{
+	renderTitleBar() {
 		return (
 			<div className="window-title-bar"
 					onMouseDown={this.props.onTitleBarMouseDown}
@@ -113,11 +124,9 @@ class Window extends React.Component
 		);
 	}
 
-	renderMenuBar()
-	{
+	renderMenuBar() {
 		var menuItems = this.props.menuItems;
-		if(menuItems == null)
-		{
+		if(menuItems == null) {
 			return null;
 		}
 
@@ -128,18 +137,14 @@ class Window extends React.Component
 		);
 	}
 
-	renderContent()
-	{
-		return null;
+	renderContent() {
+		const WindowComponent = this.props.component;
+		return (
+			<WindowComponent window={this} ref={this.onRefWindowComponent}/>
+		);
 	}
 
-	render()
-	{
-		if(!this.state._created)
-		{
-			return null;
-		}
-
+	render() {
 		var position = Object.assign({x:0,y:0}, this.state.position);
 		var size = Object.assign({x:320,y:240}, this.state.size);
 		
@@ -150,12 +155,10 @@ class Window extends React.Component
 			height: size.y
 		};
 		var className = "window";
-		if(this.state.minimized)
-		{
+		if(this.state.minimized) {
 			className += " minimized";
 		}
-		else if(this.state.maximized)
-		{
+		else if(this.state.maximized) {
 			className += " maximized";
 			style.left = 0;
 			style.top = 0;

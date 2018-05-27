@@ -64,29 +64,34 @@
 					},
 					"apps": {
 						"aboutme.exe": {
-							"style.css": "",
+							"AboutMe.jsx": "",
 							"index.jsx": "",
-							"package.json": ""
+							"package.json": "",
+							"style.css": ""
 						},
 						"explorer.exe": {
-							"style.css": "",
+							"Explorer.jsx": "",
 							"index.jsx": "",
-							"package.json": ""
+							"package.json": "",
+							"style.css": ""
 						},
 						"iframe.exe": {
-							"style.css": "",
+							"iFrame.jsx": "",
 							"index.jsx": "",
-							"package.json": ""
+							"package.json": "",
+							"style.css": ""
 						},
 						"textedit.exe": {
-							"style.css": "",
+							"TextEdit.jsx": "",
 							"index.jsx": "",
-							"package.json": ""
+							"package.json": "",
+							"style.css": ""
 						},
 						"terminal.exe": {
-							"style.css": "",
+							"Terminal.jsx": "",
 							"index.jsx": "",
-							"package.json": ""
+							"package.json": "",
+							"style.css": ""
 						}
 					},
 					"bin": {

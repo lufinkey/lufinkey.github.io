@@ -27,6 +27,8 @@ class Desktop extends React.Component
 
 		this.windowManager = null;
 		this.taskbar = null;
+
+		this.onWindowManagerRef = this.onWindowManagerRef.bind(this);
 	}
 
 	componentWillMount()
@@ -47,23 +49,23 @@ class Desktop extends React.Component
 		child_process.spawn('open', ['/home/Desktop/'+filename]);
 	}
 
-	onWindowManagerMount(windowManager)
+	onWindowManagerRef(windowManager)
 	{
-		this.windowManager = windowManager;
-		process.env['WINDOW_MANAGER'] = {
-			createWindow: (...args) => {
-				return windowManager.createWindow(...args);
-			},
-			destroyWindow: (...args) => {
-				return windowManager.destroyWindow(...args);
-			}
-		};
-	}
-
-	onWindowManagerUnmount(windowManager)
-	{
-		this.windowManager = null;
-		process.env['WINDOW_MANAGER'] = null;
+		if(windowManager) {
+			this.windowManager = windowManager;
+			process.env['WINDOW_MANAGER'] = {
+				createWindow: (...args) => {
+					return windowManager.createWindow(...args);
+				},
+				destroyWindow: (...args) => {
+					return windowManager.destroyWindow(...args);
+				}
+			};
+		}
+		else {
+			this.windowManager = null;
+			process.env['WINDOW_MANAGER'] = null;
+		}
 	}
 
 	onWindowCreate(window)
@@ -71,14 +73,14 @@ class Desktop extends React.Component
 		this.forceUpdate();
 	}
 
-	onWindowDestroy(window)
-	{
-		this.forceUpdate();
-	}
-
 	onWindowWillUpdate(window)
 	{
 		this.taskbar.forceUpdate();
+	}
+
+	onWindowDestroy(window)
+	{
+		this.forceUpdate();
 	}
 
 	onTaskBarRef(taskbar)
@@ -89,8 +91,7 @@ class Desktop extends React.Component
 	render()
 	{
 		var windows = {};
-		if(this.windowManager)
-		{
+		if(this.windowManager) {
 			windows = Object.assign({}, this.windowManager.windows)
 		}
 
@@ -102,11 +103,10 @@ class Desktop extends React.Component
 						files={files}
 						onFileOpen={(fileName)=>{this.onFileOpen(fileName)}}/>
 					<WindowManager
-						onMount={(windowMgr) => {this.onWindowManagerMount(windowMgr)}}
-						onUnmount={(windowMgr) => {this.onWindowManagerUnmount(windowMgr)}}
-						onWindowWillUpdate={(window) => {this.onWindowWillUpdate(window)}}
+						ref={this.onWindowManagerRef}
 						onFileOpen={(filename) => {this.onFileOpen(filename)}}
 						onWindowCreate={(window) => {this.onWindowCreate(window)}}
+						onWindowWillUpdate={(window) => {this.onWindowWillUpdate(window)}}
 						onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
 				</div>
 				<TaskBar

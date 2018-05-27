@@ -28,7 +28,7 @@
 						},
 						transform: (code, context) => {
 							const Babel = kernel.require(context, {}, '/', '/system/slib/babel.js');
-							return Babel.transform(code, {presets:['react']}).code;
+							return Babel.transform(code, {presets:['react', 'stage-0']}).code;
 						}
 					},
 					{
