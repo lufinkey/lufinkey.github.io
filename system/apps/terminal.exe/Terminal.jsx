@@ -48,12 +48,12 @@ class Terminal extends React.Component
 	appendShellOutput(output, color='white') {
 		// determine auto scroll behavior
 		var shouldAutoScroll = false;
-		var termContent = this.getTerminalContent();
-		if(termContent) {
-			var scrollBottom = termContent.scrollHeight - termContent.getBoundingClientRect().height;
-			var scrollDiff = Math.abs(scrollBottom - termContent.scrollTop);
+		var termElement = this.getTerminalElement();
+		if(termElement) {
+			var scrollBottom = termElement.scrollHeight - termElement.getBoundingClientRect().height;
+			var scrollDiff = Math.abs(scrollBottom - termElement.scrollTop);
 
-			if(scrollDiff < 20) {
+			if(scrollDiff < 18) {
 				shouldAutoScroll = true;
 			}
 		}
@@ -94,12 +94,8 @@ class Terminal extends React.Component
 		return null;
 	}
 
-	getTerminalContent() {
-		var windowNode = ReactDOM.findDOMNode(this);
-		if(windowNode) {
-			return windowNode.querySelector('.terminal-content');
-		}
-		return null;
+	getTerminalElement() {
+		return ReactDOM.findDOMNode(this);
 	}
 
 	onShellInputUpdate(event) {
