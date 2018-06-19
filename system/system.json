@@ -129,7 +129,8 @@
 							"index.jsx": ""
 						},
 						"base64uri.js": "",
-						"mimetype.js": ""
+						"mimetype.js": "",
+						"react-draggable.js": "https://raw.githubusercontent.com/mzabriskie/react-draggable/master/dist/react-draggable.js"
 					},
 					"share": {
 						"appdefaults.json": "",

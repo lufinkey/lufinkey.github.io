@@ -29,11 +29,17 @@ class Desktop extends React.Component
 		this.taskbar = null;
 
 		this.onWindowManagerRef = this.onWindowManagerRef.bind(this);
+		this.onTaskBarRef = this.onTaskBarRef.bind(this);
 	}
 
 	componentWillMount()
 	{
-		files = fs.readdirSync('/home/Desktop');
+		try {
+			files = fs.readdirSync('/home/Desktop');
+		}
+		catch(error) {
+			files = [];
+		}
 	}
 
 	onDesktopMouseDown(event)
@@ -73,9 +79,11 @@ class Desktop extends React.Component
 		this.forceUpdate();
 	}
 
-	onWindowWillUpdate(window)
+	onWindowUpdate(window)
 	{
-		this.taskbar.forceUpdate();
+		if(this.taskbar) {
+			this.taskbar.forceUpdate();
+		}
 	}
 
 	onWindowDestroy(window)
@@ -106,12 +114,12 @@ class Desktop extends React.Component
 						ref={this.onWindowManagerRef}
 						onFileOpen={(filename) => {this.onFileOpen(filename)}}
 						onWindowCreate={(window) => {this.onWindowCreate(window)}}
-						onWindowWillUpdate={(window) => {this.onWindowWillUpdate(window)}}
+						onWindowUpdate={(window) => {this.onWindowUpdate(window)}}
 						onWindowDestroy={(window) => {this.onWindowDestroy(window)}}/>
 				</div>
 				<TaskBar
 					windows={windows}
-					ref={(taskbar) => {this.onTaskBarRef(taskbar)}}
+					ref={this.onTaskBarRef}
 					onWindowButtonClick={(window, event) => {this.onTaskBarWindowButtonClick(window, event)}}/>
 			</div>
 		);

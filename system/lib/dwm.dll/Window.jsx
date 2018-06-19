@@ -1,5 +1,9 @@
 
 const React = require('react');
+const ReactDOM = require('react-dom');
+const { DraggableCore } = require('react-draggable');
+
+const minWindowSize = {x: 100, y: 60};
 
 class Window extends React.Component
 {
@@ -27,22 +31,45 @@ class Window extends React.Component
 			position: Object.assign({x:0,y:0}, defaults.position),
 			size: Object.assign({x:320,y:240}, defaults.size),
 			minimized: defaults.minimized,
-			maximized: defaults.maximized
+			maximized: defaults.maximized,
+			dragging: null,
+			dragOffset: null
 		};
 
 		this.onRefWindowComponent = this.onRefWindowComponent.bind(this);
+		this.onDragStart = this.onDragStart.bind(this);
+		this.onDrag = this.onDrag.bind(this);
+		this.onDragStop = this.onDragStop.bind(this);
 	}
 
 	minimize() {
-		this.setState({minimized: true});
+		this.setState({
+			minimized: true,
+			dragging: null,
+			dragOffset: null,
+			dragStart: null,
+			dragCorner: null,
+			draggerStartPosition: null,
+			draggerStartSize: null
+		});
 	}
 
 	maximize() {
-		this.setState({maximized: true});
+		this.setState({
+			maximized: true,
+			dragging: null,
+			dragOffset: null,
+			dragStart: null,
+			dragCorner: null,
+			draggerStartPosition: null,
+			draggerStartSize: null
+		});
 	}
 
 	restoreDown() {
-		this.setState({maximized: false});
+		this.setState({
+			maximized: false
+		});
 	}
 
 	close() {
@@ -61,6 +88,12 @@ class Window extends React.Component
 	componentWillUnmount() {
 		if(this.props.onUnmount) {
 			this.props.onUnmount(this);
+		}
+	}
+
+	componentDidUpdate() {
+		if(this.props.onUpdate) {
+			this.props.onUpdate();
 		}
 	}
 
@@ -103,17 +136,187 @@ class Window extends React.Component
 		}
 	}
 
-	onCornerMouseDown(event, corner) {
-		if(this.props.onCornerMouseDown) {
-			this.props.onCornerMouseDown(event, corner);
+	onDragStart(event, data) {
+		// prevent double dragging
+		if(this.state.dragging) {
+			event.preventDefault();
+			return false;
 		}
+		// start dragging
+		const windowRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
+		const offsetX = windowRect.left - event.clientX;
+		const offsetY = windowRect.top - event.clientY;
+		this.setState({
+			dragging: 'window',
+			dragOffset: {x: offsetX, y: offsetY}
+		});
+	}
+
+	onDrag(event, data) {
+		// ensure dragging window
+		if(this.state.dragging !== 'window') {
+			event.preventDefault();
+			return false;
+		}
+		// don't adjust window position if not within bounds
+		const areaRect = ReactDOM.findDOMNode(this).parentElement.getBoundingClientRect();
+		if(event.clientX < areaRect.left || event.clientY < areaRect.top
+			|| event.clientX > areaRect.right || event.clientY > areaRect.bottom)
+		{
+			return;
+		}
+		// adjust drag
+		const dragOffset = this.state.dragOffset;
+		this.setState({
+			position: {x: data.x + dragOffset.x, y: data.y + dragOffset.y}
+		});
+	}
+
+	onDragStop(event, data) {
+		// ensure dragging window
+		if(this.state.dragging !== 'window') {
+			event.preventDefault();
+			return false;
+		}
+		// stop dragging
+		this.setState({
+			dragging: null,
+			dragOffset: null
+		});
+	}
+
+	onCornerDragStart(event, data, corner) {
+		// prevent double dragging
+		if(this.state.dragging) {
+			event.preventDefault();
+			return false;
+		}
+		// start dragging
+		this.setState({
+			dragging: 'corner',
+			dragStart: {x: event.clientX, y: event.clientY},
+			dragCorner: corner,
+			draggerStartPosition: Object.assign({}, this.state.position),
+			draggerStartSize: Object.assign({}, this.state.size)
+		});
+	}
+
+	onCornerDrag(event, data, corner) {
+		// ensure dragging corner
+		if(this.state.dragging !== 'corner' || this.state.dragCorner !== corner) {
+			event.preventDefault();
+			return false;
+		}
+
+		// don't adjust window size if not within bounds
+		const areaRect = ReactDOM.findDOMNode(this).parentElement.getBoundingClientRect();
+		if(event.clientX < areaRect.left || event.clientY < areaRect.top
+			|| event.clientX > areaRect.right || event.clientY > areaRect.bottom)
+		{
+			return;
+		}
+
+		// get window properties
+		let position = Object.assign({}, this.state.position);
+		let size = Object.assign({}, this.state.size);
+
+		// get resize offset
+		const dragStart = this.state.dragStart;
+		const dragOffset = {x: (event.clientX - dragStart.x), y: (event.clientY - dragStart.y)}
+
+		// create window resize functions
+		const resizeX = (mult=1) => {
+			size.x = this.state.draggerStartSize.x + (dragOffset.x*mult);
+			if(size.x < minWindowSize.x) {
+				size.x = minWindowSize.x;
+			}
+		}
+		const resizeY = (mult=1) => {
+			size.y = this.state.draggerStartSize.y + (dragOffset.y*mult);
+			if(size.y < minWindowSize.y) {
+				size.y = minWindowSize.y;
+			}
+		}
+		const reAdjustPositionLeft = () => {
+			position.x = this.state.draggerStartPosition.x + this.state.draggerStartSize.x - size.x;
+		}
+		const reAdjustPositionTop = () => {
+			position.y = this.state.draggerStartPosition.y + this.state.draggerStartSize.y - size.y;
+		}
+
+		// resize based on corner
+		switch(this.state.dragCorner)
+		{
+			case 'top':
+				resizeY(-1);
+				reAdjustPositionTop();
+				break;
+
+			case 'topleft':
+				resizeX(-1);
+				resizeY(-1);
+				reAdjustPositionLeft();
+				reAdjustPositionTop();
+				break;
+			
+			case 'topright':
+				resizeX(1);
+				resizeY(-1);
+				reAdjustPositionTop();
+				break;
+			
+			case 'left':
+				resizeX(-1);
+				reAdjustPositionLeft();
+				break;
+
+			case 'right':
+				resizeX(1);
+				break;
+
+			case 'bottomleft':
+				resizeX(-1);
+				resizeY(1);
+				reAdjustPositionLeft();
+				break;
+
+			case 'bottomright':
+				resizeX(1);
+				resizeY(1);
+				break;
+
+			case 'bottom':
+				resizeY(1);
+				break;
+		}
+
+		// update state
+		this.setState({
+			position: position,
+			size: size
+		});
+	}
+
+	onCornerDragStop(event, data, corner) {
+		// ensure dragging corner
+		if(this.state.dragging !== 'corner' || this.state.dragCorner !== corner) {
+			event.preventDefault();
+			return false;
+		}
+		// stop dragging
+		this.setState({
+			dragging: null,
+			dragStart: null,
+			dragCorner: null,
+			draggerStartPosition: null,
+			draggerStartSize: null
+		});
 	}
 
 	renderTitleBar() {
 		return (
 			<div className="window-title-bar"
-					onMouseDown={this.props.onTitleBarMouseDown}
-					onDoubleClick={(event) => {this.onMaximizeButtonClick(event)}}>
+				onDoubleClick={(event) => {this.onMaximizeButtonClick(event)}}>
 				<div className="title">{this.state.title}</div>
 				<div className="window-buttons">
 					<button type="button" className="window-button-minimize" onClick={(event) => {this.onMinimizeButtonClick(event)}}></button>
@@ -169,21 +372,67 @@ class Window extends React.Component
 		}
 		
 		return (
-			<div className={className} style={style}>
-				<div className="window-resize top" onMouseDown={(event)=>{this.onCornerMouseDown(event,'top')}}></div>
-				<div className="window-resize topleft" onMouseDown={(event)=>{this.onCornerMouseDown(event,'topleft')}}></div>
-				<div className="window-resize topright" onMouseDown={(event)=>{this.onCornerMouseDown(event,'topright')}}></div>
-				<div className="window-resize left" onMouseDown={(event)=>{this.onCornerMouseDown(event,'left')}}></div>
-				<div className="window-resize right" onMouseDown={(event)=>{this.onCornerMouseDown(event,'right')}}></div>
-				<div className="window-resize bottomleft" onMouseDown={(event)=>{this.onCornerMouseDown(event,'bottomleft')}}></div>
-				<div className="window-resize bottomright" onMouseDown={(event)=>{this.onCornerMouseDown(event,'bottomright')}}></div>
-				<div className="window-resize bottom" onMouseDown={(event)=>{this.onCornerMouseDown(event,'bottom')}}></div>
-				{this.renderTitleBar()}
-				{this.renderMenuBar()}
-				<div className="window-content">
-					{this.renderContent()}
+			<DraggableCore
+				handle={'.window-title-bar'}
+				onStart={this.onDragStart}
+				onDrag={this.onDrag}
+				onStop={this.onDragStop}>
+				<div className={className} style={style}>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'top')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'top')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'top')}}>
+						<div className="window-resize top"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'topleft')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'topleft')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'topleft')}}>
+						<div className="window-resize topleft"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'topright')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'topright')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'topright')}}>
+						<div className="window-resize topright"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'left')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'left')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'left')}}>
+						<div className="window-resize left"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'right')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'right')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'right')}}>
+						<div className="window-resize right"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'bottomleft')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'bottomleft')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'bottomleft')}}>
+						<div className="window-resize bottomleft"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'bottomright')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'bottomright')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'bottomright')}}>
+						<div className="window-resize bottomright"></div>
+					</DraggableCore>
+					<DraggableCore
+						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'bottom')}}
+						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'bottom')}}
+						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'bottom')}}>
+						<div className="window-resize bottom"></div>
+					</DraggableCore>
+					{this.renderTitleBar()}
+					{this.renderMenuBar()}
+					<div className="window-content">
+						{this.renderContent()}
+					</div>
 				</div>
-			</div>
+			</DraggableCore>
 		);
 	}
 }
