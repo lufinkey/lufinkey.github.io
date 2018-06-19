@@ -219,6 +219,10 @@ class Window extends React.Component
 		{
 			return;
 		}
+		// don't adjust window size if maximized
+		if(this.state.maximized) {
+			return;
+		}
 
 		// get window properties
 		let position = Object.assign({}, this.state.position);
