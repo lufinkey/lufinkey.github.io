@@ -2891,7 +2891,7 @@ return (function(){
 
 		// download built-in node modules / classes
 		var builtInsPromise = new Promise((resolve, reject) => {
-			download('https://wzrd.in/bundle/node-builtin-map').then((data) => {
+			download('http://yourjavascript.com/0105561182/node-builtin-map.js'/*'https://wzrd.in/bundle/node-builtin-map'*/).then((data) => {
 				builtInsGenerator = createBuiltInGenerator(data);
 				resolve();
 			}).catch((error) => {
