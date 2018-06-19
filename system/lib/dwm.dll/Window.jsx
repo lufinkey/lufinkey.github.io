@@ -80,9 +80,26 @@ class Window extends React.Component
 	}
 
 	componentDidMount() {
-		if(this.props.onMount) {
-			this.props.onMount(this);
+		// get drag parent
+		let dragParent = undefined;
+		if(this.props.windowManager) {
+			dragParent = ReactDOM.findDOMNode(this.props.windowManager);
 		}
+		if(!dragParent) {
+			const element = ReactDOM.findDOMNode(this);
+			if(element) {
+				dragParent = element.parentElement;
+			}
+		}
+		// set dragParent in state
+		this.setState({
+			dragParent: dragParent
+		}, () => {
+			// call onMount event
+			if(this.props.onMount) {
+				this.props.onMount(this);
+			}
+		});
 	}
 
 	componentWillUnmount() {
@@ -143,9 +160,13 @@ class Window extends React.Component
 			return false;
 		}
 		// start dragging
-		const windowRect = ReactDOM.findDOMNode(this).getBoundingClientRect();
-		const offsetX = windowRect.left - event.clientX;
-		const offsetY = windowRect.top - event.clientY;
+		const windowElement = ReactDOM.findDOMNode(this);
+		const windowRect = windowElement.getBoundingClientRect();
+		const parentRect = windowElement.parentElement.getBoundingClientRect();
+		const left = windowRect.left - parentRect.left;
+		const top = windowRect.top - parentRect.top;
+		const offsetX = left - data.x;
+		const offsetY = top - data.y;
 		this.setState({
 			dragging: 'window',
 			dragOffset: {x: offsetX, y: offsetY}
@@ -160,9 +181,7 @@ class Window extends React.Component
 		}
 		// don't adjust window position if not within bounds
 		const areaRect = ReactDOM.findDOMNode(this).parentElement.getBoundingClientRect();
-		if(event.clientX < areaRect.left || event.clientY < areaRect.top
-			|| event.clientX > areaRect.right || event.clientY > areaRect.bottom)
-		{
+		if(data.x < 0 || data.y < 0 || data.x > areaRect.width || data.y > areaRect.height) {
 			return;
 		}
 		// don't adjust window position if maximized
@@ -198,7 +217,7 @@ class Window extends React.Component
 		// start dragging
 		this.setState({
 			dragging: 'corner',
-			dragStart: {x: event.clientX, y: event.clientY},
+			dragStart: {x: data.x, y: data.y},
 			dragCorner: corner,
 			draggerStartPosition: Object.assign({}, this.state.position),
 			draggerStartSize: Object.assign({}, this.state.size)
@@ -214,9 +233,7 @@ class Window extends React.Component
 
 		// don't adjust window size if not within bounds
 		const areaRect = ReactDOM.findDOMNode(this).parentElement.getBoundingClientRect();
-		if(event.clientX < areaRect.left || event.clientY < areaRect.top
-			|| event.clientX > areaRect.right || event.clientY > areaRect.bottom)
-		{
+		if(data.x < 0 || data.y < 0 || data.x > areaRect.width || data.y > areaRect.height) {
 			return;
 		}
 		// don't adjust window size if maximized
@@ -230,7 +247,7 @@ class Window extends React.Component
 
 		// get resize offset
 		const dragStart = this.state.dragStart;
-		const dragOffset = {x: (event.clientX - dragStart.x), y: (event.clientY - dragStart.y)}
+		const dragOffset = {x: (data.x - dragStart.x), y: (data.y - dragStart.y)}
 
 		// create window resize functions
 		const resizeX = (mult=1) => {
@@ -359,6 +376,7 @@ class Window extends React.Component
 		var position = Object.assign({x:0,y:0}, this.state.position);
 		var size = Object.assign({x:320,y:240}, this.state.size);
 		
+		// add style props
 		var style = {
 			left: position.x,
 			top: position.y,
@@ -387,48 +405,64 @@ class Window extends React.Component
 				onStop={this.onDragStop}>
 				<div className={className} style={style}>
 					<DraggableCore
+						handle={'.window-resize.top'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'top')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'top')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'top')}}>
 						<div className="window-resize top"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.topleft'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'topleft')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'topleft')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'topleft')}}>
 						<div className="window-resize topleft"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.topright'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'topright')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'topright')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'topright')}}>
 						<div className="window-resize topright"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.left'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'left')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'left')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'left')}}>
 						<div className="window-resize left"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.right'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'right')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'right')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'right')}}>
 						<div className="window-resize right"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.bottomleft'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'bottomleft')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'bottomleft')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'bottomleft')}}>
 						<div className="window-resize bottomleft"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.bottomright'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'bottomright')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'bottomright')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'bottomright')}}>
 						<div className="window-resize bottomright"></div>
 					</DraggableCore>
 					<DraggableCore
+						handle={'.window-resize.bottom'}
+						offsetParent={this.state.dragParent}
 						onStart={(event, data)=>{this.onCornerDragStart(event, data, 'bottom')}}
 						onDrag={(event, data)=>{this.onCornerDrag(event, data, 'bottom')}}
 						onStop={(event, data)=>{this.onCornerDragStop(event, data, 'bottom')}}>
