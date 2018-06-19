@@ -165,6 +165,10 @@ class Window extends React.Component
 		{
 			return;
 		}
+		// don't adjust window position if maximized
+		if(this.state.maximized) {
+			return;
+		}
 		// adjust drag
 		const dragOffset = this.state.dragOffset;
 		this.setState({
