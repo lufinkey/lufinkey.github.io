@@ -152,7 +152,6 @@ class WindowManager extends React.Component
 	}
 
 	onWindowUnmount(window) {
-		this.stopDragging();
 		// find unmounted window
 		for(var i=0; i<this.windowDestroyCallbacks.length; i++) {
 			var windowCallback = this.windowDestroyCallbacks[i];
