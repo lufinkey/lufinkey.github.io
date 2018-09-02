@@ -1073,7 +1073,7 @@ return (function(){
 //#endregion
 
 
-//#region Context
+//#region contexts
 
 		// create a new context from a given context
 		function createContext(parentContext = null)
@@ -1231,7 +1231,7 @@ return (function(){
 		// define kernel modules
 		generatedModules = {
 
-//#region rimraf
+		//#region rimraf
 			'rimraf': (context) => {
 				const fs = context.modules.fs;
 
@@ -1276,10 +1276,10 @@ return (function(){
 				rimraf.sync = rimrafSync;
 				return rimraf;
 			},
-//#endregion
+		//#endregion
 
 
-//#region fs
+		//#region fs
 			'fs': (context) => {
 				const FS = {};
 
@@ -2181,10 +2181,10 @@ return (function(){
 
 				return FS;
 			},
-//#endregion
+		//#endregion
 
 
-//#region child_process
+		//#region child_process
 			'child_process': (context) => {
 				const child_process = {};
 
@@ -2673,10 +2673,10 @@ return (function(){
 
 				return child_process;
 			},
-//#endregion
+		//#endregion
 
 
-//#region events
+		//#region events
 			'events': (context) => {
 				const EventEmitter = context.builtIns.modules.events;
 
@@ -2694,13 +2694,13 @@ return (function(){
 
 				return EventEmitter;
 			}
-//#endregion
+		//#endregion
 
 		};
 //#endregion
 
 
-//#region Kernel Script Preparation
+//#region kernel script preparation
 
 		// download persistjs
 		var persistJSPromise = new Promise((resolve, reject) => {
