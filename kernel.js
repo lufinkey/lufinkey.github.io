@@ -695,7 +695,20 @@ return (function(){
 				}
 			}
 			if(libRules.allowedFiles) {
-				if(libRules.allowedFiles.indexOf(context.filename) == -1) {
+				var foundMatch = false;
+				for(var allowedFile of libRules.allowedFiles) {
+					if(allowedFile.endsWith('/')) {
+						if(modulePath.startsWith(allowedFile)) {
+							foundMatch = true;
+							break;
+						}
+					}
+					else if(allowedFile == modulePath) {
+						foundMatch = true;
+						break;
+					}
+				}
+				if(!foundMatch) {
 					throw new Error("file is not allowed to load library");
 				}
 			}
