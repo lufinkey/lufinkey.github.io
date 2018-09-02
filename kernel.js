@@ -663,6 +663,7 @@ return (function(){
 
 			// load library rules if there are any
 			let libRules = {};
+			// TODO ensure the librules file is owned by the same user as the library
 			let libRulesFile = null;
 			try {
 				libRulesFile = context.modules.fs.readFileSync(modulePath+'.librules', {encoding:'utf8'});
@@ -677,6 +678,7 @@ return (function(){
 			// check library rules
 			if(libRules.shared) {
 				moduleContainer = loadedSharedModules;
+				// TODO check if the file is owned by root
 				if(!moduleContainer[modulePath] && context.uid != 0) {
 					throw new Error("cannot load globally shared library as non-root");
 				}
