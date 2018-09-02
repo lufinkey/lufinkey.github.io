@@ -1235,6 +1235,7 @@ return (function(){
 				pid: toNonNull(parentContext.pid, 0),
 				uid: toNonNull(parentContext.uid, 0),
 				gid: toNonNull(parentContext.uid, 0),
+				umask: toNonNull(parentContext.umask, 0o022),
 				stdin: null,
 				stdout: null,
 				stderr: null,
@@ -1428,8 +1429,7 @@ return (function(){
 
 				//#region fs inode functions
 
-				function createINode(type, info)
-				{
+				function createINode(type, info) {
 					// validate type
 					if(typeof type !== 'string') {
 						throw new TypeError("inode type must be a string");
@@ -1452,7 +1452,7 @@ return (function(){
 						'type': type,
 						'uid': info.uid,
 						'gid': info.gid,
-						'mode': info.mode,
+						'mode': info.mode | context.umask,
 						'encoding': info.encoding
 					};
 					// store inode
@@ -1469,12 +1469,11 @@ return (function(){
 							data = {};
 							break;
 					}
-					writeINodeContent(id, data);
+					writeINodeContent(id, data, {noValidate: true});
 					return id;
 				}
 
-				function getINode(id)
-				{
+				function getINode(id) {
 					var inodeStr = storage.getItem(inodePrefix+id);
 					if(!inodeStr) {
 						throw new Error("cannot access nonexistant inode "+id);
@@ -1482,8 +1481,7 @@ return (function(){
 					return JSON.parse(inodeStr);
 				}
 
-				function updateINode(id, info)
-				{
+				function updateINode(id, info) {
 					if(info.type !== undefined) {
 						throw new Error("cannot update inode type");
 					}
@@ -1501,14 +1499,12 @@ return (function(){
 					storage.setItem(inodePrefix+id, JSON.stringify(inode));
 				}
 
-				function destroyINode(id)
-				{
-					writeINodeContent(id, null);
+				function destroyINode(id) {
+					writeINodeContent(id, null, {noValidate: true});
 					storage.removeItem(inodePrefix+id);
 				}
 
-				function doesINodeExist(id)
-				{
+				function doesINodeExist(id) {
 					if(storage.getItem(inodePrefix+id)) {
 						return true;
 					}
@@ -1516,10 +1512,13 @@ return (function(){
 				}
 
 
-				function readINodeContent(id, encoding)
-				{
+				function readINodeContent(id, options) {
+					options = Object.assign({}, options);
+
 					var inode = getINode(id);
-					validatePermission(context, inode.uid, inode.gid, inode.mode, {r:true});
+					if(!options.noValidate) {
+						validatePermission(context, inode.uid, inode.gid, inode.mode, {r:true});
+					}
 
 					switch(inode.type) {
 						case 'FILE':
@@ -1527,14 +1526,14 @@ return (function(){
 							if(content == null) {
 								return null;
 							}
-							if(inode.encoding === encoding) {
+							if(inode.encoding === options.encoding) {
 								return content;
 							}
 							var buffer = Buffer.from(content, inode.encoding);
-							if(encoding == null) {
+							if(options.encoding == null) {
 								return buffer;
 							}
-							return buffer.toString(encoding);
+							return buffer.toString(options.encoding);
 
 						case 'DIR':
 							var content = storage.getItem(entryPrefix+id);
@@ -1548,8 +1547,11 @@ return (function(){
 							if(content == null) {
 								return null;
 							}
-							if(encoding == null) {
+							if(options.encoding == null) {
 								return Buffer.from(content);
+							}
+							else if(options.encoding !== 'utf8') {
+								return Buffer.from(content).toString(options.encoding);
 							}
 							return content;
 
@@ -1561,10 +1563,13 @@ return (function(){
 					}
 				}
 
-				function writeINodeContent(id, content, encoding)
-				{
+				function writeINodeContent(id, content, options) {
+					options = Object.assign({}, options);
+
 					var inode = getINode(id);
-					validatePermission(context, inode.uid, inode.gid, inode.mode, {w:true});
+					if(!options.noValidate) {
+						validatePermission(context, inode.uid, inode.gid, inode.mode, {w:true});
+					}
 
 					switch(inode.type) {
 						case 'FILE':
@@ -1579,9 +1584,9 @@ return (function(){
 									storage.setItem(entryPrefix+id, content.toString('base64'));
 								}
 								else if(typeof content === 'string') {
-									if(encoding) {
-										if(encoding !== inode.encoding) {
-											updateINode(id, {encoding: encoding});
+									if(options.encoding) {
+										if(options.encoding !== inode.encoding) {
+											updateINode(id, {encoding: options.encoding});
 										}
 									}
 									else if(inode.encoding !== 'utf8') {
@@ -1641,8 +1646,7 @@ return (function(){
 				}
 
 
-				function validatePath(path)
-				{
+				function validatePath(path) {
 					if(path instanceof Buffer) {
 						path = path.toString('utf8');
 					}
@@ -1657,8 +1661,7 @@ return (function(){
 				}
 
 
-				function findINode(path)
-				{
+				function findINode(path) {
 					// validate path
 					path = validatePath(path);
 					// get all path parts
@@ -1711,7 +1714,7 @@ return (function(){
 					if(linkCount == maxLinkCount) {
 						throw new Error("maximum symbolic links exceeded");
 					}
-					var path = readINodeContent(id, 'utf8');
+					var path = readINodeContent(id, {encoding:'utf8'});
 					var nextId = findINode(path);
 					if(nextId == null) {
 						return null;
@@ -1732,8 +1735,7 @@ return (function(){
 
 				//#region fs path entry functions
 
-				function createPathEntry(path, type, info, options)
-				{
+				function createPathEntry(path, type, info, options) {
 					options = Object.assign({}, options);
 					// validate path
 					path = validatePath(path);
@@ -1758,6 +1760,9 @@ return (function(){
 						}
 						throw new Error("entry already exists");
 					}
+
+					// validate write permissions
+					validatePermission(context, parentINode.uid, parentINode.gid, parentINode.mode, {x:true, w: true});
 					
 					// add entry to parent dir
 					var id = createINode(type, info);
@@ -1765,9 +1770,9 @@ return (function(){
 					try {
 						writeINodeContent(parentId, parentData);
 					}
-					catch(e) {
+					catch(error) {
 						destroyINode(id);
-						throw e;
+						throw error;
 					}
 
 					// done
@@ -1775,8 +1780,7 @@ return (function(){
 				}
 
 
-				function movePathEntry(oldPath, newPath)
-				{
+				function movePathEntry(oldPath, newPath) {
 					// validate paths
 					oldPath = validatePath(oldPath);
 					newPath = validatePath(newPath);
@@ -1793,7 +1797,7 @@ return (function(){
 						if(parentINode.type != 'DIR') {
 							throw new Error("parent entry is not a directory");
 						}
-						validatePermission(context, parentINode.uid, parentINode.gid, parentINode.mode, {r:true,w:true});
+						validatePermission(context, parentINode.uid, parentINode.gid, parentINode.mode, {x:true,w:true});
 						var parentData = readINodeContent(parentId);
 						return {
 							name: pathName,
@@ -1823,8 +1827,7 @@ return (function(){
 				}
 
 
-				function destroyPathEntry(path)
-				{
+				function destroyPathEntry(path) {
 					// validate path
 					path = validatePath(path);
 
@@ -1840,6 +1843,9 @@ return (function(){
 						throw new Error("parent entry is not a directory");
 					}
 					var parentData = readINodeContent(parentId);
+
+					// validate write permissions
+					validatePermission(context, parentINode.uid, parentINode.gid, parentINode.mode, {x:true,w:true});
 
 					// ensure entry exists
 					var id = parentData[pathName];
@@ -2149,8 +2155,7 @@ return (function(){
 				FS.mkdirSync = mkdirSync;
 
 
-				function readdir(path, options, callback)
-				{
+				function readdir(path, options, callback) {
 					if(typeof options === 'function') {
 						callback = options;
 						options = null;
@@ -2168,8 +2173,7 @@ return (function(){
 					});
 				}
 
-				function readdirSync(path, options)
-				{
+				function readdirSync(path, options) {
 					options = Object.assign({}, options);
 					var id = findINodeFollowingLinks(path);
 					if(id == null) {
@@ -2188,8 +2192,7 @@ return (function(){
 				FS.readdirSync = readdirSync;
 
 
-				function readFile(path, options, callback)
-				{
+				function readFile(path, options, callback) {
 					if(typeof options === 'function') {
 						callback = options;
 						options = null;
@@ -2207,23 +2210,21 @@ return (function(){
 					});
 				}
 
-				function readFileSync(path, options)
-				{
+				function readFileSync(path, options) {
 					options = Object.assign({}, options);
 					path = validatePath(path);
 					var id = findINodeFollowingLinks(path);
 					if(id == null) {
 						throw new Error("file does not exist");
 					}
-					return readINodeContent(id, options.encoding);
+					return readINodeContent(id, {encoding: options.encoding});
 				}
 
 				FS.readFile = readFile;
 				FS.readFileSync = readFileSync;
 
 
-				function rename(oldPath, newPath, callback)
-				{
+				function rename(oldPath, newPath, callback) {
 					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
@@ -2237,8 +2238,7 @@ return (function(){
 					});
 				}
 
-				function renameSync(oldPath, newPath)
-				{
+				function renameSync(oldPath, newPath) {
 					movePathEntry(oldPath, newPath);
 				}
 
@@ -2246,8 +2246,7 @@ return (function(){
 				FS.renameSync = renameSync;
 
 
-				function rmdir(path, callback)
-				{
+				function rmdir(path, callback) {
 					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
@@ -2261,8 +2260,7 @@ return (function(){
 					});
 				}
 
-				function rmdirSync(path)
-				{
+				function rmdirSync(path) {
 					path = validatePath(path);
 					var id = findINode(path);
 					if(id == null) {
@@ -2279,8 +2277,7 @@ return (function(){
 				FS.rmdirSync = rmdirSync;
 
 
-				function stat(path, callback)
-				{
+				function stat(path, callback) {
 					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
@@ -2294,8 +2291,7 @@ return (function(){
 					});
 				}
 
-				function statSync(path)
-				{
+				function statSync(path) {
 					path = validatePath(path);
 					var id = findINode(path);
 					if(id == null) {
@@ -2308,8 +2304,7 @@ return (function(){
 				FS.statSync = statSync;
 
 
-				function unlink(path, callback)
-				{
+				function unlink(path, callback) {
 					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
@@ -2323,8 +2318,7 @@ return (function(){
 					});
 				}
 
-				function unlinkSync(path)
-				{
+				function unlinkSync(path) {
 					path = validatePath(path);
 					var id = findINode(path);
 					if(id == null) {
@@ -2341,8 +2335,7 @@ return (function(){
 				FS.unlinkSync = unlinkSync;
 
 
-				function writeFile(path, data, options, callback)
-				{
+				function writeFile(path, data, options, callback) {
 					if(typeof options === 'function') {
 						callback = options;
 						options = null;
@@ -2360,8 +2353,7 @@ return (function(){
 					});
 				}
 
-				function writeFileSync(path, data, options)
-				{
+				function writeFileSync(path, data, options) {
 					options = Object.assign({}, options);
 					path = validatePath(path);
 					var id = createPathEntry(path, 'FILE', {mode: options.mode || 0o666}, {onlyIfMissing: true});
@@ -2369,7 +2361,7 @@ return (function(){
 					if(realId == null) {
 						throw new Error("broken symbolic link");
 					}
-					writeINodeContent(realId, data, options.encoding);
+					writeINodeContent(realId, data, {encoding: options.encoding});
 				}
 
 				FS.writeFile = writeFile;
@@ -2475,6 +2467,8 @@ return (function(){
 					constructor(path, args=[], options={}) {
 						var startTime = new Date().getTime();
 						super();
+
+						// validate parameters
 						if(typeof path !== 'string') {
 							throw new TypeError("path must be a string");
 						}
@@ -2516,6 +2510,16 @@ return (function(){
 								throw new TypeError("options.argv0 must be a string");
 							}
 							argv0 = options.argv0;
+						}
+						if(options.uid != null) {
+							if(!Number.isInteger(options.uid) || options.uid < 0) {
+								throw new TypeError("options.uid must be a positive integer");
+							}
+						}
+						if(options.gid != null) {
+							if(!Number.isInteger(options.gid) || options.gid < 0) {
+								throw new TypeError("options.gid must be a positive integer");
+							}
 						}
 
 						// apply options
@@ -2567,6 +2571,20 @@ return (function(){
 
 						// try to start the process
 						try {
+							if(options.uid != null) {
+								if(options.uid !== context.uid && context.uid !== 0) {
+									throw new Error("Permission Denied: cannot set uid of child process from underprivileged user");
+								}
+								childContext.uid = options.uid;
+							}
+							if(options.gid != null) {
+								// TODO check if uid is in gid group
+								if(childContext.gid !== 0 && options.gid === 0) {
+									throw new Error("Permission Denied: cannot join root group from underprivileged user");
+								}
+								childContext.gid = options.gid;
+							}
+
 							// get full module path
 							var paths = [];
 							if(context.env && context.env.paths) {
