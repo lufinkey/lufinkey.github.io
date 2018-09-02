@@ -1795,7 +1795,11 @@ return (function(){
 				//#region fs public constants
 
 				const constants = {
-					COPYFILE_EXCL: 0b00000000000000000000000000000001
+					COPYFILE_EXCL: 0b00000000000000000000000000000001,
+					F_OK: 0,
+					X_OK: 0x01,
+					W_OK: 0x02,
+					R_OK: 0x04
 				};
 				
 				Object.defineProperty(FS, 'constants', {
@@ -1897,11 +1901,51 @@ return (function(){
 
 				//#region fs public functions
 
-				function copyFile(src, dest, flags, callback)
-				{
+				function access(path, mode=0, callback) {
+					if(typeof mode === 'function') {
+						callback = mode;
+						mode = undefined;
+					}
+					if(typeof callback !== 'function') {
+						throw new TypeError("callback function is required");
+					}
+
+					makeAsyncPromise(context, () => {
+						return accessSync(path, mode);
+					}).then(() => {
+						callback(null);
+					}).catch((error) => {
+						callback(error);
+					});
+				}
+
+				function accessSync(path, mode=0) {
+					if(!mode) {
+						mode = 0;
+					}
+					var id = findINode(path);
+					var inode = getINode(id);
+					var neededPerms = {r:false,w:false,e:false};
+					if((mode & constants.R_OK) == constants.R_OK) {
+						neededPerms.r = true;
+					}
+					if((mode & constants.W_OK) == constants.W_OK) {
+						neededPerms.w = true;
+					}
+					if((mode & constants.X_OK) == constants.X_OK) {
+						neededPerms.e = true;
+					}
+					validatePermission(inode.uid, inode.gid, inode.mode, neededPerms);
+				}
+
+				FS.access = access;
+				FS.accessSync = accessSync;
+
+
+				function copyFile(src, dest, flags, callback) {
 					if(typeof flags === 'function') {
 						callback = flags;
-						flags = null;
+						flags = undefined;
 					}
 					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
@@ -1916,8 +1960,7 @@ return (function(){
 					});
 				}
 
-				function copyFileSync(src, dest, flags)
-				{
+				function copyFileSync(src, dest, flags) {
 					if(flags == null) {
 						flags = 0;
 					}
@@ -1971,8 +2014,7 @@ return (function(){
 				FS.copyFileSync = copyFileSync;
 
 
-				function exists(path, callback)
-				{
+				function exists(path, callback) {
 					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
@@ -1986,8 +2028,7 @@ return (function(){
 					});
 				}
 
-				function existsSync(path, callback)
-				{
+				function existsSync(path, callback) {
 					path = validatePath(path);
 					try {
 						var id = findINode(path);
