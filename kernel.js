@@ -18,6 +18,9 @@ function evalJavaScript(__scope, __code) {
 // sandbox kernel data
 return (function(){
 
+
+//#region General Helper Functions
+
 	function deepCopyObject(object) {
 		switch(typeof object) {
 			case 'object':
@@ -51,12 +54,43 @@ return (function(){
 		}
 	}
 
+	// give a default value if the given value is null
+	function toNonNull(value, defaultValue) {
+		if(value == null) {
+			return defaultValue;
+		}
+		return value;
+	}
+
+	// download a file
+	function download(url)
+	{
+		return new Promise((resolve, reject) => {
+			var xhr = new XMLHttpRequest();
+			xhr.onreadystatechange = () => {
+				if(xhr.readyState === 4) {
+					if(xhr.status === 200) {
+						resolve(xhr.responseText);
+					}
+					else {
+						reject(new Error(xhr.status+": "+xhr.statusText));
+					}
+				}
+			};
+
+			xhr.open('GET', url);
+			xhr.send();
+		});
+	}
+
+//#endregion
 
 
 
 	// class to handle all kernel functions
 	function Kernel(kernelOptions)
 	{
+//#region Kernel initialization
 		kernelOptions = Object.assign({}, kernelOptions);
 		
 		// clear localStorage for now
@@ -76,16 +110,10 @@ return (function(){
 
 		let rootContext = null;
 		let pidCounter = 1;
+//#endregion
 
 
-
-		// class to allow aliasing select globals to itself when evaluating a script
-		function ScriptGlobalAlias(aliases) {
-			this.aliases = aliases;
-		}
-
-
-
+//#region Exit Signal
 		// exception for process exit signal
 		class ExitSignal extends Error
 		{
@@ -103,7 +131,10 @@ return (function(){
 			}
 		}
 
+//#endregion
 
+
+//#region Promise
 
 		// promise to handle exit signals
 		function ProcPromise(context, callback)
@@ -278,7 +309,10 @@ return (function(){
 			return PromiseClass;
 		}
 
+//#endregion
 
+
+//#region Browser Function Wrappers
 
 		// define contextual browser functions
 		browserWrappers = {
@@ -323,7 +357,10 @@ return (function(){
 			}
 		};
 
+//#endregion
 
+
+//#region Built-In Module Generation
 
 		function createBuiltInGenerator(code)
 		{
@@ -351,9 +388,7 @@ return (function(){
 			return scope.let.exports;
 		}
 
-
-
-		// create built in modules for a given context
+		// create built-in modules for a given context
 		function createBuiltIns(context)
 		{
 			var scope = {
@@ -375,7 +410,18 @@ return (function(){
 			return builtIns;
 		}
 
+		// download built-in modules script and create generator
+		async function downloadBuiltIns()
+		{
+			// download built-in node modules / classes
+			var data = await download('https://cdn.jsdelivr.net/npm/node-builtin-map/dist/node-builtin-map.js');
+			builtInsGenerator = createBuiltInGenerator(data);
+		}
 
+//#endregion
+
+
+//#region File Helper Functions
 
 		// check if a given path is a folder
 		function checkIfDir(context, path)
@@ -431,6 +477,44 @@ return (function(){
 			return context.builtIns.modules.path.join(cwd, path);
 		}
 
+
+		// make the path leading up to the given file
+		function makeLeadingDirs(context, path)
+		{
+			// resolve path
+			path = resolveRelativePath(context, path);
+			// split and remove empty path parts
+			var pathParts = path.split('/');
+			for(var i=0; i<pathParts.length; i++) {
+				if(pathParts[i]=='') {
+					pathParts.splice(i, 1);
+					i--;
+				}
+			}
+			
+			// make sure each leading path part exists and is a directory
+			for(var i=0; i<(pathParts.length-1); i++) {
+				var leadingPath = '/'+pathParts.slice(0, i+1).join('/');
+				// ensure path is a directory or doesn't exist
+				try {
+					var stats = context.modules.fs.statSync(leadingPath);
+					if(stats.isDirectory()) {
+						continue;
+					}
+					else {
+						context.modules.fs.unlinkSync(leadingPath);
+					}
+				}
+				catch(error) {}
+				// create the directory
+				context.modules.fs.mkdirSync(leadingPath);
+			}
+		}
+
+//#endregion
+
+
+//#region Module Path Resolution
 
 		// resolve a module's main js file from a folder
 		function resolveModuleFolder(context, path)
@@ -540,6 +624,10 @@ return (function(){
 			return modulePath;
 		}
 
+//#endregion
+
+
+//#region Interpreters
 
 		// determine the interpreter for the file
 		function getInterpreter(context, type, path)
@@ -555,6 +643,15 @@ return (function(){
 			return undefined;
 		}
 
+//#endregion
+
+
+//#region Script Execution
+
+		// class to allow aliasing select globals to itself when evaluating a script
+		function ScriptGlobalAlias(aliases) {
+			this.aliases = aliases;
+		}
 
 		// validate a scope variable name
 		const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
@@ -628,6 +725,10 @@ return (function(){
 			return evalJavaScript(scope, prefixString+'\n(() => {\n'+code+'\n})()\n'+suffixString);
 		}
 
+//#endregion
+
+
+//#region require
 
 		// run a script with the specified scope
 		function requireFile(context, path, scope={})
@@ -796,6 +897,10 @@ return (function(){
 			return findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
 		}
 
+//#endregion
+
+
+//#region requireCSS
 
 		// resolve a required CSS file
 		function resolveCSSPath(context, dirname, path)
@@ -965,15 +1070,10 @@ return (function(){
 			}, 100);
 		}
 
+//#endregion
 
-		// give a default value if the given value is null
-		function toNonNull(value, defaultValue) {
-			if(value == null) {
-				return defaultValue;
-			}
-			return value;
-		}
 
+//#region Context
 
 		// create a new context from a given context
 		function createContext(parentContext = null)
@@ -1056,7 +1156,6 @@ return (function(){
 			return context;
 		}
 
-
 		// take a normal function and make it an asyncronous promise
 		function makeAsyncPromise(context, task) {
 			return new Promise((resolve, reject) => {
@@ -1074,7 +1173,10 @@ return (function(){
 			});
 		}
 
+//#endregion
 
+
+//#region syscall
 
 		// append information to the system log
 		function log(context, message, options)
@@ -1122,10 +1224,14 @@ return (function(){
 			}
 		}
 
+//#endregion
 
 
+//#region Generated Modules
 		// define kernel modules
 		generatedModules = {
+
+//#region rimraf
 			'rimraf': (context) => {
 				const fs = context.modules.fs;
 
@@ -1170,6 +1276,10 @@ return (function(){
 				rimraf.sync = rimrafSync;
 				return rimraf;
 			},
+//#endregion
+
+
+//#region fs
 			'fs': (context) => {
 				const FS = {};
 
@@ -1179,6 +1289,8 @@ return (function(){
 
 				// use inodes to handle creating filesystem entries
 				// valid inode types: FILE, DIR, LINK, REMOTE
+
+				//#region fs internal functions
 
 				function createINode(type, info)
 				{
@@ -1596,9 +1708,10 @@ return (function(){
 					destroyINode(id);
 				}
 
+				//#endregion
 
 
-				//========= FS =========//
+				//#region fs constants
 
 				const constants = {
 					COPYFILE_EXCL: 0b00000000000000000000000000000001
@@ -1609,7 +1722,9 @@ return (function(){
 					writable: false
 				});
 
+				//#endregion
 
+				//#region fs types
 
 				class Stats
 				{
@@ -1696,7 +1811,10 @@ return (function(){
 
 				FS.Stats = Stats;
 
+				//#endregion
 
+
+				//#region fs functions
 
 				function copyFile(src, dest, flags, callback)
 				{
@@ -2059,14 +2177,14 @@ return (function(){
 				FS.writeFile = writeFile;
 				FS.writeFileSync = writeFileSync;
 
-
+				//#endregion
 
 				return FS;
 			},
+//#endregion
 
 
-
-
+//#region child_process
 			'child_process': (context) => {
 				const child_process = {};
 
@@ -2555,9 +2673,10 @@ return (function(){
 
 				return child_process;
 			},
+//#endregion
 
 
-
+//#region events
 			'events': (context) => {
 				const EventEmitter = context.builtIns.modules.events;
 
@@ -2575,67 +2694,13 @@ return (function(){
 
 				return EventEmitter;
 			}
+//#endregion
+
 		};
+//#endregion
 
 
-
-
-		// function to download a file
-		function download(url)
-		{
-			return new Promise((resolve, reject) => {
-				var xhr = new XMLHttpRequest();
-				xhr.onreadystatechange = () => {
-					if(xhr.readyState === 4) {
-						if(xhr.status === 200) {
-							resolve(xhr.responseText);
-						}
-						else {
-							reject(new Error(xhr.status+": "+xhr.statusText));
-						}
-					}
-				};
-
-				xhr.open('GET', url);
-				xhr.send();
-			});
-		}
-
-
-		// make the path leading up to the given file
-		function makeLeadingDirs(context, path)
-		{
-			// resolve path
-			path = resolveRelativePath(context, path);
-			// split and remove empty path parts
-			var pathParts = path.split('/');
-			for(var i=0; i<pathParts.length; i++) {
-				if(pathParts[i]=='') {
-					pathParts.splice(i, 1);
-					i--;
-				}
-			}
-			
-			// make sure each leading path part exists and is a directory
-			for(var i=0; i<(pathParts.length-1); i++) {
-				var leadingPath = '/'+pathParts.slice(0, i+1).join('/');
-				// ensure path is a directory or doesn't exist
-				try {
-					var stats = context.modules.fs.statSync(leadingPath);
-					if(stats.isDirectory()) {
-						continue;
-					}
-					else {
-						context.modules.fs.unlinkSync(leadingPath);
-					}
-				}
-				catch(error) {}
-				// create the directory
-				context.modules.fs.mkdirSync(leadingPath);
-			}
-		}
-
-
+//#region Kernel Script Preparation
 
 		// download persistjs
 		var persistJSPromise = new Promise((resolve, reject) => {
@@ -2671,19 +2736,12 @@ return (function(){
 
 
 		// download built-in node modules / classes
-		var builtInsPromise = new Promise((resolve, reject) => {
-			download('https://cdn.jsdelivr.net/npm/node-builtin-map/dist/node-builtin-map.js').then((data) => {
-				builtInsGenerator = createBuiltInGenerator(data);
-				resolve();
-			}).catch((error) => {
-				reject(error);
-			});
-		});
+		var builtInsPromise = downloadBuiltIns();
+
+//#endregion
 
 
-		// TODO everything else
-
-
+//#region boot
 		// bootup method
 		let booted = false;
 		function boot(url, path)
@@ -2728,7 +2786,7 @@ return (function(){
 				console.error(error);
 			});
 		};
-
+//#endregion
 
 
 		// apply kernel properties
