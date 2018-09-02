@@ -18,26 +18,20 @@ function evalJavaScript(__scope, __code) {
 // sandbox kernel data
 return (function(){
 
-	function deepCopyObject(object)
-	{
-		switch(typeof object)
-		{
+	function deepCopyObject(object) {
+		switch(typeof object) {
 			case 'object':
-				if(object === null)
-				{
+				if(object === null) {
 					return null;
 				}
-				else if(object instanceof Array)
-				{
+				else if(object instanceof Array) {
 					var newObject = object.slice(0);
-					for(var i=0; i<newObject.length; i++)
-					{
+					for(var i=0; i<newObject.length; i++) {
 						newObject[i] = deepCopyObject(newObject[i]);
 					}
 					return newObject;
 				}
-				else
-				{
+				else {
 					var newObject = {};
 					for(const key of Object.keys(object))
 					{
@@ -86,8 +80,7 @@ return (function(){
 
 
 		// class to allow aliasing select globals to itself when evaluating a script
-		function ScriptGlobalAlias(aliases)
-		{
+		function ScriptGlobalAlias(aliases) {
 			this.aliases = aliases;
 		}
 
@@ -96,16 +89,13 @@ return (function(){
 		// exception for process exit signal
 		class ExitSignal extends Error
 		{
-			constructor(exitCode, message)
-			{
-				if(typeof exitCode === 'string')
-				{
+			constructor(exitCode, message) {
+				if(typeof exitCode === 'string') {
 					message = exitCode;
 					exitCode = null;
 				}
 				
-				if(!message && exitCode)
-				{
+				if(!message && exitCode) {
 					message = "process exited with signal "+exitCode;
 				}
 				super(message);
@@ -120,43 +110,34 @@ return (function(){
 		{
 			let promise = null;
 
-			function wrapPromiseMethod(method, callback)
-			{
+			function wrapPromiseMethod(method, callback) {
 				let exitSignal = null;
 				var retVal = method((...args) => {
-					if(!context.valid)
-					{
+					if(!context.valid) {
 						return;
 					}
-					try
-					{
+					try {
 						return callback(...args);
 					}
-					catch(error)
-					{
-						if(error instanceof ExitSignal)
-						{
+					catch(error) {
+						if(error instanceof ExitSignal) {
 							exitSignal = error;
 							return;
 						}
-						else
-						{
+						else {
 							throw error;
 						}
 					}
 				});
 				// rethrow exit signal if there was one
-				if(exitSignal != null)
-				{
+				if(exitSignal != null) {
 					throw exitSignal;
 				}
 				// wrap return value if necessary
-				if(retVal === promise)
-				{
+				if(retVal === promise) {
 					return this;
 				}
-				else if(retVal instanceof Promise)
-				{
+				else if(retVal instanceof Promise) {
 					return new ProcPromise(context, (resolve, reject) => {
 						return retVal.then(resolve).catch(reject);
 					});
@@ -166,8 +147,7 @@ return (function(){
 
 			// then
 			this.then = (callback, ...args) => {
-				if(typeof callback !== 'function')
-				{
+				if(typeof callback !== 'function') {
 					return promise.then(callback, ...args);
 				}
 				return wrapPromiseMethod((callback) => {
@@ -179,8 +159,7 @@ return (function(){
 
 			// catch
 			this.catch = (callback, ...args) => {
-				if(typeof callback !== 'function')
-				{
+				if(typeof callback !== 'function') {
 					return promise.catch(callback, ...args);
 				}
 				return wrapPromiseMethod((callback) => {
@@ -192,8 +171,7 @@ return (function(){
 
 			// finally
 			this.finally = (callback, ...args) => {
-				if(typeof callback !== 'function')
-				{
+				if(typeof callback !== 'function') {
 					return promise.finally(callback, ...args);
 				}
 				return wrapPromiseMethod((callback) => {
@@ -206,61 +184,51 @@ return (function(){
 			// perform promise
 			let exitSignal = null;
 			promise = new Promise((resolve, reject) => {
-				try
-				{
+				try {
 					callback((...args) => {
 						// ensure calling context is valid
-						if(!context.valid)
-						{
+						if(!context.valid) {
 							return;
 						}
 						// resolve
 						resolve(...args);
 					}, (...args) => {
 						// ensure calling context is valid
-						if(!context.valid)
-						{
+						if(!context.valid) {
 							return;
 						}
 						// reject
 						reject(...args);
 					});
 				}
-				catch(error)
-				{
-					if(error instanceof ExitSignal)
-					{
+				catch(error) {
+					if(error instanceof ExitSignal) {
 						exitSignal = error;
 						return;
 					}
-					else
-					{
+					else {
 						throw error;
 					}
 				}
 			});
-			if(exitSignal != null)
-			{
+			if(exitSignal != null) {
 				throw exitSignal;
 			}
 		}
 
-		ProcPromise.resolve = function(context, ...args)
-		{
+		ProcPromise.resolve = function(context, ...args) {
 			return new ProcPromise(context, (resolve, reject) => {
 				resolve(...args);
 			});
 		}
 	
-		ProcPromise.reject = function(context, ...args)
-		{
+		ProcPromise.reject = function(context, ...args) {
 			return new ProcPromise(context, (resolve, reject) => {
 				reject(...args);
 			});
 		}
 	
-		ProcPromise.all = function(context, promises, ...args)
-		{
+		ProcPromise.all = function(context, promises, ...args) {
 			// wrap promises
 			if(promises instanceof Array)
 			{
@@ -279,11 +247,9 @@ return (function(){
 			});
 		}
 	
-		ProcPromise.race = function(context, promises, ...args)
-		{
+		ProcPromise.race = function(context, promises, ...args) {
 			// wrap promises
-			if(promises instanceof Array)
-			{
+			if(promises instanceof Array) {
 				promises = promises.slice(0);
 				for(var i=0; i<promises.length; i++)
 				{
@@ -317,14 +283,12 @@ return (function(){
 		// define contextual browser functions
 		browserWrappers = {
 			setTimeout: (context, handler, ...args) => {
-				if(typeof handler !== 'function')
-				{
+				if(typeof handler !== 'function') {
 					throw new TypeError("handler must be a function");
 				}
 				const timeout = setTimeout((...args) => {
 					var index = context.timeouts.indexOf(timeout);
-					if(index !== -1)
-					{
+					if(index !== -1) {
 						context.timeouts.splice(index, 1);
 					}
 					handler(...args);
@@ -334,16 +298,14 @@ return (function(){
 			},
 			clearTimeout: (context, timeout) => {
 				var index = context.timeouts.indexOf(timeout);
-				if(index !== -1)
-				{
+				if(index !== -1) {
 					context.timeouts.splice(index, 1);
 				}
 				return clearTimeout(timeout);
 			},
 			// intervals
 			setInterval: (context, handler, ...args) => {
-				if(typeof handler !== 'function')
-				{
+				if(typeof handler !== 'function') {
 					throw new TypeError("handler must be a function");
 				}
 				const interval = setInterval((...args) => {
@@ -354,8 +316,7 @@ return (function(){
 			},
 			clearInterval: (context, interval) => {
 				var index = context.intervals.indexOf(interval);
-				if(index !== -1)
-				{
+				if(index !== -1) {
 					context.intervals.splice(index, 1);
 				}
 				return clearInterval(interval);
@@ -419,11 +380,9 @@ return (function(){
 		// check if a given path is a folder
 		function checkIfDir(context, path)
 		{
-			try
-			{
+			try {
 				var stats = context.modules.fs.statSync(path);
-				if(stats.isDirectory())
-				{
+				if(stats.isDirectory()) {
 					return true;
 				}
 			}
@@ -435,11 +394,9 @@ return (function(){
 		// check if a given path is a file
 		function checkIfFile(context, path)
 		{
-			try
-			{
+			try {
 				var stats = context.modules.fs.statSync(path);
-				if(stats.isFile())
-				{
+				if(stats.isFile()) {
 					return true;
 				}
 			}
@@ -451,27 +408,22 @@ return (function(){
 		// resolves a relative path to a full path using a given cwd or the context's cwd
 		function resolveRelativePath(context, path, cwd)
 		{
-			if(typeof path !== 'string')
-			{
+			if(typeof path !== 'string') {
 				throw new TypeError("path must be a string");
 			}
 			
-			if(!cwd)
-			{
+			if(!cwd) {
 				cwd = context.cwd;
-				if(!cwd)
-				{
+				if(!cwd) {
 					cwd = '/';
 				}
 			}
-			else if(typeof cwd !== 'string')
-			{
+			else if(typeof cwd !== 'string') {
 				throw new TypeError("cwd must be a string");
 			}
 
 			// return normalized path if it's absolute
-			if(path.startsWith('/'))
-			{
+			if(path.startsWith('/')) {
 				return context.builtIns.modules.path.normalize(path);
 			}
 
@@ -484,25 +436,21 @@ return (function(){
 		function resolveModuleFolder(context, path)
 		{
 			var packagePath = path+'/package.json';
-			if(!checkIfFile(context, packagePath))
-			{
+			if(!checkIfFile(context, packagePath)) {
 				return null;
 			}
 
 			var packageInfo = JSON.parse(context.modules.fs.readFileSync(packagePath, {encoding:'utf8'}));
 			var mainFile = packageInfo["main"];
-			if(!mainFile)
-			{
+			if(!mainFile) {
 				throw new Error("no main file specified");
 			}
 
-			if(typeof mainFile !== 'string')
-			{
+			if(typeof mainFile !== 'string') {
 				throw new TypeError("\"main\" must be a string");
 			}
 
-			if(mainFile.startsWith('/'))
-			{
+			if(mainFile.startsWith('/')) {
 				return mainFile;
 			}
 			return context.builtIns.modules.path.join(path, mainFile);
@@ -516,54 +464,41 @@ return (function(){
 			var modulePath = resolveRelativePath(context, path, basePath);
 			// find full module path
 			var fullModulePath = modulePath;
-			if(checkIfDir(context, fullModulePath))
-			{
+			if(checkIfDir(context, fullModulePath)) {
 				fullModulePath = resolveModuleFolder(context, fullModulePath);
-				if(fullModulePath != null)
-				{
+				if(fullModulePath != null) {
 					return fullModulePath;
 				}
 			}
-			else if(checkIfFile(context, fullModulePath))
-			{
+			else if(checkIfFile(context, fullModulePath)) {
 				return fullModulePath;
 			}
 			// check if file exists with a js extension
 			fullModulePath = modulePath + '.js';
-			if(checkIfFile(context, fullModulePath))
-			{
+			if(checkIfFile(context, fullModulePath)) {
 				return fullModulePath;
 			}
 			// check file against known script extensions
-			if(kernelOptions.scriptExtensions)
-			{
-				for(const scriptExt of kernelOptions.scriptExtensions)
-				{
+			if(kernelOptions.scriptExtensions) {
+				for(const scriptExt of kernelOptions.scriptExtensions) {
 					fullModulePath = modulePath + '.' + scriptExt;
-					if(checkIfFile(context, fullModulePath))
-					{
+					if(checkIfFile(context, fullModulePath)) {
 						return fullModulePath;
 					}
 				}
 			}
 			// check file against specified folder extensions
-			if(options.dirExtensions)
-			{
-				for(const extension of options.dirExtensions)
-				{
+			if(options.dirExtensions) {
+				for(const extension of options.dirExtensions) {
 					fullModulePath = modulePath + '.' + extension;
-					if(checkIfDir(context, fullModulePath))
-					{
-						try
-						{
+					if(checkIfDir(context, fullModulePath)) {
+						try {
 							fullModulePath = resolveModuleFolder(context, fullModulePath);
-							if(fullModulePath != null)
-							{
+							if(fullModulePath != null) {
 								return fullModulePath;
 							}
 						}
-						catch(error)
-						{
+						catch(error) {
 							// try the next one
 						}
 					}
@@ -580,33 +515,25 @@ return (function(){
 			options = Object.assign({}, options);
 
 			var modulePath = null;
-			if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../'))
-			{
-				try
-				{
+			if(path.startsWith('/') || path.startsWith('./') || path.startsWith('../')) {
+				try {
 					modulePath = resolveModulePath(context, dirname, path, options);
 				}
-				catch(error)
-				{
+				catch(error) {
 					throw new Error("could not resolve '"+path+"': "+error.message);
 				}
 			}
-			else
-			{
-				for(const basePath of basePaths)
-				{
-					try
-					{
+			else {
+				for(const basePath of basePaths) {
+					try {
 						modulePath = resolveModulePath(context, basePath, path, options);
 						break;
 					}
-					catch(error)
-					{
+					catch(error) {
 						// path couldn't be resolved
 					}
 				}
-				if(modulePath == null)
-				{
+				if(modulePath == null) {
 					throw new Error("could not resolve '"+path+"'");
 				}
 			}
@@ -618,12 +545,9 @@ return (function(){
 		function getInterpreter(context, type, path)
 		{
 			path = resolveRelativePath(context, path);
-			if(kernelOptions.interpreters)
-			{
-				for(const interpreter of kernelOptions.interpreters)
-				{
-					if(interpreter.type === type && interpreter.check(path))
-					{
+			if(kernelOptions.interpreters) {
+				for(const interpreter of kernelOptions.interpreters) {
+					if(interpreter.type === type && interpreter.check(path)) {
 						return interpreter;
 					}
 				}
@@ -636,26 +560,21 @@ return (function(){
 		const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
 		function validateVariableName(varName)
 		{
-			if(typeof varName !== 'string')
-			{
+			if(typeof varName !== 'string') {
 				throw new TypeError("variable name must be a string");
 			}
 			// ensure string isn't empty
-			if(varName.length == 0)
-			{
+			if(varName.length == 0) {
 				throw new Error("empty string cannot be variable name");
 			}
 			// ensure all characters are valid
-			for(const char of varName)
-			{
-				if(validScopeCharacters.indexOf(char) === -1)
-				{
+			for(const char of varName) {
+				if(validScopeCharacters.indexOf(char) === -1) {
 					throw new Error("invalid scope variable name "+varName);
 				}
 			}
 			// ensure name doesn't start with a number
-			if("1234567890".indexOf(varName[0]) !== -1)
-			{
+			if("1234567890".indexOf(varName[0]) !== -1) {
 				throw new Error("variable name cannot start with a number");
 			}
 		}
@@ -665,10 +584,8 @@ return (function(){
 		function runScript(context, code, scope={}, interpreter=null)
 		{
 			// transform code if necessary
-			if(interpreter)
-			{
-				if(typeof interpreter.transform !== 'function')
-				{
+			if(interpreter) {
+				if(typeof interpreter.transform !== 'function') {
 					throw new TypeError("interpreter.transform must be a function");
 				}
 				code = interpreter.transform(code, context);
@@ -677,14 +594,11 @@ return (function(){
 			// create strings for global scope variables
 			var prefixString = '';
 			var suffixString = '';
-			for(const decType in scope)
-			{
-				for(const varName in scope[decType])
-				{
+			for(const decType in scope) {
+				for(const varName in scope[decType]) {
 					validateVariableName(varName);
 					var varValue = scope[decType][varName];
-					if(varValue instanceof ScriptGlobalAlias)
-					{
+					if(varValue instanceof ScriptGlobalAlias) {
 						var aliases = varValue.aliases;
 						prefixString += decType+' '+varName+' = Object.defineProperties({}, { ';
 						for(var i=0; i<aliases.length; i++)
@@ -701,11 +615,9 @@ return (function(){
 						}
 						prefixString += '});\n';
 					}
-					else
-					{
+					else {
 						prefixString += decType+' '+varName+' = __scope.'+decType+'.'+varName+';\n';
-						if(decType !== 'const')
-						{
+						if(decType !== 'const') {
 							suffixString += '__scope.'+decType+'.'+varName+' = '+varName+';\n';
 						}
 					}
@@ -731,12 +643,10 @@ return (function(){
 		function require(context, parentScope, dirname, path)
 		{
 			// check if built-in module
-			if(context.modules[path])
-			{
+			if(context.modules[path]) {
 				return context.modules[path];
 			}
-			if(context.builtIns.modules[path])
-			{
+			if(context.builtIns.modules[path]) {
 				return context.builtIns.modules[path];
 			}
 			// get full module path
@@ -746,16 +656,12 @@ return (function(){
 			// check if library is shared
 			let moduleContext = context;
 			let moduleContainer = context.loadedModules;
-			if(kernelOptions.sharedLibPaths)
-			{
-				for(var libPath of kernelOptions.sharedLibPaths)
-				{
-					if(!libPath.endsWith('/'))
-					{
+			if(kernelOptions.sharedLibPaths) {
+				for(var libPath of kernelOptions.sharedLibPaths) {
+					if(!libPath.endsWith('/')) {
 						libPath += '/';
 					}
-					if(modulePath.startsWith(libPath))
-					{
+					if(modulePath.startsWith(libPath)) {
 						moduleContext = rootContext;
 						moduleContainer = loadedSharedModules;
 						break;
@@ -764,8 +670,7 @@ return (function(){
 			}
 
 			// check if module has already been loaded
-			if(moduleContainer[modulePath] !== undefined)
-			{
+			if(moduleContainer[modulePath] !== undefined) {
 				return moduleContainer[modulePath];
 			}
 
@@ -816,12 +721,10 @@ return (function(){
 			scope.let.exports = {};
 
 			// require file
-			try
-			{
+			try {
 				requireFile(moduleContext, modulePath, scope);
 			}
-			catch(error)
-			{
+			catch(error) {
 				console.error("unable to require "+path, error);
 				throw error;
 			}
@@ -838,12 +741,10 @@ return (function(){
 		require.resolve = function(context, dirname, path)
 		{
 			// check if built-in module
-			if(context.modules[path])
-			{
+			if(context.modules[path]) {
 				return path;
 			}
-			if(context.builtIns.modules[path])
-			{
+			if(context.builtIns.modules[path]) {
 				return path;
 			}
 			// get full module path
@@ -860,18 +761,14 @@ return (function(){
 
 			// resolve actual css file path
 			var testExtensions = ['', '.css'];
-			if(kernelOptions.styleExtensions)
-			{
-				for(const extension of kernelOptions.styleExtensions)
-				{
+			if(kernelOptions.styleExtensions) {
+				for(const extension of kernelOptions.styleExtensions) {
 					testExtensions.push('.'+extension);
 				}
 			}
-			for(const extension of testExtensions)
-			{
+			for(const extension of testExtensions) {
 				var testPath = cssPath+extension;
-				if(checkIfFile(context, testPath))
-				{
+				if(checkIfFile(context, testPath)) {
 					return cssPath;
 				}
 			}
@@ -885,19 +782,16 @@ return (function(){
 			var cssPath = resolveCSSPath(context, dirname, path);
 
 			// check if css already loaded
-			if(loadedCSS[cssPath])
-			{
+			if(loadedCSS[cssPath]) {
 				// add process PID if necessary
 				var info = loadedCSS[cssPath];
-				if(info.pids.indexOf(context.pid) === -1)
-				{
+				if(info.pids.indexOf(context.pid) === -1) {
 					info.pids.push(context.pid);
 				}
 				loadedCSS[cssPath] = info;
 				return new ProcPromise(context, (resolve, reject) => {
 					waitForCSS(context, dirname, cssPath, () => {
-						if(loadedCSS[cssPath].error)
-						{
+						if(loadedCSS[cssPath].error) {
 							reject(loadedCSS[cssPath].error);
 							return;
 						}
@@ -927,12 +821,10 @@ return (function(){
 			// interpret css
 			var cssPromise = null;
 			var interpreter = getInterpreter(context, 'style', cssPath);
-			if(interpreter)
-			{
+			if(interpreter) {
 				cssPromise = interpreter.transform(cssData, context);
 			}
-			else
-			{
+			else {
 				// apply plain content
 				cssPromise = Promise.resolve(cssData);
 			}
@@ -940,16 +832,14 @@ return (function(){
 			// add CSS to page when finished parsing
 			return new ProcPromise(context, (resolve, reject) => {
 				cssPromise.then((cssData) => {
-					if(!loadedCSS[cssPath])
-					{
+					if(!loadedCSS[cssPath]) {
 						return;
 					}
 					styleTag.textContent = cssData;
 					loadedCSS[cssPath].ready = true;
 					resolve();
 				}).catch((error) => {
-					if(!loadedCSS[cssPath])
-					{
+					if(!loadedCSS[cssPath]) {
 						return;
 					}
 					console.error("failed to parse "+path+": "+error.message);
@@ -964,31 +854,24 @@ return (function(){
 		// check if CSS for this context is ready
 		function isCSSReady(context, dirname, path=null)
 		{
-			if(path != null)
-			{
+			if(path != null) {
 				// check for specific CSS file
 				var cssPath = null;
-				try
-				{
+				try {
 					cssPath = resolveCSSPath(context, dirname, path);
 				}
-				catch(error)
-				{
+				catch(error) {
 					return false;
 				}
 
 				return loadedCSS[cssPath].ready;
 			}
-			else
-			{
+			else {
 				// check for all CSS files used by this context
-				for(const cssPath in loadedCSS)
-				{
+				for(const cssPath in loadedCSS) {
 					var info = loadedCSS[cssPath];
-					if(!info.ready)
-					{
-						if(info.pids.indexOf(context.pid) !== -1)
-						{
+					if(!info.ready) {
+						if(info.pids.indexOf(context.pid) !== -1) {
 							return false
 						}
 					}
@@ -1002,40 +885,32 @@ return (function(){
 		// wait for CSS file(s) to be ready
 		function waitForCSS(context, dirname, path, callback)
 		{
-			if(typeof path == 'function')
-			{
+			if(typeof path == 'function') {
 				callback = path;
 				path = null;
 			}
 
 			// check if file(s) ready
 			var ready = true;
-			if(path instanceof Array)
-			{
-				for(const cssPath of path)
-				{
-					if(!isCSSReady(context, dirname, cssPath))
-					{
+			if(path instanceof Array) {
+				for(const cssPath of path) {
+					if(!isCSSReady(context, dirname, cssPath)) {
 						ready = false;
 						break;
 					}
 				}
 			}
-			else if(typeof path == 'string')
-			{
-				if(!isCSSReady(context, dirname, path))
-				{
+			else if(typeof path == 'string') {
+				if(!isCSSReady(context, dirname, path)) {
 					ready = false;
 				}
 			}
-			else if(path != null)
-			{
+			else if(path != null) {
 				throw new TypeError("path must be a string or an Array");
 			}
 
 			// finish if ready ;)
-			if(ready)
-			{
+			if(ready) {
 				callback();
 				return;
 			}
@@ -1048,10 +923,8 @@ return (function(){
 
 
 		// give a default value if the given value is null
-		function toNonNull(value, defaultValue)
-		{
-			if(value == null)
-			{
+		function toNonNull(value, defaultValue) {
+			if(value == null) {
 				return defaultValue;
 			}
 			return value;
@@ -1066,12 +939,10 @@ return (function(){
 
 			let moduleGenerator = {};
 			let modules = {};
-			for(let moduleName in generatedModules)
-			{
+			for(let moduleName in generatedModules) {
 				Object.defineProperty(moduleGenerator, moduleName, {
 					get: () => {
-						if(modules[moduleName] === undefined)
-						{
+						if(modules[moduleName] === undefined) {
 							modules[moduleName] = generatedModules[moduleName](context);
 						}
 						return modules[moduleName];
@@ -1098,20 +969,17 @@ return (function(){
 				valid: true,
 				exiting: false,
 				invalidate: () => {
-					if(context.valid)
-					{
+					if(context.valid) {
 						context.valid = false;
 
 						// TODO unload CSS
 
 						// destroy timeouts and intervals
-						for(const interval of context.intervals)
-						{
+						for(const interval of context.intervals) {
 							clearInterval(interval);
 						}
 						context.intervals = [];
-						for(const timeout of context.timeouts)
-						{
+						for(const timeout of context.timeouts) {
 							clearTimeout(timeout);
 						}
 						context.timeouts = [];
@@ -1122,8 +990,7 @@ return (function(){
 			let builtIns = null;
 			Object.defineProperty(context, 'builtIns', {
 				get: () => {
-					if(builtIns == null)
-					{
+					if(builtIns == null) {
 						builtIns = createBuiltIns(context);
 					}
 					return builtIns;
@@ -1135,17 +1002,14 @@ return (function(){
 
 
 		// take a normal function and make it an asyncronous promise
-		function makeAsyncPromise(context, task)
-		{
+		function makeAsyncPromise(context, task) {
 			return new Promise((resolve, reject) => {
 				browserWrappers.setTimeout(context, () => {
 					var retVal = null;
-					try
-					{
+					try {
 						retVal = task();
 					}
-					catch(error)
-					{
+					catch(error) {
 						reject(error);
 						return;
 					}
@@ -1162,8 +1026,7 @@ return (function(){
 			options = Object.assign({}, options);
 
 			var kernelElement = document.getElementById("kernel");
-			if(kernelElement != null)
-			{
+			if(kernelElement != null) {
 				const logElement = document.createElement("DIV");
 				logElement.textContent = message;
 				logElement.style.color = options.color;
@@ -1178,27 +1041,22 @@ return (function(){
 		// call special kernel functions
 		function syscall(context, func, ...args)
 		{
-			if(typeof func != 'string')
-			{
+			if(typeof func != 'string') {
 				throw new Error("func must be a string");
 			}
 			func = ''+func;
 
-			if(!context.valid)
-			{
+			if(!context.valid) {
 				throw new Error("calling context is not valid");
 			}
 
 			var funcParts = func.split('.');
-			if(funcParts.length > 2)
-			{
+			if(funcParts.length > 2) {
 				throw new Error("invalid system call");
 			}
-			switch(funcParts[0])
-			{
+			switch(funcParts[0]) {
 				case 'log':
-					if(funcParts[1] != null)
-					{
+					if(funcParts[1] != null) {
 						throw new Error("invalid system call");
 					}
 					return log(context, ...args);
@@ -1269,21 +1127,17 @@ return (function(){
 				function createINode(type, info)
 				{
 					// validate type
-					if(typeof type !== 'string')
-					{
+					if(typeof type !== 'string') {
 						throw new TypeError("inode type must be a string");
 					}
-					if(['FILE', 'DIR', 'LINK', 'REMOTE'].indexOf(type) === -1)
-					{
+					if(['FILE', 'DIR', 'LINK', 'REMOTE'].indexOf(type) === -1) {
 						throw new Error("invalid inode type "+type);
 					}
 					// find available inode ID
 					var id = 1;
-					while(true)
-					{
+					while(true) {
 						var item = storage.getItem(inodePrefix+id);
-						if(!item)
-						{
+						if(!item) {
 							break;
 						}
 						id++;
@@ -1300,8 +1154,7 @@ return (function(){
 					// store inode
 					storage.setItem(inodePrefix+id, JSON.stringify(inode));
 					var data = '';
-					switch(type)
-					{
+					switch(type) {
 						case 'FILE':
 						case 'LINK':
 						case 'REMOTE':
@@ -1320,8 +1173,7 @@ return (function(){
 				function getINode(id)
 				{
 					var inode = storage.getItem(inodePrefix+id);
-					if(!inode)
-					{
+					if(!inode) {
 						throw new Error("cannot access nonexistant inode "+id);
 					}
 					return JSON.parse(inode);
@@ -1329,8 +1181,7 @@ return (function(){
 
 				function updateINode(id, info)
 				{
-					if(info.type !== undefined)
-					{
+					if(info.type !== undefined) {
 						throw new Error("cannot update inode type");
 					}
 					var inode = getINode(id);
@@ -1357,8 +1208,7 @@ return (function(){
 
 				function doesINodeExist(id)
 				{
-					if(storage.getItem(inodePrefix+id))
-					{
+					if(storage.getItem(inodePrefix+id)) {
 						return true;
 					}
 					return false;
@@ -1368,12 +1218,10 @@ return (function(){
 				function getModePart(accessor, mode)
 				{
 					mode = mode.toString(8);
-					while(mode.length < 4)
-					{
+					while(mode.length < 4) {
 						mode = '0'+mode;
 					}
-					switch(accessor)
-					{
+					switch(accessor) {
 						case 'sticky':
 							return parseInt(mode[0]);
 
@@ -1393,37 +1241,31 @@ return (function(){
 				{
 					var inode = getINode(id);
 
-					switch(inode.type)
-					{
+					switch(inode.type) {
 						case 'FILE':
 							var content = storage.getItem(entryPrefix+id);
-							if(content == null)
-							{
+							if(content == null) {
 								return null;
 							}
-							if(inode.encoding === encoding)
-							{
+							if(inode.encoding === encoding) {
 								return content;
 							}
 							var buffer = Buffer.from(content, inode.encoding);
-							if(encoding == null)
-							{
+							if(encoding == null) {
 								return buffer;
 							}
 							return buffer.toString(encoding);
 
 						case 'DIR':
 							var content = storage.getItem(entryPrefix+id);
-							if(content == null)
-							{
+							if(content == null) {
 								return null;
 							}
 							return JSON.parse(content);
 
 						case 'LINK':
 							var content = storage.getItem(entryPrefix+id);
-							if(content == null)
-							{
+							if(content == null) {
 								return null;
 							}
 							return Buffer.from(content);
@@ -1444,51 +1286,39 @@ return (function(){
 					switch(inode.type)
 					{
 						case 'FILE':
-							if(content == null)
-							{
+							if(content == null) {
 								storage.removeItem(entryPrefix+id);
 							}
-							else
-							{
-								if(content instanceof Buffer)
-								{
-									if(inode.encoding !== 'base64')
-									{
+							else {
+								if(content instanceof Buffer) {
+									if(inode.encoding !== 'base64') {
 										updateINode(id, {encoding:'base64'});
 									}
 									storage.setItem(entryPrefix+id, content.toString('base64'));
 								}
-								else if(typeof content === 'string')
-								{
-									if(encoding)
-									{
-										if(encoding !== inode.encoding)
-										{
+								else if(typeof content === 'string') {
+									if(encoding) {
+										if(encoding !== inode.encoding) {
 											updateINode(id, {encoding: encoding});
 										}
 									}
-									else if(inode.encoding !== 'utf8')
-									{
+									else if(inode.encoding !== 'utf8') {
 										updateINode(id, {encoding:'utf8'});
 									}
 									storage.setItem(entryPrefix+id, content);
 								}
-								else
-								{
+								else {
 									throw new Error("invalid content data");
 								}
 							}
 							break;
 
 						case 'DIR':
-							if(content == null)
-							{
+							if(content == null) {
 								storage.removeItem(entryPrefix+id);
 							}
-							else
-							{
-								if(typeof content !== 'object')
-								{
+							else {
+								if(typeof content !== 'object') {
 									throw new TypeError("inode dir content must be an object");
 								}
 								storage.setItem(entryPrefix+id, JSON.stringify(content));
@@ -1496,14 +1326,11 @@ return (function(){
 							break;
 
 						case 'LINK':
-							if(content == null)
-							{
+							if(content == null) {
 								storage.removeItem(entryPrefix+id);
 							}
-							else
-							{
-								if(!(content instanceof Buffer))
-								{
+							else {
+								if(!(content instanceof Buffer)) {
 									throw new TypeError("inode file content must be a buffer");
 								}
 								storage.setItem(entryPrefix+id, content.toString());
@@ -1511,14 +1338,11 @@ return (function(){
 							break;
 
 						case 'REMOTE':
-							if(content == null)
-							{
+							if(content == null) {
 								delete tmpStorage[id];
 							}
-							else
-							{
-								if(!(content instanceof Buffer))
-								{
+							else {
+								if(!(content instanceof Buffer)) {
 									throw new TypeError("inode remote content must be a buffer");
 								}
 								tmpStorage[id] = Buffer.from(content);
@@ -1533,17 +1357,14 @@ return (function(){
 
 				function validatePath(path)
 				{
-					if(path instanceof Buffer)
-					{
+					if(path instanceof Buffer) {
 						path = path.toString('utf8');
 					}
-					if(typeof path !== 'string')
-					{
+					if(typeof path !== 'string') {
 						throw new TypeError("path must be a string");
 					}
 					path = resolveRelativePath(context, path);
-					if(!path.startsWith('/'))
-					{
+					if(!path.startsWith('/')) {
 						throw new Error("internal inconsistency: resolved path is not absolute");
 					}
 					return path;
@@ -1557,10 +1378,8 @@ return (function(){
 					// get all path parts
 					var pathParts = path.split('/');
 					// remove empty path parts
-					for(var i=0; i<pathParts.length; i++)
-					{
-						if(pathParts[i] == '')
-						{
+					for(var i=0; i<pathParts.length; i++) {
+						if(pathParts[i] == '') {
 							pathParts.splice(i, 1);
 							i--;
 						}
@@ -1570,18 +1389,15 @@ return (function(){
 					var entry = rootEntry;
 					var id = 0;
 					var inode = getINode(id);
-					for(var i=0; i<pathParts.length; i++)
-					{
+					for(var i=0; i<pathParts.length; i++) {
 						var pathPart = pathParts[i];
 						// make sure next part of path exists
-						if(entry[pathPart] == null)
-						{
+						if(entry[pathPart] == null) {
 							return null;
 						}
 						// TODO check permissions
 						id = entry[pathPart];
-						if(i<(pathParts.length-1))
-						{
+						if(i<(pathParts.length-1)) {
 							// read next directory
 							inode = getINode(id);
 							// TODO, while entry is a link, set the link destination as the current entry
@@ -1592,8 +1408,7 @@ return (function(){
 							}
 							entry = readINodeContent(id);
 						}
-						else
-						{
+						else {
 							// don't read target inode
 							inode = null;
 							entry = null;
@@ -1613,22 +1428,18 @@ return (function(){
 					var pathName = context.builtIns.modules.path.basename(path);
 					var pathDir = context.builtIns.modules.path.dirname(path);
 					var parentId = findINode(pathDir);
-					if(parentId == null)
-					{
+					if(parentId == null) {
 						throw new Error("parent directory does not exist");
 					}
 					var parentINode = getINode(parentId);
-					if(parentINode.type != 'DIR')
-					{
+					if(parentINode.type != 'DIR') {
 						throw new Error("parent entry is not a directory");
 					}
 					var parentData = readINodeContent(parentId);
 
 					// ensure path doesn't already exist
-					if(parentData[pathName] != null)
-					{
-						if(options.onlyIfMissing)
-						{
+					if(parentData[pathName] != null) {
+						if(options.onlyIfMissing) {
 							return parentData[pathName];
 						}
 						throw new Error("entry already exists");
@@ -1651,18 +1462,15 @@ return (function(){
 					newPath = validatePath(newPath);
 
 					// get info about parent directory
-					function getPathInfo(path)
-					{
+					function getPathInfo(path) {
 						var pathName = context.builtIns.modules.path.basename(path);
 						var pathDir = context.builtIns.modules.path.dirname(path);
 						var parentId = findINode(oldPathDir);
-						if(parentId == null)
-						{
+						if(parentId == null) {
 							throw new Error("parent directory does not exist");
 						}
 						var parentINode = getINode(parentId);
-						if(parentINode.type != 'DIR')
-						{
+						if(parentINode.type != 'DIR') {
 							throw new Error("parent entry is not a directory");
 						}
 						var parentData = readINodeContent(parentId);
@@ -1678,12 +1486,10 @@ return (function(){
 					var newInfo = getPathInfo(newPath);
 
 					// move from old dir to new dir
-					if(oldInfo.parentData[oldInfo.name] == null)
-					{
+					if(oldInfo.parentData[oldInfo.name] == null) {
 						throw new Error("entry does not exist");
 					}
-					if(newInfo.parentData[newInfo.name] != null)
-					{
+					if(newInfo.parentData[newInfo.name] != null) {
 						throw new Error("destination entry already exists");
 					}
 					var id = oldInfo.parentData[oldInfo.name];
@@ -1705,32 +1511,27 @@ return (function(){
 					var pathName = context.builtIns.modules.path.basename(path);
 					var pathDir = context.builtIns.modules.path.dirname(path);
 					var parentId = findINode(pathDir);
-					if(parentId == null)
-					{
+					if(parentId == null) {
 						throw new Error("parent directory does not exist");
 					}
 					var parentINode = getINode(parentId);
-					if(parentINode.type !== 'DIR')
-					{
+					if(parentINode.type !== 'DIR') {
 						throw new Error("parent entry is not a directory");
 					}
 					var parentData = readINodeContent(parentId);
 
 					// ensure entry exists
 					var id = parentData[pathName];
-					if(id == null)
-					{
+					if(id == null) {
 						throw new Error("entry does not exist");
 					}
 
 					// remove entry from parent dir
 					var inode = getINode(id);
-					if(inode.type === 'DIR')
-					{
+					if(inode.type === 'DIR') {
 						// make sure directory is empty
 						var data = readINodeContent(id);
-						if(Object.keys(data).length > 0)
-						{
+						if(Object.keys(data).length > 0) {
 							throw new Error("directory is not empty");
 						}
 					}
@@ -1756,8 +1557,7 @@ return (function(){
 
 				class Stats
 				{
-					constructor(id)
-					{
+					constructor(id) {
 						var inode = getINode(id);
 
 						Object.defineProperties(this, {
@@ -1844,13 +1644,11 @@ return (function(){
 
 				function copyFile(src, dest, flags, callback)
 				{
-					if(typeof flags === 'function')
-					{
+					if(typeof flags === 'function') {
 						callback = flags;
 						flags = null;
 					}
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -1865,12 +1663,10 @@ return (function(){
 
 				function copyFileSync(src, dest, flags)
 				{
-					if(flags == null)
-					{
+					if(flags == null) {
 						flags = 0;
 					}
-					if(typeof flags !== 'number' || !Number.isInteger(flags))
-					{
+					if(typeof flags !== 'number' || !Number.isInteger(flags)) {
 						throw new TypeError("flags must be an integer");
 					}
 
@@ -1880,32 +1676,26 @@ return (function(){
 					var srcId = findINode(src);
 					var destId = findINode(dest);
 
-					if(srcId == null)
-					{
+					if(srcId == null) {
 						throw new Error("source file does not exist");
 					}
 					var srcINode = getINode(srcId);
-					if(srcINode.type === 'DIR')
-					{
+					if(srcINode.type === 'DIR') {
 						throw new Error("source path is a directory");
 					}
 
 					// copy content
 					var data = readINodeContent(srcId);
-					if(destId == null)
-					{
+					if(destId == null) {
 						// create destination
 						destId = createPathEntry(dest, 'DIR', {});
 					}
-					else
-					{
-						if((flags & constants.COPYFILE_EXCL) === constants.COPYFILE_EXCL)
-						{
+					else {
+						if((flags & constants.COPYFILE_EXCL) === constants.COPYFILE_EXCL) {
 							throw new Error("destination already exists");
 						}
 						var destINode = getINode(destId);
-						if(destINode.type !== 'DIR')
-						{
+						if(destINode.type !== 'DIR') {
 							throw new Error("destination is a directory");
 						}
 					}
@@ -1919,8 +1709,7 @@ return (function(){
 
 				function exists(path, callback)
 				{
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -1936,8 +1725,7 @@ return (function(){
 				function existsSync(path, callback)
 				{
 					path = validatePath(path);
-					try
-					{
+					try {
 						var id = findINode(path);
 						if(id == null)
 						{
@@ -1945,8 +1733,7 @@ return (function(){
 						}
 						return true;
 					}
-					catch(error)
-					{
+					catch(error) {
 						return false;
 					}
 				}
@@ -1958,13 +1745,11 @@ return (function(){
 
 				function mkdir(path, mode, callback)
 				{
-					if(typeof mode === 'function')
-					{
+					if(typeof mode === 'function') {
 						callback = mode;
 						mode = null;
 					}
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -1979,8 +1764,7 @@ return (function(){
 
 				function mkdirSync(path, mode)
 				{
-					if(mode == null)
-					{
+					if(mode == null) {
 						mode = 0o777;
 					}
 					createPathEntry(path, 'DIR', {mode: mode});
@@ -1993,13 +1777,11 @@ return (function(){
 
 				function readdir(path, options, callback)
 				{
-					if(typeof options === 'function')
-					{
+					if(typeof options === 'function') {
 						callback = options;
 						options = null;
 					}
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2016,14 +1798,12 @@ return (function(){
 				{
 					options = Object.assign({}, options);
 					var id = findINode(path);
-					if(id == null)
-					{
+					if(id == null) {
 						throw new Error("directory does not exist");
 					}
 					var content = readINodeContent(id);
 					var data = [];
-					for(const fileName in content)
-					{
+					for(const fileName in content) {
 						data.push(fileName);
 					}
 					data.sort();
@@ -2037,13 +1817,11 @@ return (function(){
 
 				function readFile(path, options, callback)
 				{
-					if(typeof options === 'function')
-					{
+					if(typeof options === 'function') {
 						callback = options;
 						options = null;
 					}
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2061,8 +1839,7 @@ return (function(){
 					options = Object.assign({}, options);
 					path = validatePath(path);
 					var id = findINode(path);
-					if(id == null)
-					{
+					if(id == null) {
 						throw new Error("file does not exist");
 					}
 					return readINodeContent(id, options.encoding);
@@ -2075,8 +1852,7 @@ return (function(){
 
 				function rename(oldPath, newPath, callback)
 				{
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2101,8 +1877,7 @@ return (function(){
 
 				function rmdir(path, callback)
 				{
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2119,13 +1894,11 @@ return (function(){
 				{
 					path = validatePath(path);
 					var id = findINode(path);
-					if(id == null)
-					{
+					if(id == null) {
 						throw new Error("directory does not exist");
 					}
 					var inode = getINode(id);
-					if(inode.type !== 'DIR')
-					{
+					if(inode.type !== 'DIR') {
 						throw new Error("path is not a directory");
 					}
 					destroyPathEntry(path);
@@ -2138,8 +1911,7 @@ return (function(){
 
 				function stat(path, callback)
 				{
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2156,8 +1928,7 @@ return (function(){
 				{
 					path = validatePath(path);
 					var id = findINode(path);
-					if(id == null)
-					{
+					if(id == null) {
 						throw new Error("file does not exist");
 					}
 					return new Stats(id);
@@ -2170,8 +1941,7 @@ return (function(){
 				
 				function unlink(path, callback)
 				{
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2188,13 +1958,11 @@ return (function(){
 				{
 					path = validatePath(path);
 					var id = findINode(path);
-					if(id == null)
-					{
+					if(id == null) {
 						throw new Error("file does not exist");
 					}
 					var inode = getINode(id);
-					if(inode.type === 'DIR')
-					{
+					if(inode.type === 'DIR') {
 						throw new Error("path cannot be a directory");
 					}
 					destroyPathEntry(path);
@@ -2207,13 +1975,11 @@ return (function(){
 
 				function writeFile(path, data, options, callback)
 				{
-					if(typeof options === 'function')
-					{
+					if(typeof options === 'function') {
 						callback = options;
 						options = null;
 					}
-					if(typeof callback !== 'function')
-					{
+					if(typeof callback !== 'function') {
 						throw new TypeError("callback function is required");
 					}
 
@@ -2319,8 +2085,7 @@ return (function(){
 
 				class Process extends EventEmitter
 				{
-					constructor(context, parentContext)
-					{
+					constructor(context, parentContext) {
 						super();
 						var argv = context.argv.slice(0);
 						Object.defineProperties(this, {
@@ -2401,22 +2166,17 @@ return (function(){
 
 				class ChildProcess extends EventEmitter
 				{
-					constructor(path, args=[], options={})
-					{
+					constructor(path, args=[], options={}) {
 						var startTime = new Date().getTime();
 						super();
-						if(typeof path !== 'string')
-						{
+						if(typeof path !== 'string') {
 							throw new TypeError("path must be a string");
 						}
-						if(!(args instanceof Array))
-						{
+						if(!(args instanceof Array)) {
 							throw new TypeError("args must be an Array");
 						}
-						for(const arg of args)
-						{
-							if(typeof arg !== 'string')
-							{
+						for(const arg of args) {
+							if(typeof arg !== 'string') {
 								throw new TypeError("args must be an array of strings");
 							}
 						}
@@ -2433,27 +2193,21 @@ return (function(){
 						var argv0 = path;
 
 						// validate options
-						if(options.cwd)
-						{
-							if(typeof options.cwd !== 'string')
-							{
+						if(options.cwd) {
+							if(typeof options.cwd !== 'string') {
 								throw new TypeError("options.cwd must be a string");
 							}
 							// TODO check permissions and check if dir exists
 							childContext.cwd = options.cwd;
 						}
-						if(options.env)
-						{
-							if(typeof options.env !== 'object')
-							{
+						if(options.env) {
+							if(typeof options.env !== 'object') {
 								throw new TypeError("options.env must be an object")
 							}
 							childContext.env = Object.assign(childContext.env, deepCopyObject(options.env));
 						}
-						if(options.argv0)
-						{
-							if(typeof options.argv0 !== 'string')
-							{
+						if(options.argv0) {
+							if(typeof options.argv0 !== 'string') {
 								throw new TypeError("options.argv0 must be a string");
 							}
 							argv0 = options.argv0;
@@ -2476,16 +2230,14 @@ return (function(){
 							var wasValid = childContext.valid;
 							// invalidate
 							childContextInvalidate();
-							if(wasValid)
-							{
+							if(wasValid) {
 								// close I/O
 								stdin.input.end();
 								stdout.input.end();
 								stderr.input.end();
 								// wait for next queue to emit event
 								setTimeout(() => {
-									if(exitCode != null)
-									{
+									if(exitCode != null) {
 										this.emit('exit', exitCode, killSignal);
 									}
 								}, 0);
@@ -2509,12 +2261,10 @@ return (function(){
 						});
 
 						// try to start the process
-						try
-						{
+						try {
 							// get full module path
 							var paths = [];
-							if(context.env && context.env.paths)
-							{
+							if(context.env && context.env.paths) {
 								paths = context.env.paths;
 							}
 							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binDirExtensions});
@@ -2546,8 +2296,7 @@ return (function(){
 										log: {
 											value: (...args) => {
 												var strings = [];
-												for(const arg of args)
-												{
+												for(const arg of args) {
 													strings.push(''+arg);
 												}
 												var stringVal = strings.join(' ');
@@ -2561,14 +2310,11 @@ return (function(){
 										warn: {
 											value: (...args) => {
 												var strings = [];
-												for(const arg of args)
-												{
-													if(arg instanceof Error)
-													{
+												for(const arg of args) {
+													if(arg instanceof Error) {
 														strings.push(''+arg.stack);
 													}
-													else
-													{
+													else {
 														strings.push(''+arg);
 													}
 												}
@@ -2583,14 +2329,11 @@ return (function(){
 										error: {
 											value: (...args) => {
 												var strings = [];
-												for(const arg of args)
-												{
-													if(arg instanceof Error)
-													{
+												for(const arg of args) {
+													if(arg instanceof Error) {
 														strings.push(''+arg.stack);
 													}
-													else
-													{
+													else {
 														strings.push(''+arg);
 													}
 												}
@@ -2689,41 +2432,32 @@ return (function(){
 								// load built-ins
 								context.builtIns;
 								// ensure that the cwd is enterable by the calling context
-								try
-								{
+								try {
 									var cwdStats = childContext.modules.fs.statSync(childContext.cwd);
-									if(!cwdStats.isDirectory())
-									{
+									if(!cwdStats.isDirectory()) {
 										throw new Error("cwd is not a directory");
 									}
 								}
-								catch(error)
-								{
+								catch(error) {
 									childContext.invalidate(255, null);
 									return;
 								}
 								// start the process in the next queue
 								browserWrappers.setTimeout(context, () => {
 									// start the process
-									try
-									{
+									try {
 										requireFile(childContext, filename, scope);
 									}
-									catch(error)
-									{
-										if(error instanceof ExitSignal)
-										{
+									catch(error) {
+										if(error instanceof ExitSignal) {
 											// process has ended
 										}
-										else
-										{
-											if(childContext.valid)
-											{
+										else {
+											if(childContext.valid) {
 												console.error("unhandled process error:", error);
 												childContext.invalidate(255, null);
 											}
-											else
-											{
+											else {
 												// just ignore...
 											}
 										}
@@ -2732,8 +2466,7 @@ return (function(){
 								}, 0);
 							}, 0);
 						}
-						catch(error)
-						{
+						catch(error) {
 							childContext.invalidate();
 							// send error in the next queue
 							browserWrappers.setTimeout(context, () => {
@@ -2774,8 +2507,7 @@ return (function(){
 				EventEmitter.prototype.emit = function(eventName, ...args)
 				{
 					// ensure context is valid
-					if(!context.valid)
-					{
+					if(!context.valid) {
 						this.removeAllListeners();
 						return false;
 					}
@@ -2796,14 +2528,11 @@ return (function(){
 			return new Promise((resolve, reject) => {
 				var xhr = new XMLHttpRequest();
 				xhr.onreadystatechange = () => {
-					if(xhr.readyState === 4)
-					{
-						if(xhr.status === 200)
-						{
+					if(xhr.readyState === 4) {
+						if(xhr.status === 200) {
 							resolve(xhr.responseText);
 						}
-						else
-						{
+						else {
 							reject(new Error(xhr.status+": "+xhr.statusText));
 						}
 					}
@@ -2822,29 +2551,23 @@ return (function(){
 			path = resolveRelativePath(context, path);
 			// split and remove empty path parts
 			var pathParts = path.split('/');
-			for(var i=0; i<pathParts.length; i++)
-			{
-				if(pathParts[i]=='')
-				{
+			for(var i=0; i<pathParts.length; i++) {
+				if(pathParts[i]=='') {
 					pathParts.splice(i, 1);
 					i--;
 				}
 			}
 			
 			// make sure each leading path part exists and is a directory
-			for(var i=0; i<(pathParts.length-1); i++)
-			{
+			for(var i=0; i<(pathParts.length-1); i++) {
 				var leadingPath = '/'+pathParts.slice(0, i+1).join('/');
 				// ensure path is a directory or doesn't exist
-				try
-				{
+				try {
 					var stats = context.modules.fs.statSync(leadingPath);
-					if(stats.isDirectory())
-					{
+					if(stats.isDirectory()) {
 						continue;
 					}
-					else
-					{
+					else {
 						context.modules.fs.unlinkSync(leadingPath);
 					}
 				}
@@ -2907,8 +2630,7 @@ return (function(){
 		let booted = false;
 		function boot(url, path)
 		{
-			if(booted)
-			{
+			if(booted) {
 				throw new Error("system is already booted");
 			}
 			booted = true;
