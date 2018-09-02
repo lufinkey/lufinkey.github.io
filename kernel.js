@@ -1290,7 +1290,7 @@ return (function(){
 				// use inodes to handle creating filesystem entries
 				// valid inode types: FILE, DIR, LINK, REMOTE
 
-				//#region fs internal functions
+				//#region fs inode functions
 
 				function createINode(type, info)
 				{
@@ -1311,7 +1311,7 @@ return (function(){
 						id++;
 					}
 					// create inode
-					info = Object.assign({uid: 0, gid: 0, mode: 0o777, encoding: 'utf8'}, info);
+					info = Object.assign({uid: context.uid, gid: context.gid, mode: 0o777, encoding: 'utf8'}, info);
 					var inode = {
 						'type': type,
 						'uid': info.uid,
@@ -1436,7 +1436,10 @@ return (function(){
 							if(content == null) {
 								return null;
 							}
-							return Buffer.from(content);
+							if(encoding == null) {
+								return Buffer.from(content);
+							}
+							return content;
 
 						case 'REMOTE':
 							return Buffer.from(tmpStorage[id]);
@@ -1451,8 +1454,7 @@ return (function(){
 				{
 					var inode = getINode(id);
 
-					switch(inode.type)
-					{
+					switch(inode.type) {
 						case 'FILE':
 							if(content == null) {
 								storage.removeItem(entryPrefix+id);
@@ -1498,10 +1500,14 @@ return (function(){
 								storage.removeItem(entryPrefix+id);
 							}
 							else {
-								if(!(content instanceof Buffer)) {
-									throw new TypeError("inode file content must be a buffer");
+								var contentStr = content;
+								if(content instanceof Buffer) {
+									contentStr = content.toString();
 								}
-								storage.setItem(entryPrefix+id, content.toString());
+								else if(typeof contentStr !== 'string') {
+									throw new TypeError("inode link content must be a string or a Buffer");
+								}
+								storage.setItem(entryPrefix+id, contentStr);
 							}
 							break;
 
@@ -1570,8 +1576,7 @@ return (function(){
 							inode = getINode(id);
 							// TODO, while entry is a link, set the link destination as the current entry
 							// make sure the entry is a directory
-							if(inode.type !== 'DIR')
-							{
+							if(inode.type !== 'DIR') {
 								throw new Error("part of path is not a directory");
 							}
 							entry = readINodeContent(id);
@@ -1586,6 +1591,37 @@ return (function(){
 				}
 
 
+				const maxLinkCount = 40;
+				function followINodeLink(id, linkCount=0) {
+					var inode = getINode(id);
+					if(inode.type != 'LINK') {
+						return id;
+					}
+					if(linkCount == maxLinkCount) {
+						throw new Error("maximum symbolic links exceeded");
+					}
+					var path = readINodeContent(id, 'utf8');
+					var nextId = findINode(path);
+					if(nextId == null) {
+						return null;
+					}
+					return followINodeLink(nextId, linkCount+1);
+				}
+
+				function findINodeFollowingLinks(path)
+				{
+					var id = findINode(path);
+					if(id == null) {
+						return null;
+					}
+					return followINodeLink(id, 0);
+				}
+
+				//#endregion
+
+
+				//#region fs path entry functions
+
 				function createPathEntry(path, type, info, options)
 				{
 					options = Object.assign({}, options);
@@ -1595,7 +1631,7 @@ return (function(){
 					// get info about parent directory
 					var pathName = context.builtIns.modules.path.basename(path);
 					var pathDir = context.builtIns.modules.path.dirname(path);
-					var parentId = findINode(pathDir);
+					var parentId = findINodeFollowingLinks(pathDir);
 					if(parentId == null) {
 						throw new Error("parent directory does not exist");
 					}
@@ -1633,7 +1669,7 @@ return (function(){
 					function getPathInfo(path) {
 						var pathName = context.builtIns.modules.path.basename(path);
 						var pathDir = context.builtIns.modules.path.dirname(path);
-						var parentId = findINode(oldPathDir);
+						var parentId = findINodeFollowingLinks(pathDir);
 						if(parentId == null) {
 							throw new Error("parent directory does not exist");
 						}
@@ -1678,7 +1714,7 @@ return (function(){
 					// get info about the parent directory
 					var pathName = context.builtIns.modules.path.basename(path);
 					var pathDir = context.builtIns.modules.path.dirname(path);
-					var parentId = findINode(pathDir);
+					var parentId = findINodeFollowingLinks(pathDir);
 					if(parentId == null) {
 						throw new Error("parent directory does not exist");
 					}
@@ -1711,7 +1747,7 @@ return (function(){
 				//#endregion
 
 
-				//#region fs constants
+				//#region fs public constants
 
 				const constants = {
 					COPYFILE_EXCL: 0b00000000000000000000000000000001
@@ -1724,7 +1760,7 @@ return (function(){
 
 				//#endregion
 
-				//#region fs types
+				//#region fs public types
 
 				class Stats
 				{
@@ -1814,7 +1850,7 @@ return (function(){
 				//#endregion
 
 
-				//#region fs functions
+				//#region fs public functions
 
 				function copyFile(src, dest, flags, callback)
 				{
@@ -1847,30 +1883,40 @@ return (function(){
 					src = validatePath(src);
 					dest = validatePath(dest);
 
+					// validate input file
 					var srcId = findINode(src);
-					var destId = findINode(dest);
-
+					var srcRealId = findINodeFollowingLinks(src);
 					if(srcId == null) {
 						throw new Error("source file does not exist");
 					}
 					var srcINode = getINode(srcId);
-					if(srcINode.type === 'DIR') {
+					var srcRealINode = getINode(srcRealId);
+					if(srcINode.type === 'DIR' || srcRealINode.type === 'DIR') {
 						throw new Error("source path is a directory");
 					}
 
-					// copy content
-					var data = readINodeContent(srcId);
+					// read destination inode
+					var destId = findINode(dest);
+					let data = null;
 					if(destId == null) {
+						// read src inode content
+						data = readINodeContent(srcId);
 						// create destination
-						destId = createPathEntry(dest, 'DIR', {});
+						destId = createPathEntry(dest, srcINode.type, {});
 					}
 					else {
 						if((flags & constants.COPYFILE_EXCL) === constants.COPYFILE_EXCL) {
 							throw new Error("destination already exists");
 						}
 						var destINode = getINode(destId);
-						if(destINode.type !== 'DIR') {
+						if(destINode.type === 'DIR') {
 							throw new Error("destination is a directory");
+						}
+						else if(destINode.type === 'FILE') {
+							data = readINodeContent(srcRealId);
+						}
+						else {
+							data = readINodeContent(srcId);
 						}
 					}
 					writeINodeContent(destId, data);
@@ -1878,7 +1924,6 @@ return (function(){
 
 				FS.copyFile = copyFile;
 				FS.copyFileSync = copyFileSync;
-
 
 
 				function exists(path, callback)
@@ -1901,8 +1946,7 @@ return (function(){
 					path = validatePath(path);
 					try {
 						var id = findINode(path);
-						if(id == null)
-						{
+						if(id == null) {
 							return false;
 						}
 						return true;
@@ -1914,7 +1958,6 @@ return (function(){
 
 				FS.exists = exists;
 				FS.existsSync = existsSync;
-
 
 
 				function mkdir(path, mode, callback)
@@ -1948,7 +1991,6 @@ return (function(){
 				FS.mkdirSync = mkdirSync;
 
 
-
 				function readdir(path, options, callback)
 				{
 					if(typeof options === 'function') {
@@ -1971,7 +2013,7 @@ return (function(){
 				function readdirSync(path, options)
 				{
 					options = Object.assign({}, options);
-					var id = findINode(path);
+					var id = findINodeFollowingLinks(path);
 					if(id == null) {
 						throw new Error("directory does not exist");
 					}
@@ -1987,7 +2029,6 @@ return (function(){
 				FS.readdir = readdir;
 				FS.readdirSync = readdirSync;
 
-				
 
 				function readFile(path, options, callback)
 				{
@@ -2012,7 +2053,7 @@ return (function(){
 				{
 					options = Object.assign({}, options);
 					path = validatePath(path);
-					var id = findINode(path);
+					var id = findINodeFollowingLinks(path);
 					if(id == null) {
 						throw new Error("file does not exist");
 					}
@@ -2021,7 +2062,6 @@ return (function(){
 
 				FS.readFile = readFile;
 				FS.readFileSync = readFileSync;
-
 
 
 				function rename(oldPath, newPath, callback)
@@ -2046,7 +2086,6 @@ return (function(){
 
 				FS.rename = rename;
 				FS.renameSync = renameSync;
-
 
 
 				function rmdir(path, callback)
@@ -2082,7 +2121,6 @@ return (function(){
 				FS.rmdirSync = rmdirSync;
 
 
-
 				function stat(path, callback)
 				{
 					if(typeof callback !== 'function') {
@@ -2112,7 +2150,6 @@ return (function(){
 				FS.statSync = statSync;
 
 
-				
 				function unlink(path, callback)
 				{
 					if(typeof callback !== 'function') {
@@ -2146,7 +2183,6 @@ return (function(){
 				FS.unlinkSync = unlinkSync;
 
 
-
 				function writeFile(path, data, options, callback)
 				{
 					if(typeof options === 'function') {
@@ -2171,7 +2207,11 @@ return (function(){
 					options = Object.assign({}, options);
 					path = validatePath(path);
 					var id = createPathEntry(path, 'FILE', {mode:0o666}, {onlyIfMissing: true});
-					writeINodeContent(id, data, options.encoding);
+					var realId = followINodeLink(id);
+					if(realId == null) {
+						throw new Error("broken symbolic link");
+					}
+					writeINodeContent(realId, data, options.encoding);
 				}
 
 				FS.writeFile = writeFile;
