@@ -1,6 +1,0 @@
-{
-	"shared": true,
-	"allowedFiles": [
-		"/system/lib/ui.dll/"
-	]
-}
