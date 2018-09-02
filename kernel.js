@@ -657,7 +657,8 @@ return (function(){
 			var modulePath = findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
 
 			// check if library is shared
-			let moduleContext = context;
+			let moduleContext = copyContext(context);
+			moduleContext.filename = modulePath;
 			let moduleContainer = context.loadedModules;
 
 			// load library rules if there are any
@@ -689,6 +690,11 @@ return (function(){
 			if(libRules.blockedUsers) {
 				if(libRules.blockedUsers.indexOf(context.uid) != -1) {
 					throw new Error("user is blocked from loading library");
+				}
+			}
+			if(libRules.allowedFiles) {
+				if(libRules.allowedFiles.indexOf(context.filename) == -1) {
+					throw new Error("file is not allowed to load library");
 				}
 			}
 
@@ -983,6 +989,7 @@ return (function(){
 				stderr: null,
 				argv: toNonNull(parentContext.argv, []).slice(0),
 				env: deepCopyObject(toNonNull(parentContext.env, {})),
+				filename: parentContext.filename,
 
 				timeouts: [],
 				intervals: [],
@@ -1018,6 +1025,17 @@ return (function(){
 					}
 					return builtIns;
 				}
+			});
+
+			return context;
+		}
+
+		// copy a given context
+		function copyContext(srcContext) {
+			let context = Object.assign({}, srcContext);
+
+			Object.defineProperty(context, 'builtIns', {
+				get: Object.getOwnPropertyDescriptor(srcContext, 'builtIns').get
 			});
 
 			return context;
@@ -2292,6 +2310,8 @@ return (function(){
 							}
 							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binDirExtensions});
 							const dirname = context.builtIns.modules.path.dirname(filename);
+
+							childContext.filename = filename;
 
 							// create process scope
 							let scope = null;
