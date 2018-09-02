@@ -650,22 +650,45 @@ return (function(){
 				return context.builtIns.modules[path];
 			}
 			// get full module path
-			var basePaths = kernelOptions.libPaths || [];
+			var basePaths =
+				(kernelOptions.libPaths || [])
+				.concat(kernelOptions.privateLibPaths || [])
+				.concat(context.env['LD_LIBRARY_PATH'] || []);
 			var modulePath = findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
 
 			// check if library is shared
 			let moduleContext = context;
 			let moduleContainer = context.loadedModules;
-			if(kernelOptions.sharedLibPaths) {
-				for(var libPath of kernelOptions.sharedLibPaths) {
-					if(!libPath.endsWith('/')) {
-						libPath += '/';
-					}
-					if(modulePath.startsWith(libPath)) {
-						moduleContext = rootContext;
-						moduleContainer = loadedSharedModules;
-						break;
-					}
+
+			// load library rules if there are any
+			let libRules = {};
+			let libRulesFile = null;
+			try {
+				libRulesFile = context.modules.fs.readFileSync(modulePath+'.librules', {encoding:'utf8'});
+			} catch(e) {}
+			if(libRulesFile) {
+				libRules = JSON.parse(libRulesFile);
+				if(!libRules) {
+					libRules = {};
+				}
+			}
+
+			// check library rules
+			if(libRules.shared) {
+				moduleContainer = loadedSharedModules;
+				if(!moduleContainer[modulePath] && context.uid != 0) {
+					throw new Error("cannot load globally shared library as non-root");
+				}
+				moduleContext = rootContext;
+			}
+			if(libRules.allowedUsers) {
+				if(libRules.allowedUsers.indexOf(context.uid) == -1) {
+					throw new Error("user not allowed to load library");
+				}
+			}
+			if(libRules.blockedUsers) {
+				if(libRules.blockedUsers.indexOf(context.uid) != -1) {
+					throw new Error("user is blocked from loading library");
 				}
 			}
 

@@ -30,10 +30,14 @@
 							"package.json": ""
 						}
 					},
-					"slib": {
+					"plib": {
+						"react.js.librules": "",
 						"react.js": "https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js",
+						"react-dom.js.librules": "",
 						"react-dom.js": "https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js",
+						"babel.js.librules": "",
 						"babel.js": "https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js",
+						"sass.js.librules": "",
 						"sass.js": "https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js"
 					}
 				}
