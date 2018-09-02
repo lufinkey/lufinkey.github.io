@@ -113,6 +113,72 @@ return (function(){
 //#endregion
 
 
+//#region Permission Validation
+
+		function getModeRWE(num) {
+			var perm = {
+				r: false,
+				w: false,
+				x: false
+			};
+			if(num >= 4) {
+				num -= 4;
+				perm.r = true;
+			}
+			if(num >= 2) {
+				num -= 2;
+				perm.w = true;
+			}
+			if(num >= 1) {
+				num -= 1;
+				perm.x = true;
+			}
+			return perm;
+		}
+
+		function readMode(mode) {
+			mode = mode.toString(8);
+			while(mode.length < 4) {
+				mode = '0'+mode;
+			}
+			return {
+				'sticky': getModeRWE(parseInt(mode[0])),
+				'owner': getModeRWE(parseInt(mode[1])),
+				'group': getModeRWE(parseInt(mode[2])),
+				'world': getModeRWE(parseInt(mode[3]))
+			};
+		}
+
+		function checkPerm(perm, neededPerms) {
+			if(neededPerms.r && !perm.r) {
+				return false;
+			}
+			if(neededPerms.w && !perm.w) {
+				return false;
+			}
+			if(neededPerms.x && !perm.x) {
+				return false;
+			}
+			return true;
+		}
+
+		function validatePermission(context, uid, gid, mode, perm) {
+			mode = readMode(mode);
+			if(context.uid == uid && checkPerm(mode.owner, perm)) {
+				return;
+			}
+			else if(context.gid == gid && checkPerm(mode.group, perm)) {
+				return;
+			}
+			else if(checkPerm(mode.world, perm)) {
+				return;
+			}
+			throw new Error("Access Denied");
+		}
+
+//#endregion
+
+
 //#region Exit Signal
 		// exception for process exit signal
 		class ExitSignal extends Error
@@ -1337,67 +1403,6 @@ return (function(){
 					return id;
 				}
 
-				function getModeRWE(num) {
-					var perm = {
-						r: false,
-						w: false,
-						e: false
-					};
-					if(num >= 4) {
-						num -= 4;
-						perm.r = true;
-					}
-					if(num >= 2) {
-						num -= 2;
-						perm.w = true;
-					}
-					if(num >= 1) {
-						num -= 1;
-						perm.e = true;
-					}
-					return perm;
-				}
-
-				function readMode(mode) {
-					mode = mode.toString(8);
-					while(mode.length < 4) {
-						mode = '0'+mode;
-					}
-					return {
-						'sticky': getModeRWE(parseInt(mode[0])),
-						'owner': getModeRWE(parseInt(mode[1])),
-						'group': getModeRWE(parseInt(mode[2])),
-						'world': getModeRWE(parseInt(mode[3]))
-					};
-				}
-
-				function checkPerm(perm, neededPerms) {
-					if(neededPerms.r && !perm.r) {
-						return false;
-					}
-					if(neededPerms.w && !perm.w) {
-						return false;
-					}
-					if(neededPerms.e && !perm.e) {
-						return false;
-					}
-					return true;
-				}
-
-				function validatePermission(uid, gid, mode, perm) {
-					mode = readMode(mode);
-					if(context.uid == uid && checkPerm(mode.owner, perm)) {
-						return;
-					}
-					else if(context.gid == gid && checkPerm(mode.group, perm)) {
-						return;
-					}
-					else if(checkPerm(mode.world, perm)) {
-						return;
-					}
-					throw new Error("Access Denied");
-				}
-
 				function getINode(id)
 				{
 					var inodeStr = storage.getItem(inodePrefix+id);
@@ -1444,7 +1449,7 @@ return (function(){
 				function readINodeContent(id, encoding)
 				{
 					var inode = getINode(id);
-					validatePermission(inode.uid, inode.gid, inode.mode, {r:true});
+					validatePermission(context, inode.uid, inode.gid, inode.mode, {r:true});
 
 					switch(inode.type) {
 						case 'FILE':
@@ -1489,7 +1494,7 @@ return (function(){
 				function writeINodeContent(id, content, encoding)
 				{
 					var inode = getINode(id);
-					validatePermission(inode.uid, inode.gid, inode.mode, {w:true});
+					validatePermission(context, inode.uid, inode.gid, inode.mode, {w:true});
 
 					switch(inode.type) {
 						case 'FILE':
@@ -1606,13 +1611,11 @@ return (function(){
 						if(entry[pathPart] == null) {
 							return null;
 						}
-						// TODO check permissions
 						id = entry[pathPart];
 						if(i<(pathParts.length-1)) {
 							// read next directory
-							validatePermission(inode.uid, inode.gid, inode.mode, {e:true});
+							validatePermission(context, inode.uid, inode.gid, inode.mode, {x:true});
 							inode = getINode(id);
-							// TODO, while entry is a link, set the link destination as the current entry
 							// make sure the entry is a directory
 							if(inode.type !== 'DIR') {
 								throw new Error("part of path is not a directory");
@@ -1621,7 +1624,6 @@ return (function(){
 						}
 						else {
 							// don't read target inode
-							// TODO validate R/W from the parent node's execute bit
 							inode = null;
 							entry = null;
 						}
@@ -1647,8 +1649,7 @@ return (function(){
 					return followINodeLink(nextId, linkCount+1);
 				}
 
-				function findINodeFollowingLinks(path)
-				{
+				function findINodeFollowingLinks(path) {
 					var id = findINode(path);
 					if(id == null) {
 						return null;
@@ -1722,7 +1723,7 @@ return (function(){
 						if(parentINode.type != 'DIR') {
 							throw new Error("parent entry is not a directory");
 						}
-						validatePermission(parentINode.uid, parentINode.gid, parentINode.mode, {r:true,w:true});
+						validatePermission(context, parentINode.uid, parentINode.gid, parentINode.mode, {r:true,w:true});
 						var parentData = readINodeContent(parentId);
 						return {
 							name: pathName,
@@ -1934,9 +1935,9 @@ return (function(){
 						neededPerms.w = true;
 					}
 					if((mode & constants.X_OK) == constants.X_OK) {
-						neededPerms.e = true;
+						neededPerms.x = true;
 					}
-					validatePermission(inode.uid, inode.gid, inode.mode, neededPerms);
+					validatePermission(context, inode.uid, inode.gid, inode.mode, neededPerms);
 				}
 
 				FS.access = access;
