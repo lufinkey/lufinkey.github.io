@@ -680,7 +680,7 @@ return (function(){
 				moduleContainer = loadedSharedModules;
 				// TODO check if the file is owned by root
 				if(!moduleContainer[modulePath] && context.uid != 0) {
-					throw new Error("cannot load globally shared library as non-root");
+					throw new Error("cannot perform initial load of globally shared library as non-root");
 				}
 				moduleContext = rootContext;
 			}
