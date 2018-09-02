@@ -439,7 +439,7 @@ return (function(){
 		{
 			code = 'exports = ((__scope) => {\n'+
 				'const setTimeout = __scope.setTimeout;\n'+
-				'const clearTimeout = __scope.setTimeout;\n'+
+				'const clearTimeout = __scope.clearTimeout;\n'+
 				'const setInterval = __scope.setInterval;\n'+
 				'const clearInterval = __scope.clearInterval;\n'+
 				'const Promise = __scope.Promise;\n'+
@@ -489,6 +489,70 @@ return (function(){
 			// download built-in node modules / classes
 			var data = await download('https://cdn.jsdelivr.net/npm/node-builtin-map/dist/node-builtin-map.js');
 			builtInsGenerator = createBuiltInGenerator(data);
+		}
+
+//#endregion
+
+
+//#region Streams
+
+		function createTwoWayStream(contextIn, contextOut)
+		{
+			const Buffer = contextIn.builtIns.modules.buffer.Buffer;
+			const Writable = contextIn.builtIns.modules.stream.Writable;
+			const Readable = contextOut.builtIns.modules.stream.Readable;
+
+			let input = null;
+			let inputDestroyed = false;
+			let output = null;
+			let outputDestroyed = false;
+
+			class InStream extends Writable {
+				_write(chunk, encoding, callback) {
+					if(contextOut.valid && !outputDestroyed) {
+						if(chunk instanceof Buffer) {
+							output.push(chunk);
+						}
+						else {
+							output.push(chunk, encoding);
+						}
+					}
+					callback();
+				}
+
+				_destroy(err, callback) {
+					inputDestroyed = true;
+					if(callback) {
+						callback();
+					}
+					if(!outputDestroyed) {
+						output.push(null);
+						output.destroy();
+					}
+				}
+			}
+
+			class OutStream extends Readable {
+				_read() {
+					//
+				}
+
+				_destroy(err, callback) {
+					outputDestroyed = true;
+					if(callback) {
+						callback();
+					}
+					this.emit('close');
+				}
+			}
+
+			input = new InStream({emitClose:true});
+			output = new OutStream();
+
+			return {
+				input: input,
+				output: output
+			};
 		}
 
 //#endregion
@@ -2325,72 +2389,6 @@ return (function(){
 
 				const EventEmitter = context.modules.events;
 
-				function createTwoWayStream(contextIn, contextOut)
-				{
-					let ended = false;
-
-					const InEventEmitter = contextIn.modules.events;
-					const OutEventEmitter = contextOut.modules.events;
-
-					let input = new InEventEmitter();
-					let output = new OutEventEmitter();
-
-					// input stream
-
-					input.write = (chunk, encoding=null, callback=null) => {
-						if(ended) {
-							throw new Error("tried to write input after writable has finished");
-						}
-						output.emit('data', chunk);
-						if(callback) {
-							callback();
-						}
-					};
-
-					input.end = (chunk, encoding, callback) => {
-						if(ended) {
-							return;
-						}
-
-						if(typeof chunk == 'function') {
-							callback = chunk;
-							chunk = null;
-						}
-						else if(typeof encoding == 'function') {
-							callback = encoding;
-							encoding = null;
-						}
-
-						if(chunk) {
-							input.write(chunk, encoding);
-						}
-						input.destroy();
-						if(callback) {
-							callback();
-						}
-						input.emit('finish');
-					}
-
-					input.destroy = (error=null) => {
-						if(ended) {
-							return;
-						}
-						ended = true;
-
-						if(error) {
-							output.emit('error', error);
-						}
-						output.emit('end');
-						output.emit('close');
-					};
-
-					return {
-						input: input,
-						output: output
-					};
-				}
-
-
 
 				class Process extends EventEmitter
 				{
@@ -2540,9 +2538,9 @@ return (function(){
 							childContextInvalidate();
 							if(wasValid) {
 								// close I/O
-								stdin.input.end();
-								stdout.input.end();
-								stderr.input.end();
+								stdin.input.destroy();
+								stdout.input.destroy();
+								stderr.input.destroy();
 								// wait for next queue to emit event
 								setTimeout(() => {
 									if(exitCode != null) {

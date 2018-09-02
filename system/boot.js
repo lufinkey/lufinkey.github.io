@@ -262,7 +262,7 @@ function setupSystem(system)
 			const pipes = bootlogPipes.slice(0);
 			bootlogPipes = [];
 			for(const pipe of pipes) {
-				pipe.end();
+				pipe.destroy();
 			}
 			resolve();
 		}).catch((error) => {
