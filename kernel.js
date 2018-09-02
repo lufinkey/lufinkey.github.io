@@ -173,6 +173,13 @@ return (function(){
 			else if(checkPerm(mode.world, perm)) {
 				return;
 			}
+			console.log(context);
+			console.log({
+				uid: uid,
+				gid: gid,
+				mode: mode
+			});
+			console.log(perm);
 			throw new Error("Access Denied");
 		}
 
@@ -2294,7 +2301,7 @@ return (function(){
 				{
 					options = Object.assign({}, options);
 					path = validatePath(path);
-					var id = createPathEntry(path, 'FILE', {mode:0o666}, {onlyIfMissing: true});
+					var id = createPathEntry(path, 'FILE', {mode: options.mode || 0o666}, {onlyIfMissing: true});
 					var realId = followINodeLink(id);
 					if(realId == null) {
 						throw new Error("broken symbolic link");
@@ -2499,7 +2506,6 @@ return (function(){
 							if(typeof options.cwd !== 'string') {
 								throw new TypeError("options.cwd must be a string");
 							}
-							// TODO check permissions and check if dir exists
 							childContext.cwd = options.cwd;
 						}
 						if(options.env) {
@@ -2572,6 +2578,7 @@ return (function(){
 							const filename = findModulePath(context, paths, context.cwd, path, {dirExtensions: kernelOptions.binDirExtensions});
 							const dirname = context.builtIns.modules.path.dirname(filename);
 
+							context.modules.fs.accessSync(filename, context.modules.fs.constants.X_OK);
 							childContext.filename = filename;
 
 							// create process scope
@@ -2904,7 +2911,7 @@ return (function(){
 				log(null, "boot data downloaded");
 				// write boot data to path
 				makeLeadingDirs(rootContext, path);
-				rootContext.modules.fs.writeFileSync(path, data);
+				rootContext.modules.fs.writeFileSync(path, data, {mode: 0o700});
 				// execute boot file
 				log(null, "booting...");
 				rootContext.modules.child_process.spawn(path);

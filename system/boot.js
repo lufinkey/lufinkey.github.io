@@ -64,7 +64,7 @@ function downloadFile(url, path, options={})
 {
 	return new Promise((resolve, reject) => {
 		download(url).then((data) => {
-			fs.writeFile(path, data, (error) => {
+			fs.writeFile(path, data, {mode: 0o755}, (error) => {
 				if(error) {
 					reject(error);
 				}
@@ -257,7 +257,7 @@ function setupSystem(system)
 	return new Promise((resolve, reject) => {
 		downloadPromise.then(() => {
 			// write system.json to file
-			fs.writeFileSync('/system/system.json', JSON.stringify(system, null, "\t"));
+			fs.writeFileSync('/system/system.json', JSON.stringify(system, null, "\t"), {mode: 0o644});
 			// close bootlog pipes
 			const pipes = bootlogPipes.slice(0);
 			bootlogPipes = [];
