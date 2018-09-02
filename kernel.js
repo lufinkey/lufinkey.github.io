@@ -1621,6 +1621,7 @@ return (function(){
 						}
 						else {
 							// don't read target inode
+							// TODO validate R/W from the parent node's execute bit
 							inode = null;
 							entry = null;
 						}
