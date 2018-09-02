@@ -935,11 +935,10 @@ return (function(){
 			if(libRules.allowedFiles) {
 				var foundMatch = false;
 				for(var allowedFile of libRules.allowedFiles) {
-					if(allowedFile.endsWith('/')) {
-						if(modulePath.startsWith(allowedFile)) {
-							foundMatch = true;
-							break;
-						}
+					allowedFile = resolveRelativePath(context, allowedFile, dirname);
+					if(modulePath.startsWith(allowedFile+'/')) {
+						foundMatch = true;
+						break;
 					}
 					else if(allowedFile == modulePath) {
 						foundMatch = true;
