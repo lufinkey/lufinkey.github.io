@@ -2780,7 +2780,7 @@ return (function(){
 										}
 										else {
 											if(childContext.valid) {
-												console.error("unhandled process error:", error);
+												console.error(argv0+": unhandled process error:", error);
 												childContext.invalidate(255, null);
 											}
 											else {
@@ -2843,9 +2843,32 @@ return (function(){
 				}
 
 				return EventEmitter;
-			}
+			},
 		//#endregion
 
+
+		//#region util
+			'util': (context) => {
+				const util = context.builtIns.modules.util;
+
+				util.promisify = (func) => {
+					return (...args) => {
+						return new Promise((resolve, reject) => {
+							func(...args, (error, result) => {
+								if(error) {
+									reject(error);
+								}
+								else {
+									resolve(result);
+								}
+							});
+						});
+					};
+				};
+
+				return util;
+			}
+		//#endregion
 		};
 //#endregion
 
