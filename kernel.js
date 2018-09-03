@@ -679,8 +679,7 @@ return (function(){
 
 
 		// find a valid module path from the given context, base path, and path
-		function resolveModulePath(context, basePath, path, options=null)
-		{
+		function resolveModulePath(context, basePath, path, options=null) {
 			options = Object.assign({}, options);
 			var modulePath = resolveRelativePath(context, path, basePath);
 			// find full module path
@@ -868,8 +867,7 @@ return (function(){
 //#region require
 
 		// run a script with the specified scope
-		function requireFile(context, path, scope={})
-		{
+		function requireFile(context, path, scope={}) {
 			path = resolveRelativePath(context, path);
 			const data = context.modules.fs.readFileSync(path, {encoding:'utf8'});
 			const interpreter = getInterpreter(context, 'script', path);
@@ -878,8 +876,7 @@ return (function(){
 
 
 		// handle node's 'require' function
-		function require(context, parentScope, dirname, path)
-		{
+		function require(context, parentScope, dirname, path) {
 			// check if built-in module
 			if(context.modules[path]) {
 				return context.modules[path];
@@ -936,7 +933,11 @@ return (function(){
 				var foundMatch = false;
 				for(var allowedFile of libRules.allowedFiles) {
 					allowedFile = resolveRelativePath(context, allowedFile, dirname);
-					if(modulePath.startsWith(allowedFile+'/')) {
+					var allowedDir = allowedFile;
+					if(!allowedDir.endsWith('/')) {
+						allowedDir += '/';
+					}
+					if(modulePath.startsWith(allowedDir)) {
 						foundMatch = true;
 						break;
 					}
@@ -1452,9 +1453,18 @@ return (function(){
 						'type': type,
 						'uid': info.uid,
 						'gid': info.gid,
-						'mode': info.mode | context.umask,
+						'mode': info.mode,
 						'encoding': info.encoding
 					};
+					if(!Number.isInteger(inode.uid) || inode.uid < 0) {
+						throw new Error("invalid uid");
+					}
+					if(!Number.isInteger(inode.gid) || inode.gid < 0) {
+						throw new Error("invalid gid");
+					}
+					if(!Number.isInteger(inode.mode) || inode.mode < 0 || inode.mode > 1023) {
+						throw new Error("invalid mode");
+					}
 					// store inode
 					storage.setItem(inodePrefix+id, JSON.stringify(inode));
 					var data = '';
@@ -2440,6 +2450,16 @@ return (function(){
 									throw exitSignal;
 								},
 								writable: false
+							},
+							'uid': {
+								get: () => {
+									return context.uid;
+								}
+							},
+							'gid': {
+								get: () => {
+									return context.gid;
+								}
 							},
 							'pid': {
 								get: () => {

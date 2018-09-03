@@ -16,29 +16,40 @@
 			"filesystem": [
 				{"name":"system", "mode":"0755", "type":"DIR", "content": [
 					{"name":"boot", "mode":"0755", "type":"DIR", "content": [
+						{"name":"bootScreen.jsx", "mode":"0755", "type":"FILE"},
+						{"name":"screens", "mode":"0755", "type":"DIR", "content": [
+							{"name":"DefaultBootScreen.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"DefaultBootScreen.css", "mode":"0644", "type":"FILE"}
+						]},
 						{"name":"triggers", "mode":"0755", "type":"DIR", "content": [
 							{"name":"delay.js", "mode":"0755", "type":"FILE"},
 							{"name":"sassSetup.js", "mode":"0755", "type":"FILE"}
 						]}
 					]},
 					{"name":"lib", "mode":"0755", "type":"DIR", "content": [
+						{"name":"sysui.dll", "mode":"0755", "type":"DIR", "content": [
+							{"name":"index.js", "mode":"0644", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"sysui.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"sysui.private.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"sysui.private.jsx.librules", "mode":"0644", "type":"FILE"}
+						]},
 						{"name":"transcend32.dll", "mode":"0755", "type":"DIR", "content": [
-							{"name":"CRT.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.css", "mode":"0755", "type":"FILE"}
+							{"name":"CRT.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"index.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]}
 					]},
 					{"name":"plib", "mode":"0755", "type":"DIR", "content": [
-						{"name":"react.js", "mode":"0755", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"},
-						{"name":"react.js.librules", "mode":"0755", "type":"FILE"},
-						{"name":"react-dom.js", "mode":"0755", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js"},
-						{"name":"react-dom.js.librules", "mode":"0755", "type":"FILE"},
-						{"name":"babel.js", "mode":"0755", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js"},
-						{"name":"babel.js.librules", "mode":"0755", "type":"FILE"},
-						{"name":"sass.js", "mode":"0755", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js"},
-						{"name":"sass.js.librules", "mode":"0755", "type":"FILE"},
-						{"name":"sysui.js", "mode":"0755", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/"}
+						{"name":"react.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"},
+						{"name":"react.js.librules", "mode":"0644", "type":"FILE"},
+						{"name":"react-dom.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js"},
+						{"name":"react-dom.js.librules", "mode":"0644", "type":"FILE"},
+						{"name":"babel.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js"},
+						{"name":"babel.js.librules", "mode":"0644", "type":"FILE"},
+						{"name":"sass.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js"},
+						{"name":"sass.js.librules", "mode":"0644", "type":"FILE"}
 					]}
 				]}
 			],
@@ -46,7 +57,7 @@
 				{"execute": "/system/boot/triggers/sassSetup.js"},
 				{"execute": "/system/boot/bootScreen.jsx",
 					"stdin": "bootlog",
-					"detached": true},
+					"async": true},
 				{"execute": "/system/boot/triggers/delay.js",
 					"args": [ "2000" ]}
 			]
@@ -54,6 +65,7 @@
 
 
 		{"id": "main",
+			"description": "Graphical shell and default system apps",
 			"filesystem": [
 				{"name":"system", "mode":"0755", "type":"DIR", "content": [
 					{"name":"boot", "mode":"0755", "type":"DIR", "content": [
@@ -63,87 +75,92 @@
 					]},
 					{"name":"apps", "mode":"0755", "type":"DIR", "content": [
 						{"name":"aboutme.exe", "mode":"0755", "type":"DIR", "content": [
-							{"name":"AboutMe.jsx", "mode":"0755", "type":"FILE"},
+							{"name":"AboutMe.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.css", "mode":"0755", "type":"FILE"}
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]},
 						{"name":"explorer.exe", "mode":"0755", "type":"DIR", "content": [
-							{"name":"Explorer.jsx", "mode":"0755", "type":"FILE"},
+							{"name":"Explorer.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.css", "mode":"0755", "type":"FILE"}
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]},
 						{"name":"iframe.exe", "mode":"0755", "type":"DIR", "content": [
-							{"name":"iFrame.jsx", "mode":"0755", "type":"FILE"},
+							{"name":"iFrame.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.css", "mode":"0755", "type":"FILE"}
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]},
 						{"name":"textedit.exe", "mode":"0755", "type":"DIR", "content": [
-							{"name":"TextEdit.jsx", "mode":"0755", "type":"FILE"},
+							{"name":"TextEdit.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.css", "mode":"0755", "type":"FILE"}
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]},
 						{"name":"terminal.exe", "mode":"0755", "type":"DIR", "content": [
-							{"name":"Terminal.jsx", "mode":"0755", "type":"FILE"},
+							{"name":"Terminal.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.css", "mode":"0755", "type":"FILE"}
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]}
 					]},
 					{"name":"bin", "mode":"0755", "type":"DIR", "content": [
 						{"name":"cat.js", "mode":"0755", "type":"FILE"},
 						{"name":"jsh.js", "mode":"0755", "type":"FILE"},
 						{"name":"ls.js", "mode":"0755", "type":"FILE"},
-						{"name":"open.js", "mode":"0755", "type":"FILE"}
+						{"name":"open.js", "mode":"0755", "type":"FILE"},
+						{"name":"displaymgr.exe", "mode":"0755", "type":"DIR", "content": [
+							{"name":"DisplayManager.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"index.js", "mode":"0755", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
+						]},
+						{"name":"shell32.exe", "mode":"0755", "type":"DIR", "content": [
+							{"name":"Desktop.css", "mode":"0644", "type":"FILE"},
+							{"name":"Desktop.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"FileIcon.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"FileIconLayout.css", "mode":"0644", "type":"FILE"},
+							{"name":"FileIconLayout.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"StartMenu.css", "mode":"0644", "type":"FILE"},
+							{"name":"StartMenu.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"TaskBar.css", "mode":"0644", "type":"FILE"},
+							{"name":"TaskBar.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"TaskBarWindowButton.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"Wallpaper.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.css", "mode":"0644", "type":"FILE"}
+						]}
 					]},
 					{"name":"lib", "mode":"0755", "type":"DIR", "content": [
 						{"name":"dwm.dll", "mode":"0755", "type":"DIR", "content":[
-							{"name":"Window.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"WindowManager.css", "mode":"0755", "type":"FILE"},
-							{"name":"WindowManager.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"}
-						]},
-						{"name":"shell32.dll", "mode":"0755", "type":"DIR", "content":[
-							{"name":"Desktop.css", "mode":"0755", "type":"FILE"},
-							{"name":"Desktop.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"FileIcon.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"FileIconLayout.css", "mode":"0755", "type":"FILE"},
-							{"name":"FileIconLayout.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"StartMenu.css", "mode":"0755", "type":"FILE"},
-							{"name":"StartMenu.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"TaskBar.css", "mode":"0755", "type":"FILE"},
-							{"name":"TaskBar.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"TaskBarWindowButton.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"Wallpaper.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"}
+							{"name":"Window.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"WindowManager.css", "mode":"0644", "type":"FILE"},
+							{"name":"WindowManager.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"index.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"}
 						]},
 						{"name":"selfad.dll", "mode":"0755", "type":"DIR", "content":[
-							{"name":"index.jsx", "mode":"0755", "type":"FILE"},
-							{"name":"package.json", "mode":"0755", "type":"FILE"},
-							{"name":"style.scss", "mode":"0755", "type":"FILE"}
+							{"name":"index.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"},
+							{"name":"style.scss", "mode":"0644", "type":"FILE"}
 						]},
-						{"name":"base64uri.js", "mode":"0755", "type":"FILE"},
-						{"name":"mimetype.js", "mode":"0755", "type":"FILE"},
-						{"name":"react-draggable.js", "mode":"0755", "type":"FILE", "url":"https://raw.githubusercontent.com/mzabriskie/react-draggable/master/dist/react-draggable.js"}
+						{"name":"base64uri.js", "mode":"0644", "type":"FILE"},
+						{"name":"mimetype.js", "mode":"0644", "type":"FILE"},
+						{"name":"react-draggable.js", "mode":"0644", "type":"FILE", "url":"https://raw.githubusercontent.com/mzabriskie/react-draggable/master/dist/react-draggable.js"}
 					]},
 					{"name":"share", "mode":"0755", "type":"DIR", "content": [
-						{"name":"appdefaults.json", "mode":"0755", "type":"FILE"},
-						{"name":"mimetypes.json", "mode":"0755", "type":"FILE"}
+						{"name":"appdefaults.json", "mode":"0644", "type":"FILE"},
+						{"name":"mimetypes.json", "mode":"0644", "type":"FILE"}
 					]}
 				]}
 			],
 			"triggers": [
-				{"execute": "/system/boot/triggers/setupFolders.js"}
+				{"execute": "/system/boot/triggers/setupFolders.js"},
+				{"execute": "/system/bin/displaymgr.exe",
+					"async": true}
 			]
 		}
-	],
-
-	"init": [
-		{"execute":"shell32.exe"}
 	]
 }

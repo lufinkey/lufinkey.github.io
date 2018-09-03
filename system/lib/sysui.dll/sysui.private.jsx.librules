@@ -1,0 +1,6 @@
+{
+	"shared": true,
+	"allowedFiles": [
+		"./"
+	]
+}
