@@ -6,28 +6,22 @@ var currentPromise = null;
 var currentProcess = null;
 
 
-function prompt()
-{
+function prompt() {
 	process.stdout.write("~$ ");
 }
 
 
-function runShellCommand(command, ...args)
-{
-	switch(command)
-	{
+function runShellCommand(command, ...args) {
+	switch(command) {
 		default:
 			return null;
 
 		case 'cd':
-			if(args[0])
-			{
-				try
-				{
+			if(args[0]) {
+				try {
 					process.chdir(args[0]);
 				}
-				catch(error)
-				{
+				catch(error) {
 					console.error(error);
 					return 1;
 				}
@@ -36,11 +30,9 @@ function runShellCommand(command, ...args)
 
 		case 'exit':
 			var exitCode = 0;
-			if(args[0])
-			{
+			if(args[0]) {
 				exitCode = parseInt(args[0]);
-				if(Number.isNaN(exitCode) || exitCode < 0)
-				{
+				if(Number.isNaN(exitCode) || exitCode < 0) {
 					console.error(""+args[0]+" is not a positive integer");
 					return 1;
 				}
@@ -51,8 +43,7 @@ function runShellCommand(command, ...args)
 }
 
 
-function runCommand(command, ...args)
-{
+function runCommand(command, ...args) {
 	return new Promise((resolve, reject) => {
 		// try to run command as a built-in
 		try
@@ -80,10 +71,8 @@ function runCommand(command, ...args)
 				return;
 			}
 		}
-		catch(error)
-		{
-			if(error instanceof ExitSignal)
-			{
+		catch(error) {
+			if(error instanceof ThreadKiller) {
 				throw error;
 			}
 			console.error(error);

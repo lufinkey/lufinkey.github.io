@@ -23,6 +23,7 @@ class Window extends React.Component
 		super(props);
 
 		// get default options
+		const windowId = props.windowId;
 		const defaults = Object.assign({}, props.defaults);
 
 		// set initial state
@@ -40,6 +41,13 @@ class Window extends React.Component
 		this.onDragStart = this.onDragStart.bind(this);
 		this.onDrag = this.onDrag.bind(this);
 		this.onDragStop = this.onDragStop.bind(this);
+
+		Object.defineProperties(this, {
+			id: {
+				value: windowId,
+				writable: false
+			}
+		});
 	}
 
 	minimize() {

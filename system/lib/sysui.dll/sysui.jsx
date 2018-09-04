@@ -10,9 +10,9 @@ function validateUser() {
 
 
 
-const SystemUI = {};
+const screens = {};
 
-SystemUI.initialize = () => {
+const initialize = () => {
 	validateUser();
 	if(!PrivateSystemUI.started) {
 		PrivateSystemUI.start();
@@ -20,7 +20,7 @@ SystemUI.initialize = () => {
 };
 
 
-SystemUI.register = (key, component) => {
+const register = (key, component) => {
 	validateUser();
 	// start if needed
 	if(!PrivateSystemUI.started) {
@@ -28,28 +28,42 @@ SystemUI.register = (key, component) => {
 	}
 	// register screen
 	PrivateSystemUI.registerScreen(key, component, process.pid);
-	// remove screen when exiting
-	let exited = false;
-	const exitListener = (code) => {
-		exited = true;
-		PrivateSystemUI.unregisterScreen(key, process.pid);
-	};
-	process.once('exit', exitListener);
-	PrivateSystemUI.addScreenListener(key, 'unregister', () => {
-		if(!exited) {
-			process.removeListener('exit', exitListener);
-		}
+	// add to screens
+	syscall('thread', () => {
+		return new Promise((resolve, reject) => {
+			screens[key] = {
+				promise: {
+					resolve: resolve,
+					reject: reject
+				},
+				component: component
+			}
+		});
+	}, () => {
+		unregister(key, process.pid);
 	});
 };
 
 
 
-SystemUI.unregister = (key) => {
+const unregister = (key) => {
 	validateUser();
 	// unregister screen
 	PrivateSystemUI.unregisterScreen(key, process.pid);
+	// remove from screens
+	const screen = screens[key];
+	if(screen) {
+		delete screens[key];
+		screen.promise.resolve();
+	}
 };
 
+
+const SystemUI = {
+	initialize: initialize,
+	register: register,
+	unregister: unregister
+};
 
 
 module.exports = SystemUI;

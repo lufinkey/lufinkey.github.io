@@ -43,15 +43,7 @@ class DisplayManager extends React.Component
 		}
 	}
 
-	refreshScreen() {
-		return new Promise((resolve, reject) => {
-			this.forceUpdate(() => {
-				resolve();
-			});
-		});
-	}
-
-	async addDisplay(displayId, options={}) {
+	addDisplay(displayId, options={}) {
 		options = Object.assign({}, options);
 		if(this.displays[displayId]) {
 			throw new Error("display "+displayId+" already exists");
@@ -61,33 +53,33 @@ class DisplayManager extends React.Component
 			components: []
 		};
 		if(options.active) {
-			await this.setActiveDisplayId(displayId);
+			this.setActiveDisplayId(displayId);
 		}
 	}
 
-	async removeDisplay(displayId) {
+	removeDisplay(displayId) {
 		if(!this.displays[displayId]) {
 			return;
 		}
 		var display = this.displays[displayId];
 		delete this.displays[displayId];
 		if(display.active) {
-			await this.refreshScreen();
+			this.forceUpdate();
 		}
 	}
 
-	async addDisplayComponent(displayId, key, component) {
+	addDisplayComponent(displayId, key, component) {
 		var display = this.displays[displayId];
 		if(!display) {
 			throw new Error("display "+displayId+" does not exist");
 		}
 		display.components.push({key: key, component: component});
 		if(display.active) {
-			await this.refreshScreen();
+			this.forceUpdate();
 		}
 	}
 
-	async removeDisplayComponent(displayId, key) {
+	removeDisplayComponent(displayId, key) {
 		var display = this.displays[displayId];
 		if(!display) {
 			throw new Error("display "+displayId+" does not exist");
@@ -99,11 +91,11 @@ class DisplayManager extends React.Component
 			}
 		}
 		if(display.active) {
-			await this.refreshScreen();
+			this.forceUpdate();
 		}
 	}
 
-	async setActiveDisplayId(displayId) {
+	setActiveDisplayId(displayId) {
 		if(!this.displays[displayId]) {
 			throw new Error("display "+displayId+" does not exist");
 		}
@@ -116,7 +108,7 @@ class DisplayManager extends React.Component
 				display.active = false;
 			}
 		}
-		await this.refreshScreen();
+		this.forceUpdate();
 	}
 
 	getActiveDisplayId() {

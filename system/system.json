@@ -134,10 +134,15 @@
 						]}
 					]},
 					{"name":"lib", "mode":"0755", "type":"DIR", "content": [
+						{"name":"displaymgrclient.dll", "mode":"0755", "type":"DIR", "content": [
+							{"name":"index.js", "mode":"0644", "type":"FILE"},
+							{"name":"package.json", "mode":"0644", "type":"FILE"}
+						]},
 						{"name":"dwm.dll", "mode":"0755", "type":"DIR", "content":[
 							{"name":"Window.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"WindowManager.css", "mode":"0644", "type":"FILE"},
 							{"name":"WindowManager.jsx", "mode":"0644", "type":"FILE"},
+							{"name":"WindowManagerClient.js", "mode":"0644", "type":"FILE"},
 							{"name":"index.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"package.json", "mode":"0644", "type":"FILE"}
 						]},

@@ -37,14 +37,11 @@ function download(url) {
 	return new Promise((resolve, reject) => {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = () => {
-			if(xhr.readyState === 4)
-			{
-				if(xhr.status === 200)
-				{
+			if(xhr.readyState === 4) {
+				if(xhr.status === 200) {
 					resolve(xhr.responseText);
 				}
-				else
-				{
+				else {
 					reject(new Error(xhr.status+": "+xhr.statusText));
 				}
 			}
@@ -245,9 +242,17 @@ function executeTrigger(trigger) {
 // boot the system from the system object
 async function bootSystem(system) {
 	// read current system.json
+	const systemPath = '/system/system.json';
 	let oldSystem = null;
-	if(await util.promisify(fs.exists)('/system/system.json')) {
-		oldSystem = JSON.parse(await util.promisify(fs.readFile)('/system/system.json'));
+	let oldSystemExists = true;
+	try {
+		await util.promisify(fs.access)(systemPath);
+	}
+	catch(error) {
+		oldSystemExists = false;
+	}
+	if(oldSystemExists) {
+		oldSystem = JSON.parse(await util.promisify(fs.readFile)(systemPath));
 	}
 	// check if system needs downloading
 	let redownloadSystem = false;
@@ -291,7 +296,7 @@ async function bootSystem(system) {
 		}
 	}
 	// write system.json to file
-	await util.promisify(fs.writeFile)('/system/system.json', JSON.stringify(system, null, "\t"), {mode: 0o644});
+	await util.promisify(fs.writeFile)(systemPath, JSON.stringify(system, null, "\t"), {mode: 0o644});
 	// close bootlog pipes
 	const pipes = bootlogPipes.slice(0);
 	bootlogPipes = [];
@@ -304,20 +309,21 @@ async function bootSystem(system) {
 
 
 // main
-(async () => {
-
-	// perform system initialization
-	const systemData = await download('system/system.json');
-	const system = JSON.parse(systemData);
-	// boot system
-	await bootSystem(system);
-	// wait for all async triggers to finish
-	await Promise.all(asyncTriggerProcs);
-
-})().then(() => {
+(new Promise((resolve, reject) => {
+	(async () => {
+		// perform system initialization
+		const systemData = await download('system/system.json');
+		const system = JSON.parse(systemData);
+		// boot system
+		await bootSystem(system);
+		// wait for all async triggers to finish
+		await Promise.all(asyncTriggerProcs);
+	})().then(resolve, reject);
+})).then(() => {
 	// done
 	process.exit(0);
 }).catch((error) => {
 	// error
 	bootlog(error.toString(), {color: 'red'});
+	process.exit(1);
 });

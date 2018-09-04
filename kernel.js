@@ -63,8 +63,7 @@ return (function(){
 	}
 
 	// download a file
-	function download(url)
-	{
+	function download(url) {
 		return new Promise((resolve, reject) => {
 			var xhr = new XMLHttpRequest();
 			xhr.onreadystatechange = () => {
@@ -110,6 +109,7 @@ return (function(){
 
 		let rootContext = null;
 		let pidCounter = 1;
+		let processes = {};
 //#endregion
 
 
@@ -187,22 +187,143 @@ return (function(){
 
 
 //#region Exit Signal
+		// throwable to kill thread
+		class ThreadKiller {
+			constructor() {
+				//
+			}
+		};
+
 		// exception for process exit signal
-		class ExitSignal extends Error
-		{
-			constructor(exitCode, message) {
-				if(typeof exitCode === 'string') {
-					message = exitCode;
-					exitCode = null;
+		class ExitSignal extends ThreadKiller {
+			constructor(exitCode) {
+				super();
+				if(!Number.isInteger(exitCode) || exitCode < 0) {
+					throw new TypeError("exit code must be a positive integer");
 				}
-				
-				if(!message && exitCode) {
-					message = "process exited with signal "+exitCode;
-				}
-				super(message);
 				this.exitCode = exitCode;
 			}
 		}
+
+		const signals = {
+			SIGHUP: 1,
+			SIGINT: 2,
+			SIGQUIT: 3,
+			SIGILL: 4,
+			SIGABRT: 6,
+			SIGFPE: 8,
+			SIGKILL: 9,
+			SIGSEGV: 11,
+			SIGPIPE: 13,
+			SIGALRM: 14,
+			SIGTERM: 15
+		};
+
+		function getSignalName(signal) {
+			for(const signalName in signals) {
+				if(signals[signalName] === signal) {
+					return signalName;
+				}
+			}
+			return null;
+		}
+
+//#endregion
+
+
+//#region Threads
+
+function startThread(context, options={}) {
+	if(!context.valid) {
+		throw new ThreadKiller();
+	}
+	options = Object.assign({}, options);
+	const threadID = context.nextThreadID;
+	context.nextThreadID++;
+	context.threads.push({
+		id: threadID,
+		cancel: options.cancel
+	});
+	return threadID;
+}
+
+function removeThread(context, threadID) {
+	for(var i=0; i<context.threads.length; i++) {
+		var thread = context.threads[i];
+		if(thread.id === threadID) {
+			context.threads.splice(i, 1);
+			break;
+		}
+	}
+}
+
+function finishThread(context, threadID) {
+	if(context.valid && !context.invalidating && !context.hasRunningCode({ignoringThreads: [threadID]})) {
+		if(context.process != null) {
+			try {
+				context.process.emit('beforeExit');
+			}
+			catch(error) {
+				console.error(error);
+			}
+		}
+		removeThread(context, threadID);
+		if(context.valid && !context.invalidating && !context.hasRunningCode()) {
+			console.error(new Error(context.filename+" ("+context.pid+") has no more threads to run"));
+			context.invalidate(0, null);
+		}
+	}
+}
+
+function wrapThread(context, threadFunc, options={}) {
+	let retVal = undefined;
+	const threadID = startThread(context, options);
+	try {
+		retVal = threadFunc();
+	}
+	catch(error) {
+		// error
+		finishThread(context, threadID);
+		if(error instanceof ThreadKiller) {
+			if(options.rethrowThreadKiller) {
+				throw error;
+			}
+		}
+		else {
+			console.error(error);
+		}
+		return;
+	}
+	// handle result
+	if(retVal instanceof Promise || retVal instanceof ProcPromise) {
+		// promise
+		let threadKiller = null;
+		let retPromise = retVal;
+		retVal = new Promise((resolve, reject) => {
+			retPromise.then((...results) => {
+				// done
+				finishThread(context, threadID);
+				resolve(...results);
+			}).catch((error) => {
+				// error
+				finishThread(context, threadID);
+				if(error instanceof ThreadKiller) {
+					if(options.rethrowThreadKiller) {
+						threadKiller = error;
+					}
+				}
+				reject(error);
+			});
+		});
+		if(threadKiller != null && options.rethrowThreadKiller) {
+			throw threadKiller;
+		}
+	}
+	else {
+		finishThread(context, threadID);
+	}
+	return retVal;
+}
 
 //#endregion
 
@@ -210,22 +331,23 @@ return (function(){
 //#region Promise
 
 		// promise to handle exit signals
-		function ProcPromise(context, callback)
-		{
+		function ProcPromise(context, callback) {
 			let promise = null;
 
 			function wrapPromiseMethod(method, callback) {
-				let exitSignal = null;
+				let threadKiller = null;
 				var retVal = method((...args) => {
 					if(!context.valid) {
 						return;
 					}
 					try {
-						return callback(...args);
+						return wrapThread(context, () => {
+							return callback(...args);
+						}, {rethrowThreadKiller:true});
 					}
 					catch(error) {
-						if(error instanceof ExitSignal) {
-							exitSignal = error;
+						if(error instanceof ThreadKiller) {
+							threadKiller = error;
 							return;
 						}
 						else {
@@ -234,8 +356,8 @@ return (function(){
 					}
 				});
 				// rethrow exit signal if there was one
-				if(exitSignal != null) {
-					throw exitSignal;
+				if(threadKiller != null) {
+					throw threadKiller;
 				}
 				// wrap return value if necessary
 				if(retVal === promise) {
@@ -286,37 +408,22 @@ return (function(){
 			};
 
 			// perform promise
-			let exitSignal = null;
-			promise = new Promise((resolve, reject) => {
-				try {
-					callback((...args) => {
-						// ensure calling context is valid
-						if(!context.valid) {
-							return;
-						}
-						// resolve
-						resolve(...args);
-					}, (...args) => {
-						// ensure calling context is valid
-						if(!context.valid) {
-							return;
-						}
-						// reject
-						reject(...args);
-					});
-				}
-				catch(error) {
-					if(error instanceof ExitSignal) {
-						exitSignal = error;
-						return;
+			let threadKiller = null;
+			promise = wrapThread(context, () => {
+				return new Promise((resolve, reject) => {
+					try {
+						return callback(resolve, reject);
 					}
-					else {
+					catch(error) {
+						if(error instanceof ThreadKiller) {
+							threadKiller = error;
+						}
 						throw error;
 					}
-				}
-			});
-			if(exitSignal != null) {
-				throw exitSignal;
+				});
+			}, {rethrowThreadKiller:true});
+			if(threadKiller != null) {
+				throw threadKiller;
 			}
 		}
 
@@ -372,8 +479,7 @@ return (function(){
 
 
 		// create a ProcPromise bound to a context
-		function createProcPromiseClass(context)
-		{
+		function createProcPromiseClass(context) {
 			const PromiseClass = ProcPromise.bind(ProcPromise, context);
 			PromiseClass.resolve = ProcPromise.resolve.bind(PromiseClass, context);
 			PromiseClass.reject = ProcPromise.reject.bind(PromiseClass, context);
@@ -398,7 +504,9 @@ return (function(){
 					if(index !== -1) {
 						context.timeouts.splice(index, 1);
 					}
-					handler(...args);
+					return wrapThread(context, () => {
+						return handler(...args);
+					}, {rethrowThreadKiller:true});
 				}, ...args);
 				context.timeouts.push(timeout);
 				return timeout;
@@ -416,7 +524,9 @@ return (function(){
 					throw new TypeError("handler must be a function");
 				}
 				const interval = setInterval((...args) => {
-					handler(...args);
+					return wrapThread(context, () => {
+						return handler(...args);
+					}, {rethrowThreadKiller:true});
 				}, ...args);
 				context.intervals.push(interval);
 				return interval;
@@ -435,8 +545,7 @@ return (function(){
 
 //#region Built-In Module Generation
 
-		function createBuiltInGenerator(code)
-		{
+		function createBuiltInGenerator(code) {
 			code = 'exports = ((__scope) => {\n'+
 				'const setTimeout = __scope.setTimeout;\n'+
 				'const clearTimeout = __scope.clearTimeout;\n'+
@@ -445,10 +554,13 @@ return (function(){
 				'const Promise = __scope.Promise;\n'+
 				'let require = null;\n'+
 				'(() => {\n'+
-				code+
+					'const __scope = undefined;\n'+
+					'(() => {\n'+
+						code+'\n'+
+					'})()\n'+
 				'})();\n'+
 				'return require;'+
-				'});';
+			'});';
 			
 			var scope = {
 				'let': {
@@ -462,8 +574,7 @@ return (function(){
 		}
 
 		// create built-in modules for a given context
-		function createBuiltIns(context)
-		{
+		function createBuiltIns(context) {
 			var scope = {
 				setTimeout: (...args) => {
 					return browserWrappers.setTimeout(context, ...args);
@@ -484,8 +595,7 @@ return (function(){
 		}
 
 		// download built-in modules script and create generator
-		async function downloadBuiltIns()
-		{
+		async function downloadBuiltIns() {
 			// download built-in node modules / classes
 			var data = await download('https://cdn.jsdelivr.net/npm/node-builtin-map/dist/node-builtin-map.js');
 			builtInsGenerator = createBuiltInGenerator(data);
@@ -496,8 +606,9 @@ return (function(){
 
 //#region Streams
 
-		function createTwoWayStream(contextIn, contextOut)
-		{
+		function createTwoWayStream(contextIn, contextOut, options={}) {
+			options = Object.assign({}, options);
+			
 			const Buffer = contextIn.builtIns.modules.buffer.Buffer;
 			const Writable = contextIn.builtIns.modules.stream.Writable;
 			const Readable = contextOut.builtIns.modules.stream.Readable;
@@ -506,6 +617,35 @@ return (function(){
 			let inputDestroyed = false;
 			let output = null;
 			let outputDestroyed = false;
+
+			let outputThread = null;
+			function updateOutputThread() {
+				if(options.threading) {
+					if(!outputThread) {
+						if(output.listenerCount('data') > 0 && !outputDestroyed) {
+							syscall(contextOut, 'thread', () => {
+								return new Promise((resolve, reject) => {
+									outputThread = {
+										resolve: resolve,
+										reject: reject
+									};
+								});
+							}, () => {
+								if(!outputDestroyed) {
+									output.destroy();
+								}
+							});
+						}
+					}
+					else {
+						if(output.listenerCount('data') === 0 || outputDestroyed) {
+							const thread = outputThread;
+							outputThread = null;
+							thread.resolve();
+						}
+					}
+				}
+			}
 
 			class InStream extends Writable {
 				_write(chunk, encoding, callback) {
@@ -533,12 +673,67 @@ return (function(){
 			}
 
 			class OutStream extends Readable {
+				addListener(event, ...args) {
+					super.addListener(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				removeListener(event, ...args) {
+					super.removeListener(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				on(event, ...args) {
+					super.on(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				once(event, ...args) {
+					super.once(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				off(event, ...args) {
+					super.off(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				prependListener(event, ...args) {
+					super.prependListener(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				prependOnceListener(event, ...args) {
+					super.prependOnceListener(event, ...args);
+					if(event === 'data') {
+						updateOutputThread();
+					}
+				}
+
+				removeAllListeners(...args) {
+					super.removeAllListeners(...args);
+					updateOutputThread();
+				}
+
 				_read() {
 					//
 				}
 
 				_destroy(err, callback) {
 					outputDestroyed = true;
+					updateOutputThread();
 					if(callback) {
 						callback();
 					}
@@ -561,8 +756,7 @@ return (function(){
 //#region File Helper Functions
 
 		// check if a given path is a folder
-		function checkIfDir(context, path)
-		{
+		function checkIfDir(context, path) {
 			try {
 				var stats = context.modules.fs.statSync(path);
 				if(stats.isDirectory()) {
@@ -575,8 +769,7 @@ return (function(){
 
 
 		// check if a given path is a file
-		function checkIfFile(context, path)
-		{
+		function checkIfFile(context, path) {
 			try {
 				var stats = context.modules.fs.statSync(path);
 				if(stats.isFile()) {
@@ -589,8 +782,7 @@ return (function(){
 
 
 		// resolves a relative path to a full path using a given cwd or the context's cwd
-		function resolveRelativePath(context, path, cwd)
-		{
+		function resolveRelativePath(context, path, cwd) {
 			if(typeof path !== 'string') {
 				throw new TypeError("path must be a string");
 			}
@@ -616,8 +808,7 @@ return (function(){
 
 
 		// make the path leading up to the given file
-		function makeLeadingDirs(context, path)
-		{
+		function makeLeadingDirs(context, path) {
 			// resolve path
 			path = resolveRelativePath(context, path);
 			// split and remove empty path parts
@@ -654,8 +845,7 @@ return (function(){
 //#region Module Path Resolution
 
 		// resolve a module's main js file from a folder
-		function resolveModuleFolder(context, path)
-		{
+		function resolveModuleFolder(context, path) {
 			var packagePath = path+'/package.json';
 			if(!checkIfFile(context, packagePath)) {
 				return null;
@@ -730,8 +920,7 @@ return (function(){
 
 
 		// find a valid module path from the given context, base paths, and path
-		function findModulePath(context, basePaths, dirname, path, options=null)
-		{
+		function findModulePath(context, basePaths, dirname, path, options=null) {
 			options = Object.assign({}, options);
 
 			var modulePath = null;
@@ -791,8 +980,7 @@ return (function(){
 
 		// validate a scope variable name
 		const validScopeCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_$';
-		function validateVariableName(varName)
-		{
+		function validateVariableName(varName) {
 			if(typeof varName !== 'string') {
 				throw new TypeError("variable name must be a string");
 			}
@@ -814,8 +1002,7 @@ return (function(){
 
 
 		// run code with a given scope and interpreter
-		function runScript(context, code, scope={}, interpreter=null)
-		{
+		function runScript(context, code, scope={}, interpreter=null) {
 			// transform code if necessary
 			if(interpreter) {
 				if(typeof interpreter.transform !== 'function') {
@@ -857,8 +1044,20 @@ return (function(){
 				}
 			}
 
+			// create filtered code string
+			const filteredCode =
+				prefixString+'\n'+
+				'(() => {\n'+
+					'const __scope = undefined;\n'+
+					'const __code = undefined;\n'+
+					'(() => {\n'+
+						code+'\n'+
+					'})()\n'+
+				'})()\n'+
+				suffixString;
+
 			// evaluate the code
-			return evalJavaScript(scope, prefixString+'\n(() => {\n'+code+'\n})()\n'+suffixString);
+			evalJavaScript(scope, filteredCode);
 		}
 
 //#endregion
@@ -892,18 +1091,22 @@ return (function(){
 			var modulePath = findModulePath(context, basePaths, dirname, path, {dirExtensions: kernelOptions.libDirExtensions});
 
 			// check if library is shared
-			let moduleContext = copyContext(context);
-			moduleContext.filename = modulePath;
+			let moduleContext = context;
 			let moduleContainer = context.loadedModules;
 
 			// load library rules if there are any
 			let libRules = {};
 			// TODO ensure the librules file is owned by the same user as the library
-			let libRulesFile = null;
+			let libRulesExist = true;
+			const libRulesPath = modulePath+'.librules';
 			try {
-				libRulesFile = context.modules.fs.readFileSync(modulePath+'.librules', {encoding:'utf8'});
-			} catch(e) {}
-			if(libRulesFile) {
+				context.modules.fs.accessSync(libRulesPath);
+			}
+			catch(error) {
+				libRulesExist = false;
+			}
+			if(libRulesExist) {
+				var libRulesFile = context.modules.fs.readFileSync(libRulesPath, {encoding:'utf8'});
 				libRules = JSON.parse(libRulesFile);
 				if(!libRules) {
 					libRules = {};
@@ -931,17 +1134,18 @@ return (function(){
 			}
 			if(libRules.allowedFiles) {
 				var foundMatch = false;
+				const filename = parentScope.const.__filename;
 				for(var allowedFile of libRules.allowedFiles) {
 					allowedFile = resolveRelativePath(context, allowedFile, dirname);
 					var allowedDir = allowedFile;
 					if(!allowedDir.endsWith('/')) {
 						allowedDir += '/';
 					}
-					if(modulePath.startsWith(allowedDir)) {
+					if(filename.startsWith(allowedDir)) {
 						foundMatch = true;
 						break;
 					}
-					else if(allowedFile == modulePath) {
+					else if(allowedFile == filename) {
 						foundMatch = true;
 						break;
 					}
@@ -961,9 +1165,9 @@ return (function(){
 
 			// create slightly modified module scope
 			var scope = {
-				'const': Object.assign({}, parentScope.const),
-				'let': Object.assign({}, parentScope.let),
-				'var': Object.assign({}, parentScope.var)
+				'const': Object.assign({}, moduleContext.scope.const),
+				'let': Object.assign({}, moduleContext.scope.let),
+				'var': Object.assign({}, moduleContext.scope.var)
 			};
 			scope.const.require = Object.defineProperties((path) => {
 				return require(moduleContext, scope, moduleDir, path);
@@ -976,23 +1180,23 @@ return (function(){
 				}
 			});
 			scope.const.requireCSS = Object.defineProperties((path) => {
-				return requireCSS(context, moduleDir, path);
+				return requireCSS(moduleContext, moduleDir, path);
 			}, {
 				resolve: {
 					value: (path) => {
-						return resolveCSSPath(context, moduleDir, path);
+						return resolveCSSPath(moduleContext, moduleDir, path);
 					},
 					writable: false
 				},
 				wait: {
 					value: (path, callback) => {
-						return waitForCSS(context, moduleDir, path, callback);
+						return waitForCSS(moduleContext, moduleDir, path, callback);
 					},
 					writable: false
 				},
 				ready: {
 					value: (path) => {
-						return isCSSReady(context, moduleDir, path);
+						return isCSSReady(moduleContext, moduleDir, path);
 					},
 					writable: false
 				}
@@ -1020,8 +1224,7 @@ return (function(){
 
 
 		// resolves the path to a given module
-		require.resolve = function(context, dirname, path)
-		{
+		require.resolve = function(context, dirname, path) {
 			// check if built-in module
 			if(context.modules[path]) {
 				return path;
@@ -1040,8 +1243,7 @@ return (function(){
 //#region requireCSS
 
 		// resolve a required CSS file
-		function resolveCSSPath(context, dirname, path)
-		{
+		function resolveCSSPath(context, dirname, path) {
 			// resolve full path
 			var cssPath = resolveRelativePath(context, path, dirname);
 
@@ -1063,8 +1265,7 @@ return (function(){
 
 
 		// inject a CSS file into the current page
-		function requireCSS(context, dirname, path)
-		{
+		function requireCSS(context, dirname, path) {
 			var cssPath = resolveCSSPath(context, dirname, path);
 
 			// check if css already loaded
@@ -1077,11 +1278,13 @@ return (function(){
 				loadedCSS[cssPath] = info;
 				return new ProcPromise(context, (resolve, reject) => {
 					waitForCSS(context, dirname, cssPath, () => {
-						if(loadedCSS[cssPath].error) {
-							reject(loadedCSS[cssPath].error);
-							return;
+						if(context.valid) {
+							if(loadedCSS[cssPath].error) {
+								reject(loadedCSS[cssPath].error);
+								return;
+							}
+							resolve();
 						}
-						resolve();
 					})
 				});
 			}
@@ -1138,8 +1341,7 @@ return (function(){
 
 
 		// check if CSS for this context is ready
-		function isCSSReady(context, dirname, path=null)
-		{
+		function isCSSReady(context, dirname, path=null) {
 			if(path != null) {
 				// check for specific CSS file
 				var cssPath = null;
@@ -1169,15 +1371,14 @@ return (function(){
 
 		
 		// wait for CSS file(s) to be ready
-		function waitForCSS(context, dirname, path, callback)
-		{
+		function waitForCSS(context, dirname, path, callback) {
 			if(typeof path == 'function') {
 				callback = path;
 				path = null;
 			}
 
 			// check if file(s) ready
-			var ready = true;
+			let ready = true;
 			if(path instanceof Array) {
 				for(const cssPath of path) {
 					if(!isCSSReady(context, dirname, cssPath)) {
@@ -1207,15 +1408,23 @@ return (function(){
 			}, 100);
 		}
 
+		// unload a CSS tag
+		function unloadCSS(context, cssPath) {
+			var info = loadedCSS[cssPath];
+			if(info && info.tag) {
+				info.tag.parentElement.removeChild(info.tag);
+				delete loadedCSS[cssPath];
+			}
+		}
+
 //#endregion
 
 
 //#region contexts
 
 		// create a new context from a given context
-		function createContext(parentContext = null)
-		{
-			parentContext = Object.assign({}, parentContext);
+		function createContext(parentContext = null) {
+			objParentContext = Object.assign({}, parentContext);
 			let context = null;
 
 			let moduleGenerator = {};
@@ -1232,30 +1441,79 @@ return (function(){
 			}
 
 			context = {
-				cwd: toNonNull(parentContext.cwd, '/'),
-				pid: toNonNull(parentContext.pid, 0),
-				uid: toNonNull(parentContext.uid, 0),
-				gid: toNonNull(parentContext.uid, 0),
-				umask: toNonNull(parentContext.umask, 0o022),
+				cwd: toNonNull(objParentContext.cwd, '/'),
+				pid: null,
+				uid: toNonNull(objParentContext.uid, 0),
+				gid: toNonNull(objParentContext.uid, 0),
+				umask: toNonNull(objParentContext.umask, 0o022),
 				stdin: null,
 				stdout: null,
 				stderr: null,
-				argv: toNonNull(parentContext.argv, []).slice(0),
-				env: deepCopyObject(toNonNull(parentContext.env, {})),
-				filename: parentContext.filename,
+				argv: [],
+				env: deepCopyObject(toNonNull(objParentContext.env, {})),
+				filename: objParentContext.filename,
+				process: null,
 
 				timeouts: [],
 				intervals: [],
 				modules: moduleGenerator,
 				loadedModules: {},
+				nextThreadID: 1,
+				threads: [],
+				childContexts: [],
+				parentContext: parentContext,
 
 				valid: true,
+				invalidating: false,
 				exiting: false,
-				invalidate: () => {
-					if(context.valid) {
-						context.valid = false;
 
-						// TODO unload CSS
+				hasRunningCode: (options) => {
+					options = Object.assign({}, options);
+					let threadsLength = context.threads.length;
+					if(options.ignoringThreads) {
+						for(const thread of context.threads) {
+							if(options.ignoringThreads.indexOf(thread.id) != -1) {
+								threadsLength--;
+							}
+						}
+					}
+					if(context.timeouts.length > 0 || context.intervals.length > 0 || threadsLength > 0) {
+						return true;
+					}
+					return false;
+				},
+				signal: (signal) => {
+					const signalName = getSignalName(signal);
+					if(signalName != null && context.process != null && context.process.listenerCount(signalName) > 0) {
+						try {
+							context.process.emit(signalName);
+						}
+						catch(e) {}
+						if(!context.hasRunningCode()) {
+							context.invalidate(0, null);
+						}
+					}
+					else {
+						context.invalidate(null, signal);
+					}
+				},
+				invalidate: (exitCode, signal) => {
+					if(context.valid && !context.invalidating) {
+						context.invalidating = true;
+
+						// unload CSS
+						if(context.pid != null) {
+							for(const cssPath in loadedCSS) {
+								var info = loadedCSS[cssPath];
+								var index = info.pids.indexOf(context.pid);
+								if(index != -1) {
+									info.pids.splice(index, 1);
+								}
+								if(info.pids.length == 0) {
+									unloadCSS(context, cssPath);
+								}
+							}
+						}
 
 						// destroy timeouts and intervals
 						for(const interval of context.intervals) {
@@ -1266,10 +1524,59 @@ return (function(){
 							clearTimeout(timeout);
 						}
 						context.timeouts = [];
+
+						// kill threads
+						const threads = context.threads.slice(0);
+						for(let thread of threads) {
+							if(thread.cancel) {
+								try {
+									thread.cancel();
+								}
+								catch(error) {
+									console.error(error);
+								}
+							}
+						}
+
+						// kill child contexts
+						const childContexts = context.childContexts.slice(0);
+						context.childContexts = [];
+						for(const childContext of childContexts) {
+							if(signal != null) {
+								childContext.signal(signal);
+							}
+							else {
+								childContext.signal(signals.SIGHUP);
+							}
+							if(childContext.valid) {
+								// set next valid parent context if child is still alive
+								const nextParentContext = context.parentContext;
+								while(nextParentContext != null && !nextParentContext.valid) {
+									nextParentContext = nextParentContext.parentContext;
+								}
+								if(nextParentContext == null || nextParentContext.pid === 0) {
+									// kill child if there's no valid parent
+									childContext.invalidate(null, signals.SIGKILL);
+								}
+								else {
+									// reassign parent context
+									childContext.parentContext = nextParentContext;
+								}
+							}
+						}
+
+						// make context invalid
+						context.valid = false;
+
+						waitForContextToDie(context, () => {
+							// remove from process list
+							delete processes[''+context.pid];
+						});
 					}
 				}
 			};
 
+			// define built-ins
 			let builtIns = null;
 			Object.defineProperty(context, 'builtIns', {
 				get: () => {
@@ -1280,45 +1587,304 @@ return (function(){
 				}
 			});
 
-			return context;
-		}
+			// define scope
+			let scope = null;
+			Object.defineProperty(context, 'scope', {
+				get: () => {
+					if(scope == null) {
+						scope = {
+							'const': {
+								// browser built-ins
+								// timeouts
+								setTimeout: (...args) => {
+									return browserWrappers.setTimeout(context, ...args);
+								},
+								clearTimeout: (...args) => {
+									return browserWrappers.clearTimeout(context, ...args);
+								},
+								// intervals
+								setInterval: (...args) => {
+									return browserWrappers.setInterval(context, ...args);
+								},
+								clearInterval: (...args) => {
+									return browserWrappers.clearInterval(context, ...args);
+								},
+								// true console
+								__console: console,
+								// console
+								console: Object.defineProperties(Object.assign({}, console), {
+									log: {
+										value: (...args) => {
+											var strings = [];
+											for(const arg of args) {
+												strings.push(''+arg);
+											}
+											var stringVal = strings.join(' ');
+					
+											console.log(...args);
+											context.stdout.write(stringVal+'\n');
+										},
+										enumerable: true,
+										writable: false
+									},
+									warn: {
+										value: (...args) => {
+											var strings = [];
+											for(const arg of args) {
+												if(arg instanceof Error) {
+													strings.push(''+arg.stack);
+												}
+												else {
+													strings.push(''+arg);
+												}
+											}
+											var stringVal = strings.join(' ');
+					
+											console.warn(...args);
+											context.stderr.write(stringVal+'\n');
+										},
+										enumerable: true,
+										writable: false
+									},
+									error: {
+										value: (...args) => {
+											var strings = [];
+											for(const arg of args) {
+												if(arg instanceof Error) {
+													strings.push(''+arg.stack);
+												}
+												else {
+													strings.push(''+arg);
+												}
+											}
+											var stringVal = strings.join(' ');
+					
+											console.error(...args);
+											context.stderr.write(stringVal+'\n');
+										},
+										enumerable: true,
+										writable: false
+									},
+									memory: {
+										get: () => {
+											return console.memory;
+										}
+									}
+								}),
+			
+								// node built-ins
+								Promise: createProcPromiseClass(context),
+								Buffer: context.builtIns.modules.buffer.Buffer,
+								module: new ScriptGlobalAlias('exports'),
+								process: context.process,
 
-		// copy a given context
-		function copyContext(srcContext) {
-			let context = Object.assign({}, srcContext);
-
-			Object.defineProperty(context, 'builtIns', {
-				get: Object.getOwnPropertyDescriptor(srcContext, 'builtIns').get
+								// addons
+								ThreadKiller: ThreadKiller,
+								syscall: (func, ...args) => {
+									return syscall(context, func, ...args);
+								},
+								syslog: (message, options=null) => {
+									return syscall(context, 'log', message, options);
+								}
+							},
+							'let': {
+								exports: {}
+							}
+						};
+					}
+					return scope;
+				}
 			});
 
 			return context;
+		}
+
+		// wait for all threads in a context to die
+		function waitForContextToDie(context, callback) {
+			if(context.threads.length == 0) {
+				callback();
+				return;
+			}
+			setTimeout(() => {
+				waitForContextToDie(context, callback);
+			}, 100);
 		}
 
 		// take a normal function and make it an asyncronous promise
 		function makeAsyncPromise(context, task) {
-			return new Promise((resolve, reject) => {
-				browserWrappers.setTimeout(context, () => {
-					var retVal = null;
-					try {
-						retVal = task();
-					}
-					catch(error) {
-						reject(error);
-						return;
-					}
-					resolve(retVal);
-				}, 0);
-			});
+			if(!context.valid) {
+				throw new ThreadKiller();
+			}
+			return wrapThread(context, () => {
+				return new Promise((resolve, reject) => {
+					browserWrappers.setTimeout(context, () => {
+						let retVal = undefined;
+						try {
+							retVal = task();
+						}
+						catch(error) {
+							if(context.valid) {
+								reject(error);
+							}
+							return;
+						}
+						if(context.valid) {
+							resolve(retVal);
+						}
+					}, 0);
+				});
+			}, {rethrowThreadKiller:true});
 		}
 
+//#endregion
+
+
+//#region Process
+		function createProcess(context, options={}) {
+			const EventEmitter = context.modules.events;
+			class Process extends EventEmitter {
+				constructor(context, options={}) {
+					options = Object.assign({}, options);
+					super();
+					var argv = context.argv.slice(0);
+					Object.defineProperties(this, {
+						'argv': {
+							value: argv
+						},
+						'chdir': {
+							value: (path) => {
+								path = resolveRelativePath(context, path);
+								var stats = context.modules.fs.statSync(path);
+								if(!stats.isDirectory())
+								{
+									throw new Error("path is not a directory");
+								}
+								context.cwd = path;
+							},
+							writable: false
+						},
+						'cwd': {
+							value: () => {
+								return context.cwd;
+							},
+							writable: false
+						},
+						'env': {
+							get: () => {
+								return context.env;
+							},
+							set: (value) => {
+								context.env = value;
+							}
+						},
+						'exit': {
+							value: (code) => {
+								if(code == null) {
+									code = 0;
+								}
+								if(typeof code !== 'number' || !Number.isInteger(code) || code < 0) {
+									throw new Error("invalid exit code");
+								}
+								if(context.exiting) {
+									throw new Error("cannot exit process more than once");
+								}
+								context.exiting = true;
+								if(context.valid) {
+									// call exit event
+									try {
+										this.emit('exit', code, null);
+									}
+									catch(error) {
+										console.error(error);
+									}
+									// end process
+									context.invalidate(code, null);
+									// throw exit signal
+									throw new ExitSignal(code);
+								}
+								throw new ThreadKiller();
+							},
+							writable: false
+						},
+						'kill': {
+							value: (pid, signal) => {
+								if(!Number.isInteger(pid) || pid < 0) {
+									throw new TypeError("pid must be a positive integer");
+								}
+								if(typeof signal === 'string') {
+									var signalNum = signals[signal];
+									if(signalNum == null) {
+										throw new Error("invalid signal "+signal);
+									}
+									signal = signalNum;
+								}
+								if(!Number.isInteger(signal) || signal < 0) {
+									throw new Error("signal must be a positive integer or a valid string");
+								}
+								const killContext = processes[''+pid];
+								if(!killContext) {
+									throw new Error("pid does not exist");
+								}
+								else if(context.uid !== 0 && killContext.uid !== context.uid && killContext.gid !== context.gid) {
+									throw new Error("pid does not exist");
+								}
+								killContext.signal(signal);
+							},
+							writable: false
+						},
+						'uid': {
+							get: () => {
+								return context.uid;
+							}
+						},
+						'gid': {
+							get: () => {
+								return context.gid;
+							}
+						},
+						'pid': {
+							get: () => {
+								return context.pid;
+							}
+						},
+						'ppid': {
+							get: () => {
+								return context.parentContext.pid;
+							}
+						},
+						'platform': {
+							get: () => {
+								return kernelOptions.platform || osName;
+							}
+						},
+						'stdin': {
+							get: () => {
+								return options.stdin;
+							}
+						},
+						'stdout': {
+							get: () => {
+								return options.stdout;
+							}
+						},
+						'stderr': {
+							get: () => {
+								return options.stderr;
+							}
+						}
+					});
+				}
+			}
+
+			return new Process(context, options);
+		}
 //#endregion
 
 
 //#region syscall
 
 		// append information to the system log
-		function log(context, message, options)
-		{
+		function log(context, message, options) {
 			options = Object.assign({}, options);
 
 			var kernelElement = document.getElementById("kernel");
@@ -1335,8 +1901,7 @@ return (function(){
 
 
 		// call special kernel functions
-		function syscall(context, func, ...args)
-		{
+		function syscall(context, func, ...args) {
 			if(typeof func != 'string') {
 				throw new Error("func must be a string");
 			}
@@ -1352,10 +1917,35 @@ return (function(){
 			}
 			switch(funcParts[0]) {
 				case 'log':
-					if(funcParts[1] != null) {
+					if(funcParts.length > 1) {
 						throw new Error("invalid system call");
 					}
 					return log(context, ...args);
+
+				case 'thread':
+					if(funcParts.length > 1) {
+						throw new Error("invalid system call");
+					}
+					const callback = args[0];
+					const cancel = args[1];
+					const options = Object.assign({}, args[2]);
+					if(typeof callback !== 'function') {
+						throw new TypeError("callback must be a function");
+					}
+					if(typeof cancel !== 'function') {
+						throw new TypeError("cancel must be a function");
+					}
+					const retVal = wrapThread(context, callback, {
+						...options,
+						rethrowThreadKiller: true,
+						cancel: cancel
+					});
+					if(retVal instanceof Promise) {
+						return new ProcPromise(context, (resolve, reject) => {
+							retVal.then(resolve, reject);
+						});
+					}
+					return retVal;
 
 				default:
 					throw new Error("invalid system call");
@@ -2012,6 +2602,9 @@ return (function(){
 						mode = 0;
 					}
 					var id = findINode(path);
+					if(id == null) {
+						throw new Error(path+" does not exist");
+					}
 					var inode = getINode(id);
 					var neededPerms = {r:false,w:false,e:false};
 					if((mode & constants.R_OK) == constants.R_OK) {
@@ -2390,100 +2983,7 @@ return (function(){
 
 				const EventEmitter = context.modules.events;
 
-
-				class Process extends EventEmitter
-				{
-					constructor(context, parentContext) {
-						super();
-						var argv = context.argv.slice(0);
-						Object.defineProperties(this, {
-							'argv': {
-								value: argv
-							},
-							'chdir': {
-								value: (path) => {
-									path = resolveRelativePath(context, path);
-									var stats = context.modules.fs.statSync(path);
-									if(!stats.isDirectory())
-									{
-										throw new Error("path is not a directory");
-									}
-									context.cwd = path;
-								},
-								writable: false
-							},
-							'cwd': {
-								value: () => {
-									return context.cwd;
-								},
-								writable: false
-							},
-							'env': {
-								get: () => {
-									return context.env;
-								},
-								set: (value) => {
-									context.env = value;
-								}
-							},
-							'exit': {
-								value: (code) => {
-									if(code == null)
-									{
-										code = 0;
-									}
-									if(typeof code !== 'number' || !Number.isInteger(code) || code < 0)
-									{
-										throw new Error("invalid exit code");
-									}
-									if(!context.valid || context.exiting)
-									{
-										throw new Error("cannot exit process more than once");
-									}
-									// call exit event
-									context.exiting = true;
-									this.emit('exit', code);
-									// end process
-									context.invalidate(code, null);
-									// throw exit signal
-									var exitSignal = new ExitSignal(code);
-									throw exitSignal;
-								},
-								writable: false
-							},
-							'uid': {
-								get: () => {
-									return context.uid;
-								}
-							},
-							'gid': {
-								get: () => {
-									return context.gid;
-								}
-							},
-							'pid': {
-								get: () => {
-									return context.pid;
-								}
-							},
-							'ppid': {
-								get: () => {
-									return parentContext.pid;
-								}
-							},
-							'platform': {
-								get: () => {
-									return kernelOptions.platform || osName;
-								}
-							}
-						});
-					}
-				}
-
-
-
-				class ChildProcess extends EventEmitter
-				{
+				class ChildProcess extends EventEmitter {
 					constructor(path, args=[], options={}) {
 						var startTime = new Date().getTime();
 						super();
@@ -2504,28 +3004,26 @@ return (function(){
 
 						// create new context
 						const childContext = createContext(context);
-
 						// get new process PID
 						childContext.pid = pidCounter;
-						pidCounter++;
 
 						// define general process info
 						var argv0 = path;
 
 						// validate options
-						if(options.cwd) {
+						if(options.cwd != null) {
 							if(typeof options.cwd !== 'string') {
 								throw new TypeError("options.cwd must be a string");
 							}
 							childContext.cwd = options.cwd;
 						}
-						if(options.env) {
+						if(options.env != null) {
 							if(typeof options.env !== 'object') {
 								throw new TypeError("options.env must be an object")
 							}
 							childContext.env = Object.assign(childContext.env, deepCopyObject(options.env));
 						}
-						if(options.argv0) {
+						if(options.argv0 != null) {
 							if(typeof options.argv0 !== 'string') {
 								throw new TypeError("options.argv0 must be a string");
 							}
@@ -2546,34 +3044,39 @@ return (function(){
 						childContext.argv = [argv0].concat(args);
 
 						// build I/O streams
-						const stdin = createTwoWayStream(context, childContext);
-						const stdout = createTwoWayStream(childContext, context);
-						const stderr = createTwoWayStream(childContext, context);
+						const stdin = createTwoWayStream(context, childContext, {threading: true});
+						const stdout = createTwoWayStream(childContext, context, {threading: true});
+						const stderr = createTwoWayStream(childContext, context, {threading: true});
 						childContext.stdin = stdin.output;
 						childContext.stdout = stdout.input;
 						childContext.stderr = stderr.input;
 
 						// add invalidation hook
 						const childContextInvalidate = childContext.invalidate;
-						childContext.invalidate = (exitCode, killSignal) => {
-							var wasValid = childContext.valid;
+						childContext.invalidate = (exitCode, signal) => {
+							const wasValid = childContext.valid && !childContext.invalidating;
+							if(wasValid) {
+								stdin.input.destroy();
+								stdin.output.destroy();
+								stdout.input.destroy();
+								stdout.output.destroy();
+								stderr.input.destroy();
+								stderr.output.destroy();
+							}
 							// invalidate
-							childContextInvalidate();
+							childContextInvalidate(exitCode, signal);
 							if(wasValid) {
 								// close I/O
-								stdin.input.destroy();
-								stdout.input.destroy();
-								stderr.input.destroy();
-								// wait for next queue to emit event
-								setTimeout(() => {
-									if(exitCode != null) {
-										this.emit('exit', exitCode, killSignal);
-									}
-								}, 0);
+								if(exitCode != null || signal != null) {
+									// wait for next queue to emit event
+									browserWrappers.setTimeout(context, () => {
+										this.emit('exit', exitCode, signal);
+									}, 0);
+								}
 							}
 						}
 
-						// TODO apply properties
+						// TODO apply all properties
 						Object.defineProperties(this, {
 							stdin: {
 								value: stdin.input,
@@ -2585,6 +3088,25 @@ return (function(){
 							},
 							stderr: {
 								value: stderr.output,
+								writable: false
+							},
+							kill: {
+								value:(signal) => {
+									if(signal == null) {
+										signal = signals.SIGTERM;
+									}
+									else if(typeof signal === 'string') {
+										var signalNum = signals[signal];
+										if(signalNum == null) {
+											throw new Error("invalid signal "+signal);
+										}
+										signal = signalNum;
+									}
+									if(!Number.isInteger(signal) || signal < 0) {
+										throw new TypeError("signal must be a positive integer or a valid string");
+									}
+									childContext.signal(signal);
+								},
 								writable: false
 							}
 						});
@@ -2616,199 +3138,81 @@ return (function(){
 							context.modules.fs.accessSync(filename, context.modules.fs.constants.X_OK);
 							childContext.filename = filename;
 
-							// create process scope
-							let scope = null;
-							scope = {
-								'const': {
-									// browser built-ins
-									// timeouts
-									setTimeout: (...args) => {
-										return browserWrappers.setTimeout(childContext, ...args);
-									},
-									clearTimeout: (...args) => {
-										return browserWrappers.clearTimeout(childContext, ...args);
-									},
-									// intervals
-									setInterval: (...args) => {
-										return browserWrappers.setInterval(childContext, ...args);
-									},
-									clearInterval: (...args) => {
-										return browserWrappers.clearInterval(childContext, ...args);
-									},
-									// true console
-									__console: console,
-									// console
-									console: Object.defineProperties(Object.assign({}, console), {
-										log: {
-											value: (...args) => {
-												var strings = [];
-												for(const arg of args) {
-													strings.push(''+arg);
-												}
-												var stringVal = strings.join(' ');
-						
-												console.log(...args);
-												stdout.input.write(stringVal+'\n');
-											},
-											enumerable: true,
-											writable: false
-										},
-										warn: {
-											value: (...args) => {
-												var strings = [];
-												for(const arg of args) {
-													if(arg instanceof Error) {
-														strings.push(''+arg.stack);
-													}
-													else {
-														strings.push(''+arg);
-													}
-												}
-												var stringVal = strings.join(' ');
-						
-												console.warn(...args);
-												stderr.input.write(stringVal+'\n');
-											},
-											enumerable: true,
-											writable: false
-										},
-										error: {
-											value: (...args) => {
-												var strings = [];
-												for(const arg of args) {
-													if(arg instanceof Error) {
-														strings.push(''+arg.stack);
-													}
-													else {
-														strings.push(''+arg);
-													}
-												}
-												var stringVal = strings.join(' ');
-						
-												console.error(...args);
-												stderr.input.write(stringVal+'\n');
-											},
-											enumerable: true,
-											writable: false
-										},
-										memory: {
-											get: () => {
-												return console.memory;
-											}
-										}
-									}),
-				
-									// node built-ins
-									Promise: createProcPromiseClass(childContext),
-									Buffer: childContext.builtIns.modules.buffer.Buffer,
-									__dirname: dirname,
-									__filename: filename,
-									require: Object.defineProperties((path) => {
-										return require(childContext, scope, dirname, path);
-									}, {
-										resolve: {
-											value: (path) => {
-												return require.resolve(childContext, dirname, path);
-											},
-											enumerable: true,
-											writable: false
-										}
-									}),
-									requireCSS: Object.defineProperties((path) => {
-										return requireCSS(context, dirname, path);
-									}, {
-										resolve: {
-											value: (path) => {
-												return resolveCSSPath(context, dirname, path);
-											},
-											writable: false
-										},
-										wait: {
-											value: (path, callback) => {
-												return waitForCSS(context, dirname, path, callback);
-											},
-											writable: false
-										},
-										ready: {
-											value: (path) => {
-												return isCSSReady(context, dirname, path);
-											},
-											writable: false
-										}
-									}),
-									module: new ScriptGlobalAlias('exports'),
-									process: Object.defineProperties(new Process(childContext, context), {
-										stdin: {
-											value: stdin.output,
-											writable: false
-										},
-										stdout: {
-											value: stdout.input,
-											writable: false
-										},
-										stderr: {
-											value: stderr.input,
-											writable: false
-										}
-									}),
-
-									// addons
-									ExitSignal: ExitSignal,
-									syscall: (func, ...args) => {
-										return syscall(context, func, ...args);
-									},
-									syslog: (message, options=null) => {
-										return syscall(context, 'log', message, options);
-									}
-								},
-								'let': {
-									exports: {}
-								}
-							};
-
-							// set PID
+							// set PID and increment
+							pidCounter++;
 							Object.defineProperty(this, 'pid', {
 								get: () => {
 									return childContext.pid;
 								}
 							});
 
-							// load built-ins in the next queue
-							browserWrappers.setTimeout(context, () => {
-								// load built-ins
-								context.builtIns;
-								// ensure that the cwd is enterable by the calling context
-								try {
-									var cwdStats = childContext.modules.fs.statSync(childContext.cwd);
-									if(!cwdStats.isDirectory()) {
-										throw new Error("cwd is not a directory");
+							// add process
+							childContext.process = createProcess(childContext, {
+								stdin: stdin.output,
+								stdout: stdout.input,
+								stderr: stderr.input
+							});
+
+							// attach child process
+							if(!options.detached) {
+								childContext.parentContext = context;
+								context.childContexts.push(childContext);
+							}
+							else {
+								const baseContext = processes['1'];
+								childContext.parentContext = baseContext;
+								baseContext.childContexts.push(childContext);
+							}
+							// add process to list
+							processes[''+childContext.pid] = childContext;
+
+							// create child process scope in next queue
+							browserWrappers.setTimeout(childContext, () => {
+
+								// create process scope
+								const scope = Object.assign({}, childContext.scope);
+								scope.const.__dirname = dirname;
+								scope.const.__filename = filename;
+								scope.const.require = Object.defineProperties((path) => {
+									return require(childContext, scope, dirname, path);
+								}, {
+									resolve: {
+										value: (path) => {
+											return require.resolve(childContext, dirname, path);
+										},
+										enumerable: true,
+										writable: false
 									}
-								}
-								catch(error) {
-									childContext.invalidate(255, null);
-									return;
-								}
+								}),
+								scope.const.requireCSS = Object.defineProperties((path) => {
+									return requireCSS(childContext, dirname, path);
+								}, {
+									resolve: {
+										value: (path) => {
+											return resolveCSSPath(childContext, dirname, path);
+										},
+										writable: false
+									},
+									wait: {
+										value: (path, callback) => {
+											return waitForCSS(childContext, dirname, path, callback);
+										},
+										writable: false
+									},
+									ready: {
+										value: (path) => {
+											return isCSSReady(childContext, dirname, path);
+										},
+										writable: false
+									}
+								}),
+
 								// start the process in the next queue
-								browserWrappers.setTimeout(context, () => {
+								browserWrappers.setTimeout(childContext, () => {
 									// start the process
-									try {
+									wrapThread(childContext, () => {
 										requireFile(childContext, filename, scope);
-									}
-									catch(error) {
-										if(error instanceof ExitSignal) {
-											// process has ended
-										}
-										else {
-											if(childContext.valid) {
-												console.error(argv0+": unhandled process error:", error);
-												childContext.invalidate(255, null);
-											}
-											else {
-												// just ignore...
-											}
-										}
-										return;
-									}
+									}, {rethrowThreadKiller:true});
 								}, 0);
 							}, 0);
 						}
@@ -2827,8 +3231,7 @@ return (function(){
 
 
 
-				function spawn(command, args=[], options=null)
-				{
+				function spawn(command, args=[], options=null) {
 					if(args != null && typeof args === 'object' && !(args instanceof Array)) {
 						options = args;
 						args = [];
@@ -2851,15 +3254,16 @@ return (function(){
 				const EventEmitter = context.builtIns.modules.events;
 
 				const superEmit = EventEmitter.prototype.emit;
-				EventEmitter.prototype.emit = function(eventName, ...args)
-				{
+				EventEmitter.prototype.emit = function(eventName, ...args) {
 					// ensure context is valid
 					if(!context.valid) {
 						this.removeAllListeners();
 						return false;
 					}
 					// send event
-					return superEmit.call(this, eventName, ...args);
+					return wrapThread(context, () => {
+						return superEmit.call(this, eventName, ...args);
+					}, {rethrowThreadKiller:true});
 				}
 
 				return EventEmitter;
@@ -2887,8 +3291,23 @@ return (function(){
 				};
 
 				return util;
-			}
+			},
 		//#endregion
+
+
+		//#region download
+			'misc': (context) => {
+				return {
+					download: (url) => {
+						return new ProcPromise(context, (resolve, reject) => {
+							wrapThread(context, () => {
+								return download(url);
+							}).then(resolve, reject);
+						});
+					}
+				};
+			}
+		//#endregion download
 		};
 //#endregion
 
@@ -2934,15 +3353,19 @@ return (function(){
 //#endregion
 
 
-//#region boot
+//#region boot / shutdown / reboot
 		// bootup method
 		let booted = false;
-		function boot(url, path)
-		{
+		function boot() {
 			if(booted) {
 				throw new Error("system is already booted");
 			}
+			if(!kernelOptions.boot || !kernelOptions.boot.url || !kernelOptions.boot.path) {
+				throw new Error("boot.url and boot.path must be specified in options");
+			}
 			booted = true;
+			const path = kernelOptions.boot.path;
+			const url = kernelOptions.boot.url;
 			log(null, "starting boot...");
 			log(null, "downloading persistjs");
 			log(null, "downloading built-ins");
@@ -2952,8 +3375,7 @@ return (function(){
 			// wait for builtins to download
 			persistJSPromise.then(() => {
 				// ensure the root filesystem has been created
-				if(!storage.getItem(fsPrefix+'__inode:0'))
-				{
+				if(!storage.getItem(fsPrefix+'__inode:0')) {
 					storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o754}));
 					storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
 				}
@@ -2963,16 +3385,32 @@ return (function(){
 				log(null, "built-ins downloaded");
 				// create root context
 				rootContext = createContext(null);
+				rootContext.pid = 0;
+				rootContext.process = createProcess(rootContext);
 				// wait for boot data to download
 				return bootDataPromise;
 			}).then((data) => {
 				log(null, "boot data downloaded");
-				// write boot data to path
-				makeLeadingDirs(rootContext, path);
-				rootContext.modules.fs.writeFileSync(path, data, {mode: 0o700});
-				// execute boot file
-				log(null, "booting...");
-				rootContext.modules.child_process.spawn(path);
+				wrapThread(rootContext, async () => {
+					// write boot data to path
+					makeLeadingDirs(rootContext, path);
+					const util = rootContext.modules.util;
+					await util.promisify(rootContext.modules.fs.writeFile)(path, data, {mode: 0o700});
+					// execute boot file
+					log(null, "booting...");
+					await new Promise((resolve, reject) => {
+						const initProc = rootContext.modules.child_process.spawn(path);
+						if(initProc.pid == null) {
+							initProc.on('error', (error) => {
+								console.error(error);
+								reject(error);
+							});
+						}
+						initProc.on('exit', (code, signal) => {
+							resolve();
+						});
+					});
+				});
 			}).catch((error) => {
 				log(null, "unable to boot from kernel:", {color: 'red'});
 				log(null, error.toString(), {color: 'red'});

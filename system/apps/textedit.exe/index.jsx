@@ -1,16 +1,10 @@
 
 requireCSS('./style.css');
 const TextEdit = require('./TextEdit');
-
-// get window manager
-const windowManager = process.env['WINDOW_MANAGER'];
-if(!windowManager) {
-	console.error("no window manager detected");
-	process.exit(1);
-}
+const { WindowManagerClient } = require('dwm');
 
 // create window
-windowManager.createWindow(TextEdit).then((window) => {
+WindowManagerClient.createWindow(TextEdit).then((window) => {
 	// window created
 }).catch((error) => {
 	console.error("unable to create window: ", error);

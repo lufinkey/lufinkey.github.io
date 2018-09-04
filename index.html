@@ -67,10 +67,15 @@
 				styleExtensions: [ 'scss' ],
 				libDirExtensions: [ 'dll' ],
 				binDirExtensions: [ 'exe' ],
+
+				boot: {
+					url: 'system/init.js?v='+(Math.random()*999999999),
+					path: '/system/init.js'
+				}
 			});
 			
 			window.addEventListener('load', () => {
-				kernel.boot('/system/init.js?v='+(Math.random()*999999999), '/system/init.js');
+				kernel.boot();
 			});
 		})();
 	</script>

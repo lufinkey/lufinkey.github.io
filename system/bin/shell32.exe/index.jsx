@@ -1,14 +1,9 @@
 
 const React = require('react');
+const Display = require('displaymgrclient');
 const SelfAd = require('selfad');
 const Desktop = require('./Desktop');
 requireCSS('./style.css');
-
-const display = process.env['display'];
-if(!display) {
-	console.error("no display environment variable");
-	process.exit(1);
-}
 
 class Shell32 extends React.Component
 {
@@ -22,4 +17,4 @@ class Shell32 extends React.Component
 	}
 }
 
-display.addComponent('shell32', Shell32);
+Display.addComponent('shell32', Shell32);

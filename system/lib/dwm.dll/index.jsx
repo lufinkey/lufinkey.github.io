@@ -1,6 +1,8 @@
 
 const WindowManager = require('./WindowManager');
+const WindowManagerClient = require('./WindowManagerClient');
 
 module.exports = {
-	WindowManager: WindowManager
+	WindowManager: WindowManager,
+	WindowManagerClient: WindowManagerClient
 };

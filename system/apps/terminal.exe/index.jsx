@@ -1,16 +1,10 @@
 
 requireCSS('./style.css');
 const Terminal = require('./Terminal');
-
-// get window manager
-const windowManager = process.env['WINDOW_MANAGER'];
-if(!windowManager) {
-	console.error("no window manager detected");
-	process.exit(1);
-}
+const { WindowManagerClient } = require('dwm');
 
 // create window
-windowManager.createWindow(Terminal).then((window) => {
+WindowManagerClient.createWindow(Terminal).then((window) => {
 	// window created
 }).catch((error) => {
 	console.error("unable to create window: ", error);

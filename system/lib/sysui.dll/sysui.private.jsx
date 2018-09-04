@@ -4,8 +4,6 @@ const ReactDOM = require('react-dom');
 const Transcend32 = require('transcend32');
 
 
-
-
 let uiRoot = null;
 let uiStarted = false;
 let screens = [];
@@ -37,6 +35,8 @@ class UIRoot extends React.Component
 
 const PrivateSystemUI = {};
 
+let sysUIThread = null;
+
 PrivateSystemUI.start = () => {
 	if(uiStarted) {
 		return;
@@ -46,6 +46,17 @@ PrivateSystemUI.start = () => {
 		<UIRoot/>,
 		document.getElementById('root')
 	);
+	syscall('thread', () => {
+		return new Promise((resolve, reject) => {
+			sysUIThread = {
+				resolve: resolve,
+				reject: reject
+			};
+		})
+	}, () => {
+		console.error(new Error("wtf"));
+		PrivateSystemUI.stop();
+	});
 };
 
 PrivateSystemUI.stop = () => {
@@ -56,6 +67,9 @@ PrivateSystemUI.stop = () => {
 	ReactDOM.unmountComponentAtNode(
 		document.getElementById('root')
 	);
+	const thread = sysUIThread;
+	sysUIThread = null;
+	thread.resolve();
 };
 
 Object.defineProperty(PrivateSystemUI, 'started', {
@@ -138,4 +152,4 @@ PrivateSystemUI.unregisterScreen = (key, pid) => {
 
 
 
-module.exports = PrivateSystemUI;
+module.exports = Object.assign({}, PrivateSystemUI);
