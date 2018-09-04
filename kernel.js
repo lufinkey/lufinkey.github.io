@@ -273,6 +273,9 @@ function finishThread(context, threadID) {
 			context.invalidate(0, null);
 		}
 	}
+	else {
+		removeThread(context, threadID);
+	}
 }
 
 function wrapThread(context, threadFunc, options={}) {
