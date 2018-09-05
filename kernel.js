@@ -1486,18 +1486,23 @@ function wrapThread(context, threadFunc, options={}) {
 					return false;
 				},
 				signal: (signal) => {
-					const signalName = getSignalName(signal);
-					if(signalName != null && context.process != null && context.process.listenerCount(signalName) > 0) {
-						try {
-							context.process.emit(signalName);
-						}
-						catch(e) {}
-						if(!context.hasRunningCode()) {
-							context.invalidate(0, null);
-						}
+					if(signal === signals.SIGKILL) {
+						context.invalidate(null, signal);
 					}
 					else {
-						context.invalidate(null, signal);
+						const signalName = getSignalName(signal);
+						if(signalName != null && context.process != null && context.process.listenerCount(signalName) > 0) {
+							try {
+								context.process.emit(signalName);
+							}
+							catch(e) {}
+							if(!context.hasRunningCode()) {
+								context.invalidate(0, null);
+							}
+						}
+						else {
+							context.invalidate(null, signal);
+						}
 					}
 				},
 				invalidate: (exitCode, signal) => {
