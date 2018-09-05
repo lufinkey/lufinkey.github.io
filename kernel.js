@@ -3359,40 +3359,39 @@ function wrapThread(context, threadFunc, options={}) {
 //#region boot / shutdown / reboot
 		// bootup method
 		let booted = false;
-		function boot() {
-			if(booted) {
-				throw new Error("system is already booted");
-			}
-			if(!kernelOptions.boot || !kernelOptions.boot.url || !kernelOptions.boot.path) {
-				throw new Error("boot.url and boot.path must be specified in options");
-			}
-			booted = true;
-			const path = kernelOptions.boot.path;
-			const url = kernelOptions.boot.url;
-			log(null, "starting boot...");
-			log(null, "downloading persistjs");
-			log(null, "downloading built-ins");
-			log(null, "downloading boot data");
-			// create promise for boot data
-			var bootDataPromise = download(url);
-			// wait for builtins to download
-			persistJSPromise.then(() => {
+		async function boot() {
+			try {
+				if(booted) {
+					throw new Error("system is already booted");
+				}
+				if(!kernelOptions.boot || !kernelOptions.boot.url || !kernelOptions.boot.path) {
+					throw new Error("boot.url and boot.path must be specified in options");
+				}
+				booted = true;
+				const path = kernelOptions.boot.path;
+				const url = kernelOptions.boot.url;
+				log(null, "starting boot...");
+				log(null, "downloading persistjs");
+				log(null, "downloading built-ins");
+				log(null, "downloading boot data");
+				// create promise for boot data
+				var bootDataPromise = download(url);
+				// wait for builtins to download
+				await persistJSPromise;
 				// ensure the root filesystem has been created
 				if(!storage.getItem(fsPrefix+'__inode:0')) {
 					storage.setItem(fsPrefix+'__inode:0', JSON.stringify({type:'DIR',uid:0,gid:0,mode:0o754}));
 					storage.setItem(fsPrefix+'__entry:0', JSON.stringify({}));
 				}
 				// wait for built-ins to download
-				return builtInsPromise;
-			}).then(() => {
+				await builtInsPromise;
 				log(null, "built-ins downloaded");
 				// create root context
 				rootContext = createContext(null);
 				rootContext.pid = 0;
 				rootContext.process = createProcess(rootContext);
 				// wait for boot data to download
-				return bootDataPromise;
-			}).then((data) => {
+				const data = await bootDataPromise;
 				log(null, "boot data downloaded");
 				wrapThread(rootContext, async () => {
 					// write boot data to path
@@ -3414,12 +3413,15 @@ function wrapThread(context, threadFunc, options={}) {
 						});
 					});
 				});
-			}).catch((error) => {
+			}
+			catch(error) {
 				log(null, "unable to boot from kernel:", {color: 'red'});
 				log(null, error.toString(), {color: 'red'});
 				console.error(error);
-			});
+				throw error;
+			}
 		};
+
 //#endregion
 
 
