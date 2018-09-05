@@ -242,7 +242,8 @@ function startThread(context, options={}) {
 	context.nextThreadID++;
 	context.threads.push({
 		id: threadID,
-		cancel: options.cancel
+		cancel: options.cancel,
+		cancelled: false
 	});
 	return threadID;
 }
@@ -1544,6 +1545,7 @@ function wrapThread(context, threadFunc, options={}) {
 									console.error(error);
 								}
 							}
+							thread.cancelled = true;
 						}
 
 						// kill child contexts
@@ -1630,7 +1632,9 @@ function wrapThread(context, threadFunc, options={}) {
 											var stringVal = strings.join(' ');
 					
 											console.log(...args);
-											context.stdout.write(stringVal+'\n');
+											if(context.stdout) {
+												context.stdout.write(stringVal+'\n');
+											}
 										},
 										enumerable: true,
 										writable: false
@@ -1649,7 +1653,9 @@ function wrapThread(context, threadFunc, options={}) {
 											var stringVal = strings.join(' ');
 					
 											console.warn(...args);
-											context.stderr.write(stringVal+'\n');
+											if(context.stderr) {
+												context.stderr.write(stringVal+'\n');
+											}
 										},
 										enumerable: true,
 										writable: false
@@ -1668,7 +1674,9 @@ function wrapThread(context, threadFunc, options={}) {
 											var stringVal = strings.join(' ');
 					
 											console.error(...args);
-											context.stderr.write(stringVal+'\n');
+											if(context.stderr) {
+												context.stderr.write(stringVal+'\n');
+											}
 										},
 										enumerable: true,
 										writable: false
@@ -1708,13 +1716,20 @@ function wrapThread(context, threadFunc, options={}) {
 		}
 
 		// wait for all threads in a context to die
-		function waitForContextToDie(context, callback) {
+		function waitForContextToDie(context, callback, options={}) {
+			options = Object.assign({}, options);
 			if(context.threads.length == 0) {
+				if(options.log) {
+					console.log("process "+process.pid+" has died");
+				}
 				callback();
 				return;
 			}
+			if(options.log) {
+				console.log("process "+context.pid+" has "+context.threads.length+" waiting to die");
+			}
 			setTimeout(() => {
-				waitForContextToDie(context, callback);
+				waitForContextToDie(context, callback, options);
 			}, 100);
 		}
 
@@ -3425,7 +3440,7 @@ function wrapThread(context, threadFunc, options={}) {
 				console.error(error);
 				throw error;
 			}
-		};
+		}
 
 //#endregion
 
