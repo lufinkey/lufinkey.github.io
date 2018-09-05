@@ -33,11 +33,9 @@ class UIRoot extends React.Component
 
 
 
-const PrivateSystemUI = {};
-
 let sysUIThread = null;
 
-PrivateSystemUI.start = () => {
+const startUI = () => {
 	if(uiStarted) {
 		return;
 	}
@@ -54,12 +52,11 @@ PrivateSystemUI.start = () => {
 			};
 		})
 	}, () => {
-		console.error(new Error("wtf"));
-		PrivateSystemUI.stop();
+		stopUI();
 	});
 };
 
-PrivateSystemUI.stop = () => {
+const stopUI = () => {
 	if(!uiStarted) {
 		return;
 	}
@@ -72,13 +69,7 @@ PrivateSystemUI.stop = () => {
 	thread.resolve();
 };
 
-Object.defineProperty(PrivateSystemUI, 'started', {
-	get: () => {
-		return uiStarted
-	}
-});
-
-PrivateSystemUI.registerScreen = (key, component, pid) => {
+const registerScreen = (key, component, pid) => {
 	if(!uiStarted) {
 		throw new Error("System UI has not been started");
 	}
@@ -90,47 +81,14 @@ PrivateSystemUI.registerScreen = (key, component, pid) => {
 	screens = [{
 		key: key,
 		component: component,
-		pid: pid,
-		listeners: {
-			unregister: []
-		}
+		pid: pid
 	} ].concat(screens);
 	if(uiRoot) {
 		uiRoot.forceUpdate();
 	}
 };
 
-PrivateSystemUI.addScreenListener = (key, event, listener) => {
-	if(typeof listener !== 'function') {
-		throw new TypeError("listener must be a function");
-	}
-	for(var cmpScreen of screens) {
-		if(cmpScreen.key == key) {
-			if(cmpScreen.listeners[event] == null) {
-				throw new Error("invalid event name \""+event+"\"");
-			}
-			cmpScreen.listeners[event].push(listener);
-			return;
-		}
-	}
-	throw new Error("screen not found");
-};
-
-PrivateSystemUI.removeScreenListener = (key, event, listener) => {
-	for(var cmpScreen of screens) {
-		if(cmpScreen.key == key) {
-			if(cmpScreen.listeners[event]) {
-				var index = cmpScreen.listeners[event].indexOf(listener);
-				if(index != -1) {
-					cmpScreen.listeners[event].splice(index, 1);
-				}
-			}
-			return;
-		}
-	}
-};
-
-PrivateSystemUI.unregisterScreen = (key, pid) => {
+const unregisterScreen = (key, pid) => {
 	for(var i=0; i<screens.length; i++) {
 		var cmpScreen = screens[i];
 		if(cmpScreen.key == key) {
@@ -138,10 +96,6 @@ PrivateSystemUI.unregisterScreen = (key, pid) => {
 				throw new Error("cannot unregister screen as different process than the registerer");
 			}
 			screens.splice(i, 1);
-			const listeners = cmpScreen.listeners['unregister'].slice(0);
-			for(var listener of listeners) {
-				listener();
-			}
 		}
 	}
 	if(uiRoot) {
@@ -151,5 +105,30 @@ PrivateSystemUI.unregisterScreen = (key, pid) => {
 
 
 
+const PrivateSystemUI = Object.defineProperties({}, {
+	start: {
+		value: startUI,
+		writable: false
+	},
+	stop: {
+		value: stopUI,
+		writable: false
+	},
+	started: {
+		get: () => {
+			return uiStarted;
+		}
+	},
+	registerScreen: {
+		value: registerScreen,
+		writable: false
+	},
+	unregisterScreen: {
+		value: unregisterScreen,
+		writable: false
+	}
+});
 
-module.exports = Object.assign({}, PrivateSystemUI);
+
+
+module.exports = PrivateSystemUI;

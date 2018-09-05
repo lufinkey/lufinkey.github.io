@@ -59,11 +59,25 @@ const unregister = (key) => {
 };
 
 
-const SystemUI = {
-	initialize: initialize,
-	register: register,
-	unregister: unregister
-};
+const SystemUI = Object.defineProperties({}, {
+	initialize: {
+		value: initialize,
+		writable: false
+	},
+	register: {
+		value: register,
+		writable: false
+	},
+	unregister: {
+		value: unregister,
+		writable: false
+	},
+	started: {
+		get: () => {
+			return PrivateSystemUI.started;
+		}
+	}
+});
 
 
 module.exports = SystemUI;
