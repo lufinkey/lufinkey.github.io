@@ -63,7 +63,7 @@ class DisplayManager extends React.Component
 		}
 		var display = this.displays[displayId];
 		delete this.displays[displayId];
-		if(display.active) {
+		if(display.active && SystemUI.started) {
 			this.forceUpdate();
 		}
 	}
@@ -74,7 +74,7 @@ class DisplayManager extends React.Component
 			throw new Error("display "+displayId+" does not exist");
 		}
 		display.components.push({key: key, component: component});
-		if(display.active) {
+		if(display.active && SystemUI.started) {
 			this.forceUpdate();
 		}
 	}
@@ -90,7 +90,7 @@ class DisplayManager extends React.Component
 				break;
 			}
 		}
-		if(display.active) {
+		if(display.active && SystemUI.started) {
 			this.forceUpdate();
 		}
 	}
@@ -108,7 +108,9 @@ class DisplayManager extends React.Component
 				display.active = false;
 			}
 		}
-		this.forceUpdate();
+		if(SystemUI.started) {
+			this.forceUpdate();
+		}
 	}
 
 	getActiveDisplayId() {
