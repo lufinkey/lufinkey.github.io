@@ -28,12 +28,20 @@ class Terminal extends React.Component
 		this.shellProcess = spawn('jsh');
 		this.shellProcess.on('error', (error) => {
 			console.error(error);
-			this.props.window.close();
-			process.exit(1);
+			this.props.window.close().then(() => {
+				process.exit(1);
+			}).catch((error) => {
+				console.error(error);
+				process.exit(1);
+			});
 		});
 		this.shellProcess.on('exit', (exitCode) => {
-			this.props.window.close();
-			process.exit(exitCode);
+			this.props.window.close().then(() => {
+				process.exit(exitCode);
+			}).catch((error) => {
+				console.error(error);
+				process.exit(exitCode);
+			});
 		});
 
 		// listen for data

@@ -3,6 +3,7 @@ const fs = require('fs');
 const rimraf = require('rimraf');
 const { spawn } = require('child_process');
 const util = require('util');
+const { download } = require('misc');
 
 // log information about the boot sequence
 let bootlogs = [];
@@ -31,39 +32,9 @@ function removeBootlogPipe(pipe) {
 
 
 
-
-// download data from a URL
-function download(url) {
-	return new Promise((resolve, reject) => {
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = () => {
-			if(xhr.readyState === 4) {
-				if(xhr.status === 200) {
-					resolve(xhr.responseText);
-				}
-				else {
-					reject(new Error(xhr.status+": "+xhr.statusText));
-				}
-			}
-		};
-
-		xhr.open('GET', url+'?v='+(Math.random()*999999999));
-		//xhr.open('GET', url);
-		/*xhr.setRequestHeader('cache-control', 'no-cache, must-revalidate, post-check=0, pre-check=0');
-		xhr.setRequestHeader('cache-control', 'max-age=0');
-		xhr.setRequestHeader('expires', '0');
-		xhr.setRequestHeader('expires', 'Tue, 01 Jan 1980 1:00:00 GMT');
-		xhr.setRequestHeader('pragma', 'no-cache');*/
-		xhr.send();
-	});
-}
-
-
-
-
 // download data from a URL and write it to a file
 async function downloadFile(url, path, options={}) {
-	const data = await download(url);
+	const data = await download(url+'?v='+(Math.random()*999999999));
 	await util.promisify(fs.writeFile)(path, data, options);
 }
 

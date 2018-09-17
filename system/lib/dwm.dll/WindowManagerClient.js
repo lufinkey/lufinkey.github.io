@@ -22,7 +22,9 @@ const createWindow = (component, options) => {
 					};
 				});
 			}, () => {
-				destroyWindow(window);
+				if(windowThreads[window.id]) {
+					destroyWindow(window);
+				}
 			});
 		})
 	});

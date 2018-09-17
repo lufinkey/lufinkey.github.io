@@ -31,7 +31,7 @@
     border-bottom-color: #2b2800;
 	border-right-color: #2b2800;
 
-	background-image: url(/system/lib/shell32.dll/images/apple-icon.png);
+	background-image: url(/system/bin/shell32.exe/images/apple-icon.png);
 	background-repeat: no-repeat;
 	background-position-x: 4px;
 	background-position-y: center;

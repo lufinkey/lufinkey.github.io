@@ -44,7 +44,7 @@ class StartMenu extends React.Component
 		this.setState({
 			startMenuOpen: false,
 		});
-		//spawn('run');
+		spawn('run');
 		if(this.props.onTaskSelected) {
 			this.props.onTaskSelected();
 		}
@@ -54,7 +54,7 @@ class StartMenu extends React.Component
 		this.setState({
 			startMenuOpen: false,
 		});
-		spawn('/system/init.js', {detached: true});
+		syscall('reboot');
 		if(this.props.onTaskSelected) {
 			this.props.onTaskSelected();
 		}

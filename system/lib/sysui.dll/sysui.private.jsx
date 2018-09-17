@@ -32,9 +32,6 @@ class UIRoot extends React.Component
 
 
 
-
-let sysUIThread = null;
-
 const startUI = () => {
 	if(uiStarted) {
 		return;
@@ -44,16 +41,6 @@ const startUI = () => {
 		<UIRoot/>,
 		document.getElementById('root')
 	);
-	syscall('thread', () => {
-		return new Promise((resolve, reject) => {
-			sysUIThread = {
-				resolve: resolve,
-				reject: reject
-			};
-		})
-	}, () => {
-		stopUI();
-	});
 };
 
 const stopUI = () => {
@@ -64,9 +51,6 @@ const stopUI = () => {
 	ReactDOM.unmountComponentAtNode(
 		document.getElementById('root')
 	);
-	const thread = sysUIThread;
-	sysUIThread = null;
-	thread.resolve();
 };
 
 const registerScreen = (key, component, pid) => {

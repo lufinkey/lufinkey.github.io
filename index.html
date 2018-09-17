@@ -45,15 +45,17 @@
 							return new Promise((resolve, reject) => {
 								const Sass = kernel.require(context, {}, '/', '/system/plib/sass.js');
 								var sass = new Sass();
-								sass.compile(code, (result) => {
-									// check for errors
-									if(result.status !== 0)
-									{
-										reject(new Error(result.message));
-										return;
-									}
-									resolve(result.text);
-								});
+								setTimeout(() => {
+									sass.compile(code, (result) => {
+										// check for errors
+										if(result.status !== 0)
+										{
+											reject(new Error(result.message));
+											return;
+										}
+										resolve(result.text);
+									});
+								}, 0);
 							});
 						}
 					}
