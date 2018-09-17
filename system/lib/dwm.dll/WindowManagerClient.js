@@ -10,23 +10,34 @@ const createWindow = (component, options) => {
 			reject(new Error("no window manager detected"));
 			return;
 		}
-		windowManager.createWindow(component, options).then((window) => {
-			syscall('thread', () => {
-				return new Promise((resolve, reject) => {
-					windowThreads[window.id] = {
+		let windowId = null;
+		syscall('thread', () => {
+			return new Promise((resolve, reject) => {
+				windowManager.createWindow(component, {
+					...options,
+					onDestroy: () => {
+						const thread = windowThreads[windowId];
+						delete windowThreads[windowId];
+						thread.promise.resolve();
+					}
+				}).then((window) => {
+					windowId = window.id;
+					windowThreads[windowId] = {
 						window: window,
 						promise: {
 							resolve: resolve,
 							reject: reject
 						}
 					};
+				}).catch((error) => {
+					reject(error);
 				});
-			}, () => {
-				if(windowThreads[window.id]) {
-					destroyWindow(window);
-				}
 			});
-		})
+		}, () => {
+			if(windowId != null && windowThreads[windowId]) {
+				destroyWindow(window);
+			}
+		}, {})
 	});
 }
 
@@ -41,8 +52,6 @@ const destroyWindow = (window) => {
 		if(!thread) {
 			reject(new Error("no matching window"));
 		}
-		delete windowThreads[window.id];
-		thread.promise.resolve();
 		windowManager.destroyWindow(window).then(resolve, reject);
 	});
 }

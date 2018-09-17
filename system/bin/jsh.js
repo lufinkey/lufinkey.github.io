@@ -156,6 +156,10 @@ process.stdin.on('data', (chunk) => {
 		prompt();
 	}).catch((error) => {
 		currentPromise = null;
+		if(error.message === undefined) {
+			__console.error("why are we undefined:");
+			__console.error(error);
+		}
 		console.error(error.message);
 		prompt();
 	});

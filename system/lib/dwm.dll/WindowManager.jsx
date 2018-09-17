@@ -58,25 +58,7 @@ class WindowManager extends React.Component
 		};
 	}
 
-	mergeWindowOptions(options, addOptions) {
-		options = Object.assign({}, options);
-		const copyProps = ['title', 'minimized', 'maximized'];
-		for(const prop of copyProps) {
-			if(addOptions[prop] !== undefined) {
-				options[prop] = addOptions[prop];
-			}
-		}
-		if(addOptions.size) {
-			options.size = Object.assign(Object.assign({}, options.size), addOptions.size);
-		}
-		if(addOptions.position) {
-			options.position = Object.assign(Object.assign({}, options.position), addOptions.position);
-		}
-		return options;
-	}
-
 	createWindow(component, options={}) {
-
 		return new Promise((resolve, reject) => {
 			if(!component) {
 				reject(new Error("no component given"));
@@ -84,13 +66,11 @@ class WindowManager extends React.Component
 			}
 			// set default window options
 			const defaults =
-				this.mergeWindowOptions(
-					this.mergeWindowOptions(
+				Object.assign(
+					Object.assign(
 						this.createDefaultWindowState(),
-						Object.assign({}, component.windowOptions)
-					),
-					Object.assign({}, options)
-				);
+							component.windowOptions),
+								options);
 			
 			var windowId = this.windowIdCounter;
 			this.windowIdCounter++;
@@ -99,7 +79,8 @@ class WindowManager extends React.Component
 			var windows = this.state.windows.concat([{
 				id: windowId,
 				component: component,
-				defaults: defaults
+				defaults: defaults,
+				onDestroy: options.onDestroy
 			}]);
 			// add callback
 			this.windowCreateCallbacks.push({
@@ -138,11 +119,15 @@ class WindowManager extends React.Component
 			// remove window from state windows
 			var windows = this.state.windows.slice(0);
 			for(var i=0; i<windows.length; i++) {
-				if(windows[i].id === window.props.windowId) {
+				const cmpWindow = windows[i];
+				if(cmpWindow.id === window.props.windowId) {
 					// remove window
 					windows.splice(i, 1);
 					this.windowDestroyCallbacks.push({windowId: window.props.windowId, resolve: resolve, reject: reject});
 					this.setState({windows: windows});
+					if(cmpWindow.onDestroy) {
+						cmpWindow.onDestroy();
+					}
 					return;
 				}
 			}
