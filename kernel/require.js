@@ -154,26 +154,16 @@ const getInterpreter = (context, type, path) => {
 
 
 
-// run a script with the specified scope
-const requireFile = (context, path) => {
-	const fs = context.kernelModules.require('fs');
+// require a script into the specified context
+const requireScript = (context, mimeType, scope, script) => {
+	// TODO require script
+};
+
+
+
+// create a new scope with the given context and filename
+const createScope = (context, filename, moduleData) => {
 	const Path = context.kernelModules.require('path');
-
-	// read code
-	path = resolveRelativePath(context, path);
-	let code = fs.readFileSync(path, {encoding:'utf8'});
-	// transform code with interpreter if necessary
-	const interpreter = getInterpreter(context, 'script', path);
-	if(interpreter) {
-		if(typeof interpreter.transform !== 'function') {
-			throw new TypeError("interpreter.transform must be a function");
-		}
-		code = interpreter.transform(code, context);
-	}
-
-	let moduleExports = {};
-
-	const filename = path;
 	const dirname = Path.dirname(filename);
 
 	const { Buffer } = context.kernelModules.require('buffer');
@@ -258,15 +248,15 @@ const requireFile = (context, path) => {
 			})
 		},
 		exports: {
-			get:() => {return moduleExports},
-			set:(value) => {moduleExports = value}
+			get:() => {return moduleData.exports},
+			set:(value) => {moduleData.exports = value}
 		},
 		global: {value: context.global, writable: false},
 		module: {
 			value: Object.defineProperties({}, {
 				exports: {
-					get:() => {return moduleExports},
-					set:(value) => {moduleExports = value}
+					get:() => {return moduleData.exports},
+					set:(value) => {moduleData.exports = value}
 				}
 			}),
 			writable: false
@@ -331,10 +321,35 @@ const requireFile = (context, path) => {
 		URLSearchParams
 	});
 
+	return scope;
+};
+
+
+
+// require a file into the specified context
+const requireFile = (context, path) => {
+	const fs = context.kernelModules.require('fs');
+
+	// read code
+	path = resolveRelativePath(context, path);
+	let code = fs.readFileSync(path, {encoding:'utf8'});
+	// transform code with interpreter if necessary
+	const interpreter = getInterpreter(context, 'script', path);
+	if(interpreter) {
+		if(typeof interpreter.transform !== 'function') {
+			throw new TypeError("interpreter.transform must be a function");
+		}
+		code = interpreter.transform(code, context);
+	}
+
+	const moduleData = {exports:{}};
+
+	const scope = createScope(context, path, moduleData);
+
 	// run code
 	kernel.runScript(code, scope);
 
-	return moduleExports;
+	return moduleData.exports;
 }
 
 
