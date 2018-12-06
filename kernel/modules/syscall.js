@@ -12,8 +12,6 @@ module.exports = (context) => {
 		return kernel.log(message, options);
 	}
 
-
-
 	// call special kernel functions
 	const syscall = (func, ...args) => {
 		if(!context.valid) {

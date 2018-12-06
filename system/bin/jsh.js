@@ -46,26 +46,21 @@ function runShellCommand(command, ...args) {
 function runCommand(command, ...args) {
 	return new Promise((resolve, reject) => {
 		// try to run command as a built-in
-		try
-		{
+		try {
 			var retVal = runShellCommand(command, ...args);
-			if(retVal != null)
-			{
+			if(retVal != null) {
 				// command run as a built-in
-				if(retVal instanceof Promise)
-				{
+				if(retVal instanceof Promise) {
 					retVal.then((exitCode) => {
 						resolve(exitCode);
 					}).catch((error) => {
 						reject(error);
 					});
 				}
-				else if(typeof retVal === 'number')
-				{
+				else if(typeof retVal === 'number') {
 					resolve(retVal);
 				}
-				else
-				{
+				else {
 					resolve(0);
 				}
 				return;
@@ -96,8 +91,7 @@ function runCommand(command, ...args) {
 		// handle error
 		subprocess.on('error', (error) => {
 			currentProcess = null;
-			if(!processExited)
-			{
+			if(!processExited) {
 				processExited = true;
 				reject(error);
 			}
@@ -106,8 +100,7 @@ function runCommand(command, ...args) {
 		// handle exit
 		subprocess.on('exit', (exitCode) => {
 			currentProcess = null;
-			if(!processExited)
-			{
+			if(!processExited) {
 				processExited = true;
 				resolve(exitCode);
 			}
@@ -121,29 +114,24 @@ function runCommand(command, ...args) {
 
 // listen for input
 process.stdin.on('data', (chunk) => {
-	if(currentProcess)
-	{
+	if(currentProcess) {
 		currentProcess.stdin.write(chunk);
 		return;
 	}
-	else if(currentPromise)
-	{
+	else if(currentPromise) {
 		return;
 	}
 
 	var command = ''+chunk;
 	var cmdParts = command.split(new RegExp('\\s+'));
-	for(var i=0; i<cmdParts.length; i++)
-	{
-		if(cmdParts[i]=="")
-		{
+	for(var i=0; i<cmdParts.length; i++) {
+		if(cmdParts[i]=="") {
 			cmdParts.splice(i,1);
 			i--;
 		}
 	}
 
-	if(cmdParts.length == 0)
-	{
+	if(cmdParts.length == 0) {
 		process.stdout.write('\n');
 		prompt();
 		return;
@@ -157,7 +145,6 @@ process.stdin.on('data', (chunk) => {
 	}).catch((error) => {
 		currentPromise = null;
 		if(error.message === undefined) {
-			__console.error("why are we undefined:");
 			__console.error(error);
 		}
 		console.error(error.message);
