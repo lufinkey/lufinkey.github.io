@@ -39,6 +39,7 @@ body {
 	height: 100%;
 	margin: 0;
 	padding: 0;
+
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -122,6 +123,21 @@ body {
 	top: 4px;
 	right: 4px;
 	bottom: 4px;
+}
+
+.crt-fullscreen-button {
+	position: absolute;
+	border-radius: 50%;
+	width: 3%;
+	height: 4.5%;
+	bottom: 12%;
+	right: 32.5%;
+}
+
+.crt-fullscreen-button:hover {
+	background-color: black;
+	opacity: 0.2;
+	cursor: pointer;
 }
 
 @keyframes crt-noise {
