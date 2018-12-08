@@ -90,6 +90,6 @@ const animateScreenExpand = () => {
 
 const crtFullscreenButton = document.querySelector(".crt-fullscreen-button");
 crtFullscreenButton.onclick = () => {
-	crtFullscreenButton.disabled = true;
+	crtFullscreenButton.style.pointerEvents = "none";
 	animateScreenExpand();
 }
