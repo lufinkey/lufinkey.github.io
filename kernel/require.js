@@ -9,6 +9,12 @@ const {
 	ThreadKiller,
 	ProcPromise
 } = await krequire('kernel/process/thread.js');
+const {
+	getScriptType,
+	getStyleType,
+	transformScript,
+	transformStyle
+} = await krequire('kernel/transform.js');
 
 
 
@@ -139,32 +145,13 @@ const findModulePath = (context, basePaths, dirname, path, options=null) => {
 
 //#region require
 
-// determine the interpreter for the file
-const getInterpreter = (context, type, path) => {
-	path = resolveRelativePath(context, path);
-	if(kernel.options.interpreters) {
-		for(const interpreter of kernel.options.interpreters) {
-			if(interpreter.type === type && interpreter.check(path)) {
-				return interpreter;
-			}
-		}
-	}
-	return undefined;
-}
-
-
-
-// require a script into the specified context
-const requireScript = (context, mimeType, scope, script) => {
-	// TODO require script
-};
-
-
-
 // create a new scope with the given context and filename
 const createScope = (context, filename, moduleData) => {
 	const Path = context.kernelModules.require('path');
-	const dirname = Path.dirname(filename);
+	let dirname = undefined;
+	if(filename != null) {
+		dirname = Path.dirname(filename);
+	}
 
 	const { Buffer } = context.kernelModules.require('buffer');
 	const timers = context.kernelModules.require('timers');
@@ -326,31 +313,37 @@ const createScope = (context, filename, moduleData) => {
 
 
 
+// require a script into the specified context
+const requireScriptCode = (context, scriptType, code, options={}) => {
+	options = Object.assign({}, options);
+
+	// transform code
+	code = transformScript(context, scriptType, code);
+
+	// create scope
+	const moduleData = {exports:{}};
+	const scope = createScope(context, options.filename, moduleData);
+
+	// run code
+	kernel.runScript(code, scope);
+
+	// return exports
+	return moduleData.exports;
+};
+
+
+
 // require a file into the specified context
-const requireFile = (context, path) => {
+const requireScriptFile = (context, path) => {
 	const fs = context.kernelModules.require('fs');
 
 	// read code
 	path = resolveRelativePath(context, path);
 	let code = fs.readFileSync(path, {encoding:'utf8'});
-	// transform code with interpreter if necessary
-	const interpreter = getInterpreter(context, 'script', path);
-	if(interpreter) {
-		if(typeof interpreter.transform !== 'function') {
-			throw new TypeError("interpreter.transform must be a function");
-		}
-		code = interpreter.transform(code, context);
-	}
-
-	const moduleData = {exports:{}};
-
-	const scope = createScope(context, path, moduleData);
-
-	// run code
-	kernel.runScript(code, scope);
-
-	return moduleData.exports;
-}
+	const scriptType = getScriptType(path);
+	
+	return requireScriptCode(context, scriptType, code, {filename: path});
+};
 
 
 
@@ -456,7 +449,7 @@ const require = (context, parentScope, dirname, path) => {
 	let moduleExports = null;
 	// require file
 	try {
-		moduleExports = requireFile(moduleContext, modulePath);
+		moduleExports = requireScriptFile(moduleContext, modulePath);
 	}
 	catch(error) {
 		console.error("unable to require "+path, error);
@@ -548,8 +541,6 @@ const requireCSS = (context, dirname, path) => {
 	// read css data
 	let cssData = fs.readFileSync(cssPath, {encoding: 'utf8'});
 
-	// TODO parse out special CSS functions
-
 	// add style tag to page
 	let head = document.querySelector('head');
 	let styleTag = document.createElement("STYLE");
@@ -564,20 +555,10 @@ const requireCSS = (context, dirname, path) => {
 	};
 
 	// interpret css
-	let cssPromise = null;
-	let interpreter = getInterpreter(context, 'style', cssPath);
-	if(interpreter) {
-		let transformedCSS = interpreter.transform(cssData, context);
-		if(transformedCSS instanceof Promise) {
-			cssPromise = transformedCSS;
-		}
-		else {
-			cssPromise = Promise.resolve(transformedCSS);
-		}
-	}
-	else {
-		// apply plain content
-		cssPromise = Promise.resolve(cssData);
+	const styleType = getStyleType(cssPath);
+	let cssPromise = transformStyle(context, styleType, cssData);
+	if(!(cssPromise instanceof Promise)) {
+		cssPromise = Promise.resolve(cssPromise);
 	}
 
 	// add path to context's loaded CSS
@@ -711,8 +692,8 @@ kernel.requireCSS = requireCSS;
 // export
 module.exports = {
 	findModulePath,
-	getInterpreter,
-	requireFile,
+	requireScriptFile,
+	requireScriptCode,
 	require,
 	requireCSS,
 	unloadCSS

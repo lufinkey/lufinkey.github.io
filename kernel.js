@@ -107,8 +107,9 @@ function Kernel(kernelOptions) {
 
 
 
-		// require a kernel module
-		kernel.krequire = async (path) => {
+		// require a kernel module asynchronously
+		kernel.krequire = async (path, options) => {
+			options = Object.assign({}, options);
 			if(path in kernel.kernelModules) {
 				return kernel.kernelModules[path];
 			}
@@ -129,7 +130,14 @@ function Kernel(kernelOptions) {
 			}
 			// start download
 			kernel.downloadingKernelModules.push(path);
-			const data = await kernel.download(path+'?v='+(Math.random()*99999999999));
+			let url = path;
+			if(options.url) {
+				url = options.url;
+			}
+			if(!options.allowCache) {
+				url = url+'?v='+(Math.random()*99999999999);
+			}
+			const data = await kernel.download(url);
 
 			let moduleExports = {};
 
@@ -150,7 +158,16 @@ function Kernel(kernelOptions) {
 				},
 				global: {value: global, writable: false},
 				kernel: {value: kernel, writable: false},
-				krequire: {value: kernel.krequire, writable: false}
+				krequire: {value: kernel.krequire, writable: false},
+				require: {writable: false, value: (path) => {
+					if(typeof path !== 'string') {
+						throw new Error("path must be a string");
+					}
+					else if(!(path in kernel.kernelModules)) {
+						throw new Error("module "+path+" not found");
+					}
+					return kernel.kernelModules[path];
+				}}
 			});
 
 			// execute script

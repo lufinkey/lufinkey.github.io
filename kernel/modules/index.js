@@ -15,14 +15,21 @@ const modules = await (async () => {
 		'timers',
 		'util'
 	];
+	const thirdPartyModules = {
+		'react': (context) => (kernel.React),
+		'react-dom': (context) => (kernel.ReactDOM),
+		'babel': (context) => (kernel.Babel),
+		'sass': (context) => (kernel.Sass)
+	};
 	const modulePromises = {};
 	for(const moduleName of moduleNames) {
 		modulePromises[moduleName] = krequire(__dirname+'/'+moduleName+'.js');
 	}
-	const modules = {};
+	let modules = {};
 	for(const moduleName in modulePromises) {
 		modules[moduleName] = await modulePromises[moduleName];
 	}
+	modules = Object.assign(modules, thirdPartyModules);
 	return modules;
 })();
 
@@ -37,7 +44,7 @@ class KernelModuleLoader
 	}
 
 	require(moduleName) {
-		if(this.loadedModules[moduleName]) {
+		if(moduleName in this.loadedModules) {
 			return this.loadedModules[moduleName];
 		}
 		const moduleCreator = modules[moduleName];

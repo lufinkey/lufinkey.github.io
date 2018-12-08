@@ -4,7 +4,7 @@ const {
 } = await krequire('kernel/util.js');
 const {
 	findModulePath,
-	requireFile
+	requireScriptFile
 } = await krequire('kernel/require.js');
 const {
 	createTwoWayStream
@@ -170,7 +170,7 @@ module.exports = (context) => {
 					// start the process in the next queue
 					queueCallback(childContext, {name: 'main'}, () => {
 						// start the process
-						requireFile(childContext, filename);
+						requireScriptFile(childContext, filename);
 					});
 				});
 			}

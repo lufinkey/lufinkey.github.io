@@ -11,6 +11,14 @@ const {
 } = await krequire('kernel/process/thread.js');
 
 
+// download 3rd party modules
+kernel.React = await krequire('react', {url:"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js", allowCache: true});
+kernel.ReactDOM = await krequire('react-dom', {url:"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js", allowCache: true});
+kernel.Babel = await krequire('babel', {url:"https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js", allowCache: true});
+kernel.Sass = await krequire('sass', {url:"https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js", allowCache: true});
+kernel.Sass.setWorkerUrl('data:application/javascript;base64,'+btoa(await kernel.download('https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.worker.min.js')));
+
+
 if(!kernel.options.boot || !kernel.options.boot.url || !kernel.options.boot.path) {
 	throw new Error("boot.url and boot.path must be specified in options");
 }

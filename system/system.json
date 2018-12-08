@@ -12,7 +12,7 @@
 
 	"bundles": [
 		{"id": "base",
-			"description": "Necessary tools for the jsx/sass interpreters",
+			"description": "Boot data",
 			"filesystem": [
 				{"name":"system", "mode":"0755", "type":"DIR", "content": [
 					{"name":"boot", "mode":"0755", "type":"DIR", "content": [
@@ -22,8 +22,7 @@
 							{"name":"DefaultBootScreen.css", "mode":"0644", "type":"FILE"}
 						]},
 						{"name":"triggers", "mode":"0755", "type":"DIR", "content": [
-							{"name":"delay.js", "mode":"0755", "type":"FILE"},
-							{"name":"sassSetup.js", "mode":"0755", "type":"FILE"}
+							{"name":"delay.js", "mode":"0755", "type":"FILE"}
 						]}
 					]},
 					{"name":"lib", "mode":"0755", "type":"DIR", "content": [
@@ -40,21 +39,10 @@
 							{"name":"package.json", "mode":"0644", "type":"FILE"},
 							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]}
-					]},
-					{"name":"plib", "mode":"0755", "type":"DIR", "content": [
-						{"name":"react.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"},
-						{"name":"react.js.librules", "mode":"0644", "type":"FILE"},
-						{"name":"react-dom.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js"},
-						{"name":"react-dom.js.librules", "mode":"0644", "type":"FILE"},
-						{"name":"babel.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.js"},
-						{"name":"babel.js.librules", "mode":"0644", "type":"FILE"},
-						{"name":"sass.js", "mode":"0644", "type":"FILE", "url":"https://cdnjs.cloudflare.com/ajax/libs/sass.js/0.10.9/sass.js"},
-						{"name":"sass.js.librules", "mode":"0644", "type":"FILE"}
 					]}
 				]}
 			],
 			"triggers": [
-				{"execute": "/system/boot/triggers/sassSetup.js"},
 				{"execute": "/system/boot/bootScreen.jsx",
 					"stdin": "bootlog",
 					"async": true},
