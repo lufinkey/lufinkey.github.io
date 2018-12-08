@@ -9,8 +9,11 @@ const { download } = require('misc');
 let bootlogs = [];
 let bootlogPipes = [];
 function bootlog(message, options) {
-	bootlogs.push({message: message, options: Object.assign({}, options)});
-	syscall('log', message, options);
+	options = Object.assign({}, options);
+	bootlogs.push({message: message, options: options});
+	if(options.syslog) {
+		syscall('log', message, options);
+	}
 	const pipes = bootlogPipes.slice(0);
 	for(const pipe of pipes) {
 		pipe.write(JSON.stringify({
@@ -96,7 +99,7 @@ async function downloadFiles(structure, path=null) {
 			await downloadFile(url, entryPath, options);
 		}
 		catch(error) {
-			bootlog("failed to download /"+entryPath, {color: 'red'});
+			bootlog("failed to download /"+entryPath, {color: 'red', syslog: true});
 			throw error;
 		}
 		bootlog("downloaded /"+entryPath);
@@ -112,7 +115,7 @@ async function downloadFiles(structure, path=null) {
 			}
 		}
 		catch(error) {
-			bootlog("failed to create directory /"+entryPath, {color: 'red'});
+			bootlog("failed to create directory /"+entryPath, {color: 'red', syslog: true});
 			throw error;
 		}
 		
@@ -193,7 +196,7 @@ function executeTrigger(trigger) {
 					if(chunk instanceof Buffer) {
 						chunk = chunk.toString('utf8');
 					}
-					bootlog(chunk, {color: 'red'});
+					bootlog(chunk, {color: 'red', syslog: true});
 				});
 			}
 		}
@@ -283,7 +286,7 @@ async function bootSystem(system) {
 (new Promise((resolve, reject) => {
 	(async () => {
 		// perform system initialization
-		const systemData = await download('system/system.json');
+		const systemData = await download('system/system.json'+'?v='+(Math.random()*999999999));
 		const system = JSON.parse(systemData);
 		// boot system
 		await bootSystem(system);
@@ -295,6 +298,6 @@ async function bootSystem(system) {
 	process.exit(0);
 }).catch((error) => {
 	// error
-	bootlog(error.toString(), {color: 'red'});
+	bootlog(error.toString(), {color: 'red', syslog: true});
 	process.exit(1);
 });

@@ -9,6 +9,7 @@ const {
 	wrapThread,
 	Signals
 } = await krequire('kernel/process/thread.js');
+await krequire('kernel/transcend32/transcend32.js');
 
 
 // download 3rd party modules
@@ -55,7 +56,7 @@ const boot = async () => {
 	booted = true;
 	resetKernel();
 
-	kernel.log(null, "starting boot...");
+	kernel.log(null, "starting boot...", {syslog: true});
 
 	// create root context
 	const rootContext = new Context(null);
