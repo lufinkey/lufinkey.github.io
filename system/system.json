@@ -32,12 +32,6 @@
 							{"name":"sysui.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"sysui.private.jsx", "mode":"0644", "type":"FILE"},
 							{"name":"sysui.private.jsx.librules", "mode":"0644", "type":"FILE"}
-						]},
-						{"name":"transcend32.dll", "mode":"0755", "type":"DIR", "content": [
-							{"name":"CRT.jsx", "mode":"0644", "type":"FILE"},
-							{"name":"index.jsx", "mode":"0644", "type":"FILE"},
-							{"name":"package.json", "mode":"0644", "type":"FILE"},
-							{"name":"style.css", "mode":"0644", "type":"FILE"}
 						]}
 					]}
 				]}

@@ -1,7 +1,6 @@
 
 const React = require('react');
 const ReactDOM = require('react-dom');
-const Transcend32 = require('transcend32');
 
 
 let uiRoot = null;
@@ -20,12 +19,12 @@ class UIRoot extends React.Component
 
 	render() {
 		return (
-			<Transcend32>
+			<div style={{width:'100%',height:'100%',margin:0,padding:0}}>
 				{screens.map((screen) => {
 					const ScreenComponent = screen.component;
 					return (<ScreenComponent key={screen.key}/>);
 				})}
-			</Transcend32>
+			</div>
 		)
 	}
 };
