@@ -1,6 +1,5 @@
 
 const React = require('react');
-const ReactDOM = require('react-dom');
 const Display = require('displaymgrclient');
 const SelfAd = require('selfad');
 const Desktop = require('./Desktop');
