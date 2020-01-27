@@ -135,7 +135,7 @@
 						]},
 						{"name":"base64uri.js", "mode":"0644", "type":"FILE"},
 						{"name":"mimetype.js", "mode":"0644", "type":"FILE"},
-						{"name":"react-draggable.js", "mode":"0644", "type":"FILE", "url":"https://raw.githubusercontent.com/mzabriskie/react-draggable/master/dist/react-draggable.js"}
+						{"name":"react-draggable.js", "mode":"0644", "type":"FILE", "url":"https://raw.githubusercontent.com/mzabriskie/react-draggable/0dfb65bd58793856c2f3d1a0cf545feb359e71ad/dist/react-draggable.js"}
 					]},
 					{"name":"share", "mode":"0755", "type":"DIR", "content": [
 						{"name":"appdefaults.json", "mode":"0644", "type":"FILE"},
