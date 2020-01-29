@@ -6,10 +6,6 @@ html, body, #root {
 	padding: 0;
 }
 
-#root {
-	padding-bottom: 0 !important;
-}
-
 body {
 	background-color: black;
 	overflow: hidden;
